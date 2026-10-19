@@ -65,16 +65,6 @@ class AuthController extends Controller
         // Generate token Sanctum
         $token = $user->createToken('reclaimer_auth_token')->plainTextToken;
 
-        // Tentukan rute default berdasarkan role (Sesuai PRD)
-        $redirectPath = match ($user->role) {
-            'operator' => '/batch/create',
-            'supervisor' => '/dashboard',
-            'hse' => '/b3-tracker',
-            'management' => '/dashboard',
-            'admin' => '/admin/users',
-            default => '/dashboard',
-        };
-
         // Catat log berhasil login
         AuditLog::create([
             'user_id' => $user->id,
@@ -93,17 +83,7 @@ class AuthController extends Controller
         return response()->json([
             'status' => 'success',
             'message' => 'Login berhasil.',
-            'data' => [
-                'token' => $token,
-                'user' => [
-                    'id' => $user->id,
-                    'nik' => $user->nik,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role,
-                ],
-                'redirect' => $redirectPath,
-            ],
+            'data' => ['token' => $token, ...$this->sessionPayload($user)],
         ]);
     }
 
@@ -112,18 +92,29 @@ class AuthController extends Controller
      */
     public function me(Request $request)
     {
-        $user = $request->user();
-
         return response()->json([
             'status' => 'success',
-            'data' => [
+            'data' => $this->sessionPayload($request->user()),
+        ]);
+    }
+
+    /**
+     * Data sesi yang dipakai frontend: profil, hak akses per fitur
+     * (config/access.php), dan fitur yang dibuka pertama setelah login.
+     */
+    private function sessionPayload(User $user): array
+    {
+        return [
+            'user' => [
                 'id' => $user->id,
                 'nik' => $user->nik,
                 'name' => $user->name,
                 'email' => $user->email,
                 'role' => $user->role,
             ],
-        ]);
+            'permissions' => (object) $user->permissions(),
+            'home' => $user->homeFeature(),
+        ];
     }
 
     /**
