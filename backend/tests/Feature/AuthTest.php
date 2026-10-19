@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\User;
+use Database\Seeders\UserSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -10,7 +11,14 @@ class AuthTest extends TestCase
 {
     use RefreshDatabase;
 
-    protected bool $seed = true;
+    // Bukan $seed = true: RefreshDatabase hanya menjalankan seeder saat
+    // migrasi pertama di proses test, jadi hasilnya bergantung urutan kelas.
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->seed(UserSeeder::class);
+    }
 
     public function test_login_successful_with_valid_nik_and_password(): void
     {
@@ -26,11 +34,14 @@ class AuthTest extends TestCase
                 'data' => [
                     'token',
                     'user' => ['id', 'nik', 'name', 'role'],
-                    'redirect',
+                    'permissions',
+                    'home',
                 ],
             ]);
 
-        $this->assertEquals('/batch/create', $response->json('data.redirect'));
+        $response->assertJsonPath('data.home', 'batch')
+            ->assertJsonPath('data.permissions.batch', 'isi')
+            ->assertJsonMissingPath('data.permissions.parameter');
     }
 
     public function test_login_fails_with_invalid_credentials(): void
@@ -64,7 +75,8 @@ class AuthTest extends TestCase
 
         $this->withToken($token)->getJson('/api/auth/me')
             ->assertOk()
-            ->assertJsonPath('data.role', 'hse');
+            ->assertJsonPath('data.user.role', 'hse')
+            ->assertJsonPath('data.permissions.limbah_b3', 'kelola');
 
         $this->withToken($token)->postJson('/api/auth/logout')->assertOk();
 
