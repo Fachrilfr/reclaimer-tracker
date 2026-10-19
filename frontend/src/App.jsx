@@ -1,80 +1,99 @@
-import { useState } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { WifiOff } from 'lucide-react';
+import { AuthProvider, useAuth } from './auth/AuthContext.jsx';
+import { MODULES, moduleByKey, moduleForPath } from './modules.js';
+import AppLayout from './layouts/AppLayout.jsx';
+import FullPageStatus from './components/FullPageStatus.jsx';
 import LoginPage from './pages/LoginPage.jsx';
-import HomePage from './pages/HomePage.jsx';
+import AccountPage from './pages/AccountPage.jsx';
+import ModulePlaceholderPage from './pages/ModulePlaceholderPage.jsx';
+import { ForbiddenPage, NotFoundPage } from './pages/StatusPages.jsx';
 
-const STORAGE_KEYS = ['reclaimer_token', 'reclaimer_user', 'reclaimer_redirect'];
-
-function loadSession() {
-  try {
-    const token = localStorage.getItem('reclaimer_token');
-    const user = JSON.parse(localStorage.getItem('reclaimer_user'));
-    return token && user ? { token, user } : null;
-  } catch {
-    return null;
-  }
+function homePath(home) {
+  return moduleByKey(home)?.path ?? '/akun';
 }
 
-function clearSession() {
-  STORAGE_KEYS.forEach((key) => localStorage.removeItem(key));
+// Tampilan bersama saat sesi belum siap: memeriksa token, atau server tidak bisa dihubungi
+function SessionPending() {
+  const { status, error, retry } = useAuth();
+
+  if (status === 'checking') return <FullPageStatus loading title="Memuat sesi…" />;
+
+  return (
+    <FullPageStatus
+      icon={WifiOff}
+      title="Sesi belum bisa dimuat."
+      action={
+        <button type="button" onClick={retry} className="btn-primary h-11 px-4 text-body">
+          Coba lagi
+        </button>
+      }
+    >
+      {error}
+    </FullPageStatus>
+  );
 }
 
-async function readJson(response) {
-  try {
-    return await response.json();
-  } catch {
-    return null;
+function RequireAuth({ children }) {
+  const { status, signedOutManually } = useAuth();
+  const location = useLocation();
+
+  if (status === 'checking' || status === 'error') return <SessionPending />;
+  if (status === 'signed-out') {
+    return <Navigate to="/masuk" replace state={signedOutManually ? undefined : { from: location }} />;
   }
+  return children;
+}
+
+function LoginRoute() {
+  const { status, home, can } = useAuth();
+  const location = useLocation();
+
+  if (status === 'checking' || status === 'error') return <SessionPending />;
+  if (status === 'signed-out') return <LoginPage />;
+
+  // Kembali ke halaman yang tadi dibuka, kecuali role yang baru masuk tidak boleh membukanya
+  const from = location.state?.from;
+  const fromModule = from && moduleForPath(from.pathname);
+  const canReturn = from && from.pathname !== '/masuk' && (!fromModule || can(fromModule.key));
+  return <Navigate to={canReturn ? from : homePath(home)} replace />;
+}
+
+function HomeRedirect() {
+  const { home } = useAuth();
+  return <Navigate to={homePath(home)} replace />;
+}
+
+function ModuleRoute({ module }) {
+  const { can } = useAuth();
+
+  if (!can(module.key)) return <ForbiddenPage module={module} />;
+  const Page = module.page;
+  return Page ? <Page /> : <ModulePlaceholderPage module={module} />;
 }
 
 export default function App() {
-  const [session, setSession] = useState(loadSession);
-
-  const handleLogin = async (nik, password) => {
-    let response;
-    try {
-      response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-        body: JSON.stringify({ nik, password }),
-      });
-    } catch {
-      throw new Error('Server tidak bisa dihubungi. Periksa koneksi jaringan, lalu coba lagi.');
-    }
-
-    const data = await readJson(response);
-
-    if (response.status === 429) {
-      throw new Error('Terlalu banyak percobaan masuk. Tunggu 1 menit, lalu coba lagi.');
-    }
-    if (!response.ok || !data) {
-      throw new Error(
-        data?.message ?? 'Server sedang bermasalah. Coba lagi beberapa saat, atau hubungi Admin bila berulang.',
-      );
-    }
-
-    const { token, user, redirect } = data.data;
-    localStorage.setItem('reclaimer_token', token);
-    localStorage.setItem('reclaimer_user', JSON.stringify(user));
-    localStorage.setItem('reclaimer_redirect', redirect);
-    setSession({ token, user });
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${session.token}`, Accept: 'application/json' },
-      });
-    } catch (err) {
-      console.error('Logout error:', err);
-    }
-    clearSession();
-    setSession(null);
-  };
-
-  return session ? (
-    <HomePage user={session.user} onLogout={handleLogout} />
-  ) : (
-    <LoginPage onLogin={handleLogin} />
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/masuk" element={<LoginRoute />} />
+          <Route
+            element={
+              <RequireAuth>
+                <AppLayout />
+              </RequireAuth>
+            }
+          >
+            <Route index element={<HomeRedirect />} />
+            {MODULES.map((module) => (
+              <Route key={module.key} path={module.path} element={<ModuleRoute module={module} />} />
+            ))}
+            <Route path="/akun" element={<AccountPage />} />
+            <Route path="*" element={<NotFoundPage />} />
+          </Route>
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

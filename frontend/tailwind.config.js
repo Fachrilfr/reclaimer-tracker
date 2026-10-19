@@ -22,7 +22,8 @@ export default {
           400: '#9AA5B1', 600: '#5B6673', 800: '#2B333D', 900: '#141A21',
         },
         success: { fg: '#157F3D', bg: '#E8F6EE', border: '#A7DDBC' },
-        info: { fg: '#1B75BB', bg: '#EAF3FB', border: '#B7D6EF' },
+        // design.md memakai #1B75BB, tapi di atas info.bg kontrasnya 4,34:1 (di bawah AA 4,5:1)
+        info: { fg: '#155F98', bg: '#EAF3FB', border: '#B7D6EF' },
         warning: { fg: '#9A6700', bg: '#FFF6DB', border: '#F2D27A' },
         urgent: { fg: '#C2410C', bg: '#FFEDE3', border: '#F7B894' },
         danger: { fg: '#B42318', bg: '#FDECEA', border: '#F4B4AE' },

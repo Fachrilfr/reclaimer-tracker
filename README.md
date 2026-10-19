@@ -53,6 +53,14 @@ Untuk mengulang database dari awal (semua data terhapus):
 php artisan migrate:fresh --seed
 ```
 
+## Hak akses
+
+Matriks hak akses PRD §5.1 ada di satu tempat: `backend/config/access.php`. Frontend menerimanya lewat `/api/auth/me`, jadi menu dan halaman ikut berubah tanpa perlu diubah terpisah.
+
+- Route API modul memakai middleware `akses:<fitur>,<tingkat>`, misalnya `->middleware('akses:batch,isi')`.
+- Daftar menu, path, dan ikon ada di `frontend/src/modules.js`. `key` di sana harus sama dengan nama fitur di `config/access.php`.
+- Saat halaman modul selesai, isi `page` di `modules.js` dengan komponennya. Label "Segera" di menu hilang otomatis.
+
 ## Test
 
 ```bash

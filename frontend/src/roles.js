@@ -1,23 +1,31 @@
-// Modul utama per peran, mengikuti rute default dari AuthController::login
-export const ROLES = {
-  operator: { label: 'Operator', module: 'Form input batch reclaimer' },
-  supervisor: { label: 'Supervisor', module: 'Dashboard alert dan toleransi' },
-  hse: { label: 'HSE', module: 'Monitoring limbah B3 dan masa simpan' },
-  management: { label: 'Manajemen', module: 'Dashboard eksekutif dan laporan' },
-  admin: { label: 'Admin', module: 'Kelola master data dan parameter' },
+export const ROLE_LABELS = {
+  operator: 'Operator',
+  supervisor: 'Supervisor',
+  hse: 'HSE',
+  management: 'Manajemen',
+  admin: 'Admin',
 };
 
-// Akun dari DatabaseSeeder, hanya ditampilkan saat `npm run dev`
+export function roleLabel(role) {
+  return ROLE_LABELS[role] ?? role;
+}
+
+// Tingkat akses PRD §5. Kelola mencakup isi, tinjau, dan lihat; isi dan tinjau mencakup lihat.
+// Harus sama dengan 'levels' di backend/config/access.php.
+export const ACCESS_LEVELS = {
+  kelola: { label: 'Kelola', meaning: 'Tambah, ubah, dan atur', includes: ['kelola', 'isi', 'tinjau', 'lihat'] },
+  isi: { label: 'Isi', meaning: 'Input data', includes: ['isi', 'lihat'] },
+  tinjau: { label: 'Tinjau', meaning: 'Memeriksa dan menindaklanjuti', includes: ['tinjau', 'lihat'] },
+  lihat: { label: 'Lihat', meaning: 'Hanya baca', includes: ['lihat'] },
+};
+
+// Akun dari UserSeeder, hanya ditampilkan saat `npm run dev`
 export const SEEDED_ACCOUNTS = [
-  { nik: 'OP-1001', name: 'Operator Aziz', role: 'operator' },
-  { nik: 'SPV-2001', name: 'Supervisor Reclaimer', role: 'supervisor' },
-  { nik: 'HSE-3001', name: 'HSE Officer', role: 'hse' },
-  { nik: 'MGT-4001', name: 'Manajemen Divisi', role: 'management' },
-  { nik: 'ADM-5001', name: 'Admin Sistem', role: 'admin' },
+  { nik: 'OP-1001', role: 'operator' },
+  { nik: 'SPV-2001', role: 'supervisor' },
+  { nik: 'HSE-3001', role: 'hse' },
+  { nik: 'MGT-4001', role: 'management' },
+  { nik: 'ADM-5001', role: 'admin' },
 ];
 
 export const SEEDED_PASSWORD = 'password123';
-
-export function roleInfo(role) {
-  return ROLES[role] ?? { label: role, module: 'Beranda' };
-}
