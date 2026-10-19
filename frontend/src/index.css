@@ -2,34 +2,45 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .glass-panel {
-    background: rgba(30, 41, 59, 0.7);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.08);
+@layer base {
+  body {
+    @apply bg-gray-25 font-sans text-body text-gray-800 antialiased;
   }
-  
-  .glass-card {
-    background: rgba(15, 23, 42, 0.75);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+
+  h1, h2, h3 {
+    @apply text-gray-900;
   }
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #0f172a;
-}
-::-webkit-scrollbar-thumb {
-  background: #334155;
-  border-radius: 9999px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #475569;
+@layer components {
+  /* Ring brand-blue-100 saja terlalu pucat di atas putih, jadi tombol memakai outline biru 2px */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue-600;
+  }
+
+  .field {
+    @apply block h-11 w-full rounded-lg border border-gray-200 bg-white px-3 text-body-lg text-gray-900
+      transition-colors focus:border-brand-blue-600 focus:outline-none focus:ring-[3px] focus:ring-brand-blue-100;
+  }
+
+  .field[aria-invalid='true'] {
+    @apply border-danger-fg focus:ring-danger-bg;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg font-semibold transition-colors
+      disabled:cursor-not-allowed disabled:opacity-60 focus-ring;
+  }
+
+  .btn-primary {
+    @apply btn bg-brand-blue-600 text-white hover:bg-brand-blue-700 active:bg-brand-blue-800;
+  }
+
+  .btn-secondary {
+    @apply btn border border-gray-200 bg-white text-gray-800 hover:bg-gray-25;
+  }
+
+  .card {
+    @apply rounded-card border border-gray-200 bg-white shadow-card;
+  }
 }
