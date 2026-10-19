@@ -12,6 +12,10 @@ USE `reclaimer`;
 -- Matikan foreign key checks sementara untuk kemudahan migrasi/re-create
 SET FOREIGN_KEY_CHECKS = 0;
 
+DROP TABLE IF EXISTS `personal_access_tokens`;
+DROP TABLE IF EXISTS `sessions`;
+DROP TABLE IF EXISTS `cache_locks`;
+DROP TABLE IF EXISTS `cache`;
 DROP TABLE IF EXISTS `audit_logs`;
 DROP TABLE IF EXISTS `surat_jalan_pallets`;
 DROP TABLE IF EXISTS `surat_jalan`;
@@ -46,6 +50,49 @@ CREATE TABLE `users` (
     `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     `deleted_at` TIMESTAMP NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- ----------------------------------------------------------
+-- Laravel Runtime Tables (Cache, Sessions, Sanctum Tokens)
+-- ----------------------------------------------------------
+CREATE TABLE `cache` (
+    `key` VARCHAR(255) NOT NULL PRIMARY KEY,
+    `value` MEDIUMTEXT NOT NULL,
+    `expiration` BIGINT NOT NULL,
+    INDEX `cache_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `cache_locks` (
+    `key` VARCHAR(255) NOT NULL PRIMARY KEY,
+    `owner` VARCHAR(255) NOT NULL,
+    `expiration` BIGINT NOT NULL,
+    INDEX `cache_locks_expiration_index` (`expiration`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `sessions` (
+    `id` VARCHAR(255) NOT NULL PRIMARY KEY,
+    `user_id` BIGINT UNSIGNED NULL,
+    `ip_address` VARCHAR(45) NULL,
+    `user_agent` TEXT NULL,
+    `payload` LONGTEXT NOT NULL,
+    `last_activity` INT NOT NULL,
+    INDEX `sessions_user_id_index` (`user_id`),
+    INDEX `sessions_last_activity_index` (`last_activity`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE `personal_access_tokens` (
+    `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `tokenable_type` VARCHAR(255) NOT NULL,
+    `tokenable_id` BIGINT UNSIGNED NOT NULL,
+    `name` TEXT NOT NULL,
+    `token` VARCHAR(64) NOT NULL UNIQUE,
+    `abilities` TEXT NULL,
+    `last_used_at` TIMESTAMP NULL,
+    `expires_at` TIMESTAMP NULL,
+    `created_at` TIMESTAMP NULL,
+    `updated_at` TIMESTAMP NULL,
+    INDEX `personal_access_tokens_tokenable_type_tokenable_id_index` (`tokenable_type`, `tokenable_id`),
+    INDEX `personal_access_tokens_expires_at_index` (`expires_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- ----------------------------------------------------------
@@ -368,13 +415,13 @@ INSERT INTO `vendors` (`name`, `pic_name`, `contact`, `address`) VALUES
 ('PT Wastec International', 'Ibu Ratna', '021-58302111', 'Kawasan Industri Cilegon, Banten');
 
 -- Pengguna Awal dengan NIK (Password default: 'password123' -> bcrypt hash)
--- Hash: $2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce
+-- Hash: $2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu
 INSERT INTO `users` (`nik`, `name`, `email`, `password`, `role`) VALUES
-('ADM-5001', 'Admin Sistem', 'admin@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'admin'),
-('SPV-2001', 'Supervisor Reclaimer', 'supervisor@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'supervisor'),
-('OP-1001', 'Operator Aziz', 'aziz@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'operator'),
-('HSE-3001', 'HSE Officer', 'hse@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'hse'),
-('MGT-4001', 'Manajemen Divisi', 'manajemen@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'management');
+('ADM-5001', 'Admin Sistem', 'admin@indofood.co.id', '$2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu', 'admin'),
+('SPV-2001', 'Supervisor Reclaimer', 'supervisor@indofood.co.id', '$2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu', 'supervisor'),
+('OP-1001', 'Operator Aziz', 'aziz@indofood.co.id', '$2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu', 'operator'),
+('HSE-3001', 'HSE Officer', 'hse@indofood.co.id', '$2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu', 'hse'),
+('MGT-4001', 'Manajemen Divisi', 'manajemen@indofood.co.id', '$2y$12$zZ3Zl1vObMEKdGJLiAPsRuTmPFk/LZ1jhsjNi8noV1WPZtT.f.ksu', 'management');
 
 -- Saldo Awal Solvent di Buku Besar (1000 kg awal)
 INSERT INTO `solvent_ledger` (`mutation_date`, `type`, `amount`, `previous_balance`, `current_balance`, `reason`, `user_id`) VALUES
