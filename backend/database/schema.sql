@@ -3,6 +3,7 @@
 -- System: Material Balance & B3 Tracker
 -- PT Indofood CBP Sukses Makmur Tbk - Packaging Division
 -- Berdasarkan PRD Terbaru (Draf 19 Oktober 2026)
+-- Login Identifier: NIK (Nomor Induk Karyawan)
 -- ==========================================================
 
 CREATE DATABASE IF NOT EXISTS `reclaimer` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -31,12 +32,13 @@ SET FOREIGN_KEY_CHECKS = 1;
 
 -- ----------------------------------------------------------
 -- 1. Tabel Users & Hak Akses Role
+-- Login menggunakan NIK (Nomor Induk Karyawan)
 -- Role: operator, supervisor, hse, management, admin
 -- ----------------------------------------------------------
 CREATE TABLE `users` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    `nik` VARCHAR(30) NOT NULL UNIQUE COMMENT 'Nomor Induk Karyawan (kredensial login)',
     `name` VARCHAR(100) NOT NULL,
-    `username` VARCHAR(50) NOT NULL UNIQUE,
     `email` VARCHAR(100) NULL UNIQUE,
     `password` VARCHAR(255) NOT NULL,
     `role` ENUM('operator', 'supervisor', 'hse', 'management', 'admin') NOT NULL DEFAULT 'operator',
@@ -317,9 +319,9 @@ CREATE TABLE `surat_jalan_pallets` (
 CREATE TABLE `audit_logs` (
     `id` BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     `user_id` BIGINT UNSIGNED NULL,
-    `action` VARCHAR(50) NOT NULL COMMENT 'create, update, delete, review, schedule, close',
-    `entity_type` VARCHAR(50) NOT NULL COMMENT 'reclaimer_batches, b3_pallets, surat_jalan, machine, parameters, users',
-    `entity_id` BIGINT UNSIGNED NOT NULL,
+    `action` VARCHAR(50) NOT NULL COMMENT 'login, create, update, delete, review, schedule, close',
+    `entity_type` VARCHAR(50) NOT NULL COMMENT 'users, reclaimer_batches, b3_pallets, surat_jalan, machine, parameters',
+    `entity_id` BIGINT UNSIGNED NULL,
     `old_values` JSON NULL,
     `new_values` JSON NULL,
     `ip_address` VARCHAR(45) NULL,
@@ -365,14 +367,14 @@ INSERT INTO `vendors` (`name`, `pic_name`, `contact`, `address`) VALUES
 ('PT Prasadha Pamunah Limbah Industri (PPLI)', 'Bpk. Hendra', '021-8674060', 'Jl. Raya Narogong Km 22, Cileungsi, Bogor'),
 ('PT Wastec International', 'Ibu Ratna', '021-58302111', 'Kawasan Industri Cilegon, Banten');
 
--- Pengguna Awal (Password default: 'password123' -> bcrypt hash)
+-- Pengguna Awal dengan NIK (Password default: 'password123' -> bcrypt hash)
 -- Hash: $2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce
-INSERT INTO `users` (`name`, `username`, `email`, `password`, `role`) VALUES
-('Admin Sistem', 'admin', 'admin@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'admin'),
-('Supervisor Reclaimer', 'supervisor', 'supervisor@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'supervisor'),
-('Operator Aziz', 'aziz', 'aziz@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'operator'),
-('HSE Officer', 'hse', 'hse@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'hse'),
-('Manajemen Divisi', 'manajemen', 'manajemen@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'management');
+INSERT INTO `users` (`nik`, `name`, `email`, `password`, `role`) VALUES
+('ADM-5001', 'Admin Sistem', 'admin@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'admin'),
+('SPV-2001', 'Supervisor Reclaimer', 'supervisor@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'supervisor'),
+('OP-1001', 'Operator Aziz', 'aziz@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'operator'),
+('HSE-3001', 'HSE Officer', 'hse@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'hse'),
+('MGT-4001', 'Manajemen Divisi', 'manajemen@indofood.co.id', '$2y$10$w6GvI1g210/6oZ4aGgq35eN.aBq3UdfqO2oQ5n2dY7J4sL8Qf3Zce', 'management');
 
 -- Saldo Awal Solvent di Buku Besar (1000 kg awal)
 INSERT INTO `solvent_ledger` (`mutation_date`, `type`, `amount`, `previous_balance`, `current_balance`, `reason`, `user_id`) VALUES
