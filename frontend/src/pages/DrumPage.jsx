@@ -15,6 +15,28 @@ import { Table, Td, Th } from '../components/Table.jsx';
 // Halaman ini tahap operator: dari area reclaimer ke TPS. Pallet penuh dianggap
 // dikirim ke TPS dan diserahkan ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
 
+// Keterangan yang diisi saat mulai pallet dan saat mencatat drum
+function PalletNotes({ pallet }) {
+  if (!pallet.notes && !pallet.drum_notes.length) return <span className="text-gray-600">–</span>;
+
+  return (
+    <ul className="space-y-0.5">
+      {pallet.notes && (
+        <li>
+          <span className="text-gray-600">Pallet: </span>
+          {pallet.notes}
+        </li>
+      )}
+      {pallet.drum_notes.map((d) => (
+        <li key={d.sequence}>
+          <span className="text-gray-600">Drum ke-{d.sequence}: </span>
+          {d.notes}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 // Form satu tanggal + keterangan, dipakai untuk mulai pallet dan catat drum penuh
 function DateForm({ id, dateField, label, hint, submitLabel, today, onSubmit }) {
   const [date, setDate] = useState(today);
@@ -101,6 +123,7 @@ function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
           <p className="mt-1 text-body text-gray-600">
             Mulai terisi {formatDate(pallet.start_date)}. Batas kirim ke TPS {formatDate(pallet.tps_due_date)}.
           </p>
+          {pallet.notes && <p className="mt-1 text-body text-gray-800">Keterangan: {pallet.notes}</p>}
         </div>
         <TpsBadge tps={pallet.tps} />
       </div>
@@ -257,6 +280,7 @@ export default function DrumPage() {
                     <Th>Mulai terisi</Th>
                     <Th>Batas kirim ke TPS</Th>
                     <Th>Status kirim ke TPS</Th>
+                    <Th>Keterangan</Th>
                   </tr>
                 </thead>
                 <tbody>
@@ -278,6 +302,9 @@ export default function DrumPage() {
                         {tpsDelayText(p.tps) && (
                           <span className="mt-1 block text-caption text-gray-600">{tpsDelayText(p.tps)}</span>
                         )}
+                      </Td>
+                      <Td className="min-w-[12rem] text-body">
+                        <PalletNotes pallet={p} />
                       </Td>
                     </tr>
                   ))}

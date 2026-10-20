@@ -21,7 +21,7 @@ class PalletController extends Controller
         $thresholds = self::thresholds();
 
         $filling = B3Pallet::with('drums.operator')->where('status', 'filling')->first();
-        $recent = B3Pallet::orderByDesc('start_date')->orderByDesc('id')->limit(10)->get();
+        $recent = B3Pallet::with('drums')->orderByDesc('start_date')->orderByDesc('id')->limit(10)->get();
 
         return response()->json([
             'status' => 'success',
@@ -106,6 +106,13 @@ class PalletController extends Controller
             // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.
             'tps' => $pallet->tpsStatus($thresholds['tps'], $thresholds['maintenance'] ?? null)->toArray(),
             'storage' => $pallet->storageStatus($thresholds['storage'])->toArray(),
+            // Keterangan saat mulai pallet dan saat mencatat drum, untuk riwayat pallet
+            'notes' => $pallet->notes,
+            'drum_notes' => $pallet->relationLoaded('drums')
+                ? $pallet->drums->filter(fn ($drum) => filled($drum->notes))
+                    ->map(fn ($drum) => ['sequence' => $drum->drum_sequence, 'notes' => $drum->notes])
+                    ->values()
+                : [],
         ];
 
         if ($withDrums) {

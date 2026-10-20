@@ -131,6 +131,22 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.action_items.tps_pallets.0.tps.days_remaining', -3);
     }
 
+    public function test_pallet_and_drum_notes_appear_in_history(): void
+    {
+        $id = $this->postJson('/api/pallets', ['start_date' => '2026-10-15', 'notes' => 'Pallet kayu baru'])
+            ->assertJsonPath('data.notes', 'Pallet kayu baru')
+            ->json('data.id');
+        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-16']);
+        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-18', 'notes' => 'Tutup drum diganti']);
+
+        $this->getJson('/api/pallets')->assertOk()
+            ->assertJsonPath('data.recent.0.notes', 'Pallet kayu baru')
+            ->assertJsonCount(1, 'data.recent.0.drum_notes')
+            ->assertJsonPath('data.recent.0.drum_notes.0.sequence', 2)
+            ->assertJsonPath('data.recent.0.drum_notes.0.notes', 'Tutup drum diganti')
+            ->assertJsonPath('data.filling.notes', 'Pallet kayu baru');
+    }
+
     public function test_only_one_pallet_can_be_filling(): void
     {
         $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertCreated();
