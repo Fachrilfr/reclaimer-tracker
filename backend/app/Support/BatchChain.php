@@ -36,7 +36,7 @@ final class BatchChain
      */
     public static function whereRoot(callable $scope): Collection
     {
-        $query = ReclaimerBatch::query()->whereNull('parent_batch_id')->with(['shift', 'operator', 'continuations.shift']);
+        $query = ReclaimerBatch::query()->whereNull('parent_batch_id')->with(['shift', 'operator', 'reviewer', 'continuations.shift']);
         $scope($query);
 
         return $query->get()->map(fn (ReclaimerBatch $root) => self::of($root));
@@ -142,6 +142,7 @@ final class BatchChain
             'recovery_rate' => $complete ? $this->root->chain_recovery_rate : null,
             'target_recovery_rate' => $complete ? $this->root->target_recovery_rate : null,
             'is_below_target' => $this->isBelowTarget(),
+            'review' => $this->root->reviewSummary(),
         ];
     }
 }

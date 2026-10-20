@@ -167,7 +167,8 @@ final class DashboardReport
 
     /**
      * FR-45: rangkaian yang selesai dalam 14 hari terakhir dengan recovery gabungan di bawah
-     * target, terlepas dari periode yang dipilih. Batch yang belum selesai tidak pernah masuk.
+     * target dan belum ditinjau supervisor, terlepas dari periode yang dipilih. Batch yang
+     * belum selesai tidak pernah masuk; yang tidak ditinjau hilang sendiri setelah 14 hari.
      */
     private function lowRecoveryChains(): array
     {
@@ -175,6 +176,8 @@ final class DashboardReport
             ->whereNotNull('chain_completed_at')
             ->where('chain_completed_at', '>=', now()->subDays(13)->startOfDay())
             ->where('is_recovery_low', true)
+            // Sudah ditinjau supervisor: tidak perlu ditindak lagi
+            ->where('supervisor_reviewed', false)
             ->orderByDesc('chain_completed_at'))
             ->map(fn (BatchChain $c) => $c->toArray())
             ->values()

@@ -47,7 +47,7 @@ class BatchController extends Controller
     /** Batch terbaru, untuk dicek ulang operator dan dibaca role lain. */
     public function index(): JsonResponse
     {
-        $batches = ReclaimerBatch::with(['shift', 'operator', 'parent'])
+        $batches = ReclaimerBatch::with(['shift', 'operator', 'reviewer', 'parent.reviewer'])
             ->orderByDesc('date')->orderByDesc('id')
             ->limit(20)
             ->get()
@@ -89,6 +89,7 @@ class BatchController extends Controller
             'chain_recovery_rate' => $chainComplete ? $root->chain_recovery_rate : null,
             'chain_batch_count' => $root->continuations()->count() + 1,
             'target_recovery_rate' => $batch->target_recovery_rate,
+            'review' => $root->reviewSummary(),
             'ink_weight' => $batch->ink_weight,
             'solvent_used_weight' => $batch->solvent_used_weight,
             'recovery_weight' => $batch->recovery_weight,

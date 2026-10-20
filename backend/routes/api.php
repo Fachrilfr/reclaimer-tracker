@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BatchController;
+use App\Http\Controllers\Api\ChainReviewController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MachineController;
 use App\Http\Controllers\Api\NotificationController;
@@ -25,6 +26,7 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::post('/notifications/{id}/read', [NotificationController::class, 'markRead']);
 
     Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('akses:dashboard');
+    Route::post('/batch-chains/{batch}/review', [ChainReviewController::class, 'store'])->middleware('akses:dashboard,tinjau');
 
     Route::get('/machine', [MachineController::class, 'show'])->middleware('akses:mesin');
     Route::post('/machine/maintenance', [MachineController::class, 'startMaintenance'])->middleware('akses:mesin,isi');

@@ -20,6 +20,8 @@ import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import Alert from '../components/Alert.jsx';
+import ReviewDialog from '../components/ReviewDialog.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
@@ -377,7 +379,10 @@ function B3AlertCard({ pallets, view, linkFor, machine }) {
 
 // Alert toleransi recovery: recovery gabungan periode dibanding target, dan rangkaian
 // di bawah target dalam 14 hari terakhir (FR-45)
-function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
+function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onReviewed }) {
+  const { can } = useAuth();
+  const canReview = can('dashboard', 'tinjau');
+  const [reviewing, setReviewing] = useState(null);
   const below = tolerance.is_below;
   const needsAction = below || chains.length > 0;
 
@@ -387,9 +392,15 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
       icon={Recycle}
       title="Target recovery"
       status={
-        !tolerance.has_data ? 'Belum ada data' : below ? 'Di bawah target' : chains.length ? `${chains.length} rangkaian di bawah target` : 'Memenuhi target'
+        below
+          ? 'Di bawah target'
+          : chains.length
+            ? `${chains.length} rangkaian perlu ditinjau`
+            : tolerance.has_data
+              ? 'Memenuhi target'
+              : 'Belum ada data'
       }
-      tone={!tolerance.has_data ? 'neutral' : below ? 'bad' : chains.length ? 'warn' : 'ok'}
+      tone={below ? 'bad' : chains.length ? 'warn' : tolerance.has_data ? 'ok' : 'neutral'}
       needsAction={needsAction}
       more={chains.length - PREVIEW_LIMIT}
       link={{ href: '#breakdown-title', label: 'Lihat rincian' }}
@@ -418,24 +429,61 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
       {chains.length ? (
         <ul className="mt-1 divide-y divide-gray-100">
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (
-            <li key={c.root_id}>
-              <AlertItemLink to={`/dashboard?period=day&date=${c.date}&sorot=rangkaian-${c.root_id}`}>
-                <span>
-                  <span className="font-mono text-gray-900">{chainLabel(c)}</span>
-                  <span className="block text-caption text-gray-600">
-                    Mulai {formatDate(c.date)} · {c.shift}
-                    {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+            <li key={c.root_id} className="flex flex-wrap items-center gap-x-3">
+              <div className="min-w-0 flex-1">
+                <AlertItemLink to={`/dashboard?period=day&date=${c.date}&sorot=rangkaian-${c.root_id}`}>
+                  <span>
+                    <span className="font-mono text-gray-900">{chainLabel(c)}</span>
+                    <span className="block text-caption text-gray-600">
+                      Mulai {formatDate(c.date)} · {c.shift}
+                      {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+                      {!canReview && ' · menunggu tinjauan supervisor'}
+                    </span>
                   </span>
-                </span>
-                <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(c.recovery_rate)}</span>
-              </AlertItemLink>
+                  <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(c.recovery_rate)}</span>
+                </AlertItemLink>
+              </div>
+              {canReview && (
+                <button
+                  type="button"
+                  onClick={() => setReviewing(c)}
+                  aria-label={`Tinjau ${c.batch_number}`}
+                  className="btn-secondary h-11 shrink-0 px-4 text-body"
+                >
+                  Tinjau
+                </button>
+              )}
             </li>
           ))}
         </ul>
       ) : (
         <p className="mt-1 text-body text-gray-600">Tidak ada.</p>
       )}
+      {reviewing && (
+        <ReviewDialog
+          chain={reviewing}
+          label={chainLabel(reviewing)}
+          onClose={() => setReviewing(null)}
+          onReviewed={(message) => {
+            setReviewing(null);
+            onReviewed(message);
+          }}
+        />
+      )}
     </AlertCard>
+  );
+}
+
+// Catatan tinjauan supervisor, di rincian rangkaian dan daftar batch
+function ReviewNote({ review }) {
+  if (!review) return null;
+  return (
+    <span className="mt-1 flex items-start gap-1 text-caption font-normal text-gray-600">
+      <CircleCheck className="mt-px h-3.5 w-3.5 shrink-0 text-success-fg" aria-hidden="true" />
+      <span>
+        Ditinjau {review.by}: {review.notes}
+      </span>
+    </span>
   );
 }
 
@@ -505,6 +553,7 @@ function Breakdown({ breakdown, target, sorot }) {
                     {c.batch_count > 1 && (
                       <span className="block text-caption font-normal text-gray-600">gabungan {c.batch_count} batch</span>
                     )}
+                    <ReviewNote review={c.review} />
                   </>
                 ) : (
                   <span className="text-caption font-normal text-gray-600">menunggu lanjutan</span>
@@ -628,6 +677,7 @@ export default function DashboardPage() {
 
   const { data, error, loading, reload } = useResource(`/dashboard?period=${period}&date=${anchor}`);
   const sorot = useSorot(Boolean(data) && !loading);
+  const [reviewMessage, setReviewMessage] = useState('');
 
   const change = (nextPeriod, nextAnchor) => {
     setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
@@ -658,6 +708,7 @@ export default function DashboardPage() {
               Memuat periode baru…
             </p>
           )}
+          {reviewMessage && <Alert tone="success">{reviewMessage}</Alert>}
           {error && (
             <p className="flex items-center gap-2 text-body text-danger-fg">
               <TriangleAlert className="h-4 w-4" aria-hidden="true" />
@@ -685,6 +736,10 @@ export default function DashboardPage() {
               chains={data.action_items.low_recovery_chains}
               openCount={data.totals.open_chain_count}
               label={periodLabel(anchor, period)}
+              onReviewed={(message) => {
+                setReviewMessage(message);
+                reload();
+              }}
             />
           </div>
 

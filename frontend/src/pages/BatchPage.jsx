@@ -794,6 +794,14 @@ function BatchList({ batches }) {
                   <CircleCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Normal
                 </span>
               )}
+              {b.review && (
+                <span className="mt-0.5 flex items-start gap-1 text-gray-600">
+                  <CircleCheck className="mt-px h-3.5 w-3.5 shrink-0 text-success-fg" aria-hidden="true" />
+                  <span>
+                    Ditinjau {b.review.by}: {b.review.notes}
+                  </span>
+                </span>
+              )}
               {b.notes && <span className="mt-0.5 block text-gray-600">{b.notes}</span>}
             </Td>
           </tr>
