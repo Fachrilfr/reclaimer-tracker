@@ -12,6 +12,9 @@ import {
   Truck,
   Users,
 } from 'lucide-react';
+import DashboardPage from './pages/DashboardPage.jsx';
+import BatchPage from './pages/BatchPage.jsx';
+import DrumPage from './pages/DrumPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -27,7 +30,7 @@ export const MODULE_GROUPS = [
         path: '/dashboard',
         icon: LayoutDashboard,
         summary: 'Hal yang perlu ditindak, empat angka utama, dan perbandingan per shift.',
-        page: null,
+        page: DashboardPage,
       },
       {
         key: 'batch',
@@ -36,7 +39,7 @@ export const MODULE_GROUPS = [
         icon: Recycle,
         summary:
           'Catat Tinta X, solvent, hasil recovery, dan suhu per batch. Selisih, recovery rate, dan saldo solvent dihitung langsung.',
-        page: null,
+        page: BatchPage,
       },
     ],
   },
@@ -57,7 +60,7 @@ export const MODULE_GROUPS = [
         path: '/drum-b3',
         icon: Cylinder,
         summary: 'Catat drum residu yang sudah penuh. Tiga drum penuh dicatat sebagai satu pallet.',
-        page: null,
+        page: DrumPage,
       },
       {
         key: 'pengingat',
