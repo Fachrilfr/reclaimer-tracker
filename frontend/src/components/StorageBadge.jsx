@@ -1,5 +1,5 @@
 import { Clock, OctagonAlert, ShieldCheck, TriangleAlert, Truck } from 'lucide-react';
-import { formatDate } from '../lib/format.js';
+import { formatDate, formatDateTime } from '../lib/format.js';
 
 // Status limbah B3 (design.md §2.4). Sisa hari selalu ditulis dalam angka;
 // warna dan ikon hanya penguat, bukan satu-satunya penanda.
@@ -39,6 +39,14 @@ export function tpsText(tps) {
   if (tps.level !== 'terkirim') return countdownText(tps);
   const late = tps.late_days > 0 ? ` · terlambat ${tps.late_days} hari` : '';
   return `Sudah dikirim ${formatDate(tps.sent_at)}${late}`;
+}
+
+/** Keterangan keterlambatan kirim ke TPS, misalnya karena mesin maintenance. */
+export function tpsDelayText(tps) {
+  const delay = tps.delay;
+  if (!delay || delay.type !== 'machine_maintenance') return null;
+  const period = `${formatDateTime(delay.start)} – ${delay.end ? formatDateTime(delay.end) : 'sekarang'}`;
+  return `${tps.level === 'terkirim' ? 'Terlambat' : 'Lewat batas'} karena mesin maintenance (${period}): ${delay.reason}.`;
 }
 
 function Pill({ level, children }) {

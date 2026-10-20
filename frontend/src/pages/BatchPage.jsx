@@ -1,5 +1,7 @@
 import { forwardRef, useMemo, useRef, useState } from 'react';
-import { Calculator, CircleCheck, Hourglass, LoaderCircle, Recycle, TriangleAlert } from 'lucide-react';
+import { Calculator, CircleCheck, Hourglass, LoaderCircle, Recycle, TriangleAlert, Wrench } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDate, formatNumber, formatPercent, parseDecimal } from '../lib/format.js';
@@ -96,7 +98,11 @@ function outOfRange(value, range) {
 }
 
 function BatchForm({ formData, onSaved }) {
-  const { request } = useAuth();
+  const { request, can } = useAuth();
+  const { machine: liveMachine, reload: reloadNotifications } = useNotifications();
+  // Status mesin terbaru dari pemberitahuan (diperbarui berkala), atau dari data form
+  const machine = liveMachine ?? formData.machine;
+  const isMaintenance = machine?.status === 'maintenance';
   const [form, setForm] = useState(() => emptyForm(formData));
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
@@ -225,7 +231,13 @@ function BatchForm({ formData, onSaved }) {
     } catch (err) {
       const serverErrors = fieldErrorsFrom(err);
       setErrors(serverErrors);
-      setFormError(Object.keys(serverErrors).length ? 'Periksa kembali isian yang ditandai.' : err.message);
+      if (serverErrors.machine) {
+        // Mesin baru saja dilaporkan maintenance oleh pengguna lain
+        setFormError(serverErrors.machine);
+        reloadNotifications();
+      } else {
+        setFormError(Object.keys(serverErrors).length ? 'Periksa kembali isian yang ditandai.' : err.message);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -244,13 +256,6 @@ function BatchForm({ formData, onSaved }) {
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="space-y-6 lg:col-span-8">
-        {formData.machine?.status === 'maintenance' && (
-          <Alert tone="warning" title={`${formData.machine.name} sedang maintenance.`}>
-            {formData.machine.maintenance_reason ? `Alasan: ${formData.machine.maintenance_reason}. ` : ''}
-            Pastikan mesin sudah boleh dipakai sebelum mencatat batch.
-          </Alert>
-        )}
-
         {openChains.length > 0 && (
           <section
             aria-labelledby="open-chains-title"
@@ -303,11 +308,22 @@ function BatchForm({ formData, onSaved }) {
                 {formData.operator.name} (<span className="font-mono">{formData.operator.nik}</span>)
               </dd>
             </div>
-            {formData.machine && (
+            {machine && (
               <div>
                 <dt className="inline">Mesin: </dt>
                 <dd className="inline font-medium text-gray-900">
-                  <span className="font-mono">{formData.machine.code}</span>
+                  <span className="font-mono">{machine.code}</span>
+                  <span className={isMaintenance ? 'text-warning-fg' : 'text-success-fg'}>
+                    {isMaintenance ? ' · maintenance' : ' · beroperasi'}
+                  </span>
+                  {can('mesin', 'isi') && !isMaintenance && (
+                    <>
+                      {' · '}
+                      <Link to="/mesin" className="focus-ring rounded font-semibold text-brand-blue-700 hover:underline">
+                        Laporkan maintenance
+                      </Link>
+                    </>
+                  )}
                 </dd>
               </div>
             )}
@@ -668,8 +684,21 @@ function BatchForm({ formData, onSaved }) {
             </Alert>
           )}
 
-          <button type="submit" disabled={isSaving} className="btn-primary mt-4 h-12 w-full text-body-lg">
-            {isSaving ? (
+          {isMaintenance && (
+            <p id="maintenance-block" className="mt-4 flex items-start gap-1.5 text-caption text-warning-fg">
+              <Wrench className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+              Mesin sedang maintenance. Batch bisa disimpan lagi setelah mesin dinyatakan beroperasi.
+            </p>
+          )}
+          <button
+            type="submit"
+            disabled={isSaving || isMaintenance}
+            aria-describedby={isMaintenance ? 'maintenance-block' : undefined}
+            className="btn-primary mt-4 h-12 w-full text-body-lg"
+          >
+            {isMaintenance ? (
+              'Mesin sedang maintenance'
+            ) : isSaving ? (
               <>
                 <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
                 Menyimpan…

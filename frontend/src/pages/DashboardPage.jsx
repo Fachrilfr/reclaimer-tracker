@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Biohazard, ChevronLeft, ChevronRight, CircleCheck, Recycle, TriangleAlert } from 'lucide-react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { Biohazard, ChevronLeft, ChevronRight, CircleCheck, Recycle, TriangleAlert, Wrench } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
+import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import {
   formatDate,
   formatDateRange,
@@ -318,7 +319,20 @@ const B3_VIEWS = {
   },
 };
 
-function B3AlertCard({ pallets, view }) {
+// Item peringatan yang bisa diklik: membuka baris masalahnya di halaman tujuan (?sorot=...)
+function AlertItemLink({ to, children }) {
+  return (
+    <Link
+      to={to}
+      className="focus-ring -mx-2 flex items-center gap-2 rounded-lg px-2 py-2 transition-colors hover:bg-gray-25"
+    >
+      <span className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2">{children}</span>
+      <ChevronRight className="h-4 w-4 shrink-0 text-gray-600" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function B3AlertCard({ pallets, view, linkFor, machine }) {
   const urgent = pallets.length > 0;
   const hasCritical = pallets.some((p) => view.status(p).level === 'kritis');
 
@@ -333,15 +347,24 @@ function B3AlertCard({ pallets, view }) {
       more={pallets.length - PREVIEW_LIMIT}
       link={{ href: '#pallets-title', label: 'Lihat semua pallet' }}
     >
+      {machine?.status === 'maintenance' && (
+        <p className="mb-3 flex items-start gap-1.5 rounded-lg bg-warning-bg px-3 py-2 text-caption text-warning-fg">
+          <Wrench className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          Mesin {machine.code} sedang maintenance: pengiriman residu ke TPS ikut terhenti. Batas kirim pallet tetap
+          berjalan.
+        </p>
+      )}
       {urgent ? (
         <ul className="divide-y divide-gray-100">
           {pallets.slice(0, PREVIEW_LIMIT).map((p) => (
-            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0">
-              <span>
-                <span className="font-mono text-gray-900">{p.pallet_number}</span>
-                <span className="block text-caption text-gray-600">{view.due(p)}</span>
-              </span>
-              {view.badge(p)}
+            <li key={p.id}>
+              <AlertItemLink to={linkFor(p)}>
+                <span>
+                  <span className="font-mono text-gray-900">{p.pallet_number}</span>
+                  <span className="block text-caption text-gray-600">{view.due(p)}</span>
+                </span>
+                {view.badge(p)}
+              </AlertItemLink>
             </li>
           ))}
         </ul>
@@ -395,15 +418,17 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
       {chains.length ? (
         <ul className="mt-1 divide-y divide-gray-100">
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (
-            <li key={c.root_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-              <span>
-                <span className="font-mono text-gray-900">{chainLabel(c)}</span>
-                <span className="block text-caption text-gray-600">
-                  Mulai {formatDate(c.date)} · {c.shift}
-                  {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+            <li key={c.root_id}>
+              <AlertItemLink to={`/dashboard?period=day&date=${c.date}&sorot=rangkaian-${c.root_id}`}>
+                <span>
+                  <span className="font-mono text-gray-900">{chainLabel(c)}</span>
+                  <span className="block text-caption text-gray-600">
+                    Mulai {formatDate(c.date)} · {c.shift}
+                    {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+                  </span>
                 </span>
-              </span>
-              <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(c.recovery_rate)}</span>
+                <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(c.recovery_rate)}</span>
+              </AlertItemLink>
             </li>
           ))}
         </ul>
@@ -414,7 +439,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
   );
 }
 
-function Breakdown({ breakdown, target }) {
+function Breakdown({ breakdown, target, sorot }) {
   const { unit, rows } = breakdown;
   const visible = unit === 'chain' ? rows : rows.filter((r) => r.chain_count > 0);
 
@@ -443,7 +468,12 @@ function Breakdown({ breakdown, target }) {
         </thead>
         <tbody>
           {rows.map((c) => (
-            <tr key={c.root_id}>
+            <tr
+              key={c.root_id}
+              data-sorot={`rangkaian-${c.root_id}`}
+              tabIndex={-1}
+              className={sorot === `rangkaian-${c.root_id}` ? SOROT_CLASS : undefined}
+            >
               <Td>
                 <span className="font-mono text-gray-900">{c.batch_number}</span>
                 {c.batch_count > 1 && (
@@ -523,7 +553,7 @@ function Breakdown({ breakdown, target }) {
   );
 }
 
-function ActivePallets({ pallets, view }) {
+function ActivePallets({ pallets, view, sorot }) {
   const [onlyAction, setOnlyAction] = useState(false);
   const shown = onlyAction ? pallets.filter((p) => view.status(p).needs_action) : pallets;
 
@@ -552,7 +582,14 @@ function ActivePallets({ pallets, view }) {
       {shown.length ? (
         <ul className="divide-y divide-gray-100 border-t border-gray-100">
           {shown.map((p) => (
-            <li key={p.id} className="grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-12 sm:items-center sm:px-5">
+            <li
+              key={p.id}
+              data-sorot={`pallet-${p.id}`}
+              tabIndex={-1}
+              className={`grid grid-cols-1 gap-2 px-4 py-3 sm:grid-cols-12 sm:items-center sm:px-5 ${
+                sorot === `pallet-${p.id}` ? SOROT_CLASS : ''
+              }`}
+            >
               <div className="sm:col-span-3">
                 <span className="font-mono text-gray-900">{p.pallet_number}</span>
                 <span className="block text-caption text-gray-600">
@@ -590,6 +627,7 @@ export default function DashboardPage() {
   const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
 
   const { data, error, loading, reload } = useResource(`/dashboard?period=${period}&date=${anchor}`);
+  const sorot = useSorot(Boolean(data) && !loading);
 
   const change = (nextPeriod, nextAnchor) => {
     setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
@@ -633,7 +671,13 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <B3AlertCard
               view={b3View}
+              machine={data.machine}
               pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
+              linkFor={(p) =>
+                b3View === B3_VIEWS.tps && can('drum_b3')
+                  ? `/drum-b3?sorot=pallet-${p.id}`
+                  : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
+              }
             />
             <RecoveryAlertCard
               tolerance={data.tolerance}
@@ -745,10 +789,14 @@ export default function DashboardPage() {
                   : 'Hanya rangkaian selesai. Recovery rate dari total recovery dibagi total bahan masuk, bukan rata-rata persentase.'}
               </p>
             </div>
-            <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} />
+            <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />
           </section>
 
-          <ActivePallets view={b3View} pallets={b3View === B3_VIEWS.tps ? data.tps_pallets : data.active_pallets} />
+          <ActivePallets
+            view={b3View}
+            sorot={sorot}
+            pallets={b3View === B3_VIEWS.tps ? data.tps_pallets : data.active_pallets}
+          />
         </div>
       )}
     </>

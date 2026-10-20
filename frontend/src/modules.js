@@ -11,7 +11,9 @@ import {
   SlidersHorizontal,
   Truck,
   Users,
+  Wrench,
 } from 'lucide-react';
+import MachinePage from './pages/MachinePage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import BatchPage from './pages/BatchPage.jsx';
 import DrumPage from './pages/DrumPage.jsx';
@@ -40,6 +42,14 @@ export const MODULE_GROUPS = [
         summary:
           'Catat Tinta X, solvent, hasil recovery, dan suhu per batch. Selisih, recovery rate, dan saldo solvent dihitung langsung.',
         page: BatchPage,
+      },
+      {
+        key: 'mesin',
+        label: 'Status mesin',
+        path: '/mesin',
+        icon: Wrench,
+        summary: 'Laporkan maintenance mesin reclaimer dan saat mesin kembali beroperasi.',
+        page: MachinePage,
       },
     ],
   },

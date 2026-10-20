@@ -7,7 +7,8 @@ import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
+import { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
@@ -112,6 +113,7 @@ function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
         {pallet.tps.level === 'kritis' && (
           <Alert tone="danger" className="mt-3">
             Pallet ini sudah lewat batas kirim ke TPS. Selesaikan drum terakhir dan serahkan ke HSE secepatnya.
+            {tpsDelayText(pallet.tps) && <span className="mt-1 block">{tpsDelayText(pallet.tps)}</span>}
           </Alert>
         )}
       </div>
@@ -169,6 +171,7 @@ export default function DrumPage() {
   const canFill = can('drum_b3', 'isi');
   const resource = useResource('/pallets');
   const [message, setMessage] = useState('');
+  const sorot = useSorot(Boolean(resource.data));
 
   const submit = async (path, body) => {
     setMessage('');
@@ -258,15 +261,23 @@ export default function DrumPage() {
                 </thead>
                 <tbody>
                   {data.recent.map((p) => (
-                    <tr key={p.id}>
+                    <tr
+                      key={p.id}
+                      data-sorot={`pallet-${p.id}`}
+                      tabIndex={-1}
+                      className={sorot === `pallet-${p.id}` ? SOROT_CLASS : undefined}
+                    >
                       <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
                       <Td numeric>
                         {p.drum_count}/{data.drums_per_pallet}
                       </Td>
                       <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
                       <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
-                      <Td>
+                      <Td className="min-w-[14rem]">
                         <TpsBadge tps={p.tps} />
+                        {tpsDelayText(p.tps) && (
+                          <span className="mt-1 block text-caption text-gray-600">{tpsDelayText(p.tps)}</span>
+                        )}
                       </Td>
                     </tr>
                   ))}

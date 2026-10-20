@@ -30,6 +30,25 @@ export function formatDate(iso) {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+// Tanggal dan jam dari string ISO dengan zona waktu (misalnya dari kolom datetime API):
+// 19 Okt 2026, 15.28
+export function formatDateTime(isoWithTime) {
+  if (!isoWithTime) return '–';
+  const d = new Date(isoWithTime);
+  const time = `${String(d.getHours()).padStart(2, '0')}.${String(d.getMinutes()).padStart(2, '0')}`;
+  return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${time}`;
+}
+
+export function formatDuration(minutes) {
+  if (minutes === null || minutes === undefined) return '–';
+  const days = Math.floor(minutes / 1440);
+  const hours = Math.floor((minutes % 1440) / 60);
+  const mins = minutes % 60;
+  return [days && `${days} hari`, hours && `${hours} jam`, (mins || (!days && !hours)) && `${mins} menit`]
+    .filter(Boolean)
+    .join(' ');
+}
+
 export function formatMonthShort(iso) {
   return MONTHS[parseDate(iso).m - 1];
 }

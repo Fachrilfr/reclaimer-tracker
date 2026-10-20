@@ -5,6 +5,9 @@ import { useAuth } from '../auth/AuthContext.jsx';
 import { roleLabel } from '../roles.js';
 import TopBar from '../components/TopBar.jsx';
 import Sidebar from '../components/Sidebar.jsx';
+import NotificationBell from '../components/NotificationBell.jsx';
+import MaintenanceBanner from '../components/MaintenanceBanner.jsx';
+import { NotificationProvider } from '../notifications/NotificationContext.jsx';
 
 const FOCUSABLE = 'a[href], button:not([disabled])';
 
@@ -75,6 +78,14 @@ function NavDrawer({ onClose }) {
 }
 
 export default function AppLayout() {
+  return (
+    <NotificationProvider>
+      <AppShell />
+    </NotificationProvider>
+  );
+}
+
+function AppShell() {
   const { user, logout } = useAuth();
   const location = useLocation();
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -129,25 +140,27 @@ export default function AppLayout() {
           </button>
         }
       >
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
           <div className="hidden text-right sm:block">
             <div className="text-label font-semibold text-gray-900">{user.name}</div>
             <div className="text-caption text-gray-600">
               <span className="font-mono">{user.nik}</span> · {roleLabel(user.role)}
             </div>
           </div>
+          <NotificationBell />
           <button
             type="button"
             onClick={handleLogout}
             disabled={isLoggingOut}
-            className="btn-secondary h-11 px-4 text-body"
+            aria-label="Keluar"
+            className="btn-secondary h-11 w-11 px-0 text-body sm:w-auto sm:px-4"
           >
             {isLoggingOut ? (
               <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
             ) : (
               <LogOut className="h-5 w-5" aria-hidden="true" />
             )}
-            Keluar
+            <span className="hidden sm:inline">Keluar</span>
           </button>
         </div>
       </TopBar>
@@ -164,6 +177,7 @@ export default function AppLayout() {
           className="min-w-0 flex-1 px-4 py-8 focus:outline-none sm:px-6 lg:px-8"
         >
           <div className="mx-auto max-w-content">
+            <MaintenanceBanner />
             <Outlet />
           </div>
         </main>
