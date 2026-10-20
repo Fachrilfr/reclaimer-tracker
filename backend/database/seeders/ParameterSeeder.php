@@ -26,6 +26,9 @@ class ParameterSeeder extends Seeder
             ['param_key' => 'drums_per_pallet', 'param_value' => '3', 'unit' => 'drum', 'description' => 'Isi satu pallet'],
             ['param_key' => 'max_vendor_delivery_weeks', 'param_value' => '3', 'unit' => 'minggu', 'description' => 'Batas penyerahan residu ke vendor'],
             ['param_key' => 'daily_reminder_hour', 'param_value' => '07:00', 'unit' => 'WIB', 'description' => 'Jam pengiriman pengingat harian ke HSE'],
+            ['param_key' => 'tps_delivery_days', 'param_value' => '7', 'unit' => 'hari', 'description' => 'Batas kirim pallet dari reclaimer ke TPS, sejak pallet mulai terisi'],
+            ['param_key' => 'tps_reminder_early_days', 'param_value' => '3', 'unit' => 'hari', 'description' => 'Peringatan perhatian, sisa waktu kirim ke TPS'],
+            ['param_key' => 'tps_reminder_urgent_days', 'param_value' => '1', 'unit' => 'hari', 'description' => 'Peringatan mendesak, sisa waktu kirim ke TPS'],
         ];
 
         $now = now();

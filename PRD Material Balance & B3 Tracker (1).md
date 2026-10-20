@@ -108,7 +108,7 @@ Prioritas: P0 wajib untuk rilis pertama, P1 penting, P2 bisa menyusul.
 | FR-05 | Opsi batch lanjutan dari shift sebelumnya (tanpa Tinta baru). Recovery rate dihitung gabungan dengan batch awal | P0 |
 | FR-06 | Validasi: recovery tidak melebihi bahan masuk, solvent dipakai tidak melebihi saldo, operator dan suhu wajib diisi | P0 |
 | FR-07 | Keterangan bebas dengan tombol isi cepat (Start Pkl, Stop Pkl, Lanjutan, Kuras residu) | P1 |
-| FR-08 | Sumber berat: input manual. Opsi timbang terhubung ditandai belum dikonfirmasi | P2 |
+| FR-08 | Sumber berat: input manual.
 
 ### 7.2 Saldo solvent
 

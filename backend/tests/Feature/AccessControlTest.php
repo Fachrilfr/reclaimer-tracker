@@ -44,11 +44,11 @@ class AccessControlTest extends TestCase
     public function test_permissions_follow_prd_matrix(): void
     {
         $this->assertSame(
-            ['dashboard' => 'lihat', 'batch' => 'isi', 'drum_b3' => 'isi'],
+            ['dashboard' => 'lihat', 'batch' => 'isi', 'mesin' => 'isi', 'drum_b3' => 'isi'],
             User::factory()->role('operator')->make()->permissions(),
         );
         $this->assertSame(
-            ['laporan' => 'lihat', 'audit' => 'lihat', 'data_master' => 'kelola', 'pengguna' => 'kelola'],
+            ['mesin' => 'lihat', 'laporan' => 'lihat', 'audit' => 'lihat', 'data_master' => 'kelola', 'pengguna' => 'kelola'],
             User::factory()->role('admin')->make()->permissions(),
         );
         $this->assertSame('tinjau', User::factory()->role('supervisor')->make()->accessLevel('dashboard'));

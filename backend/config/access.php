@@ -17,6 +17,9 @@ return [
     'features' => [
         'dashboard' => ['operator' => 'lihat', 'supervisor' => 'tinjau', 'hse' => 'lihat', 'management' => 'lihat'],
         'batch' => ['operator' => 'isi', 'supervisor' => 'lihat', 'hse' => 'lihat'],
+        // Status maintenance mesin (FR-20). Belum ada di matriks PRD §5.1: operator
+        // melapor, supervisor mengelola, penerima pemberitahuan bisa melihat.
+        'mesin' => ['operator' => 'isi', 'supervisor' => 'kelola', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'limbah_b3' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
         'drum_b3' => ['operator' => 'isi', 'supervisor' => 'lihat', 'hse' => 'kelola'],
         'pengingat' => ['supervisor' => 'lihat', 'hse' => 'kelola'],
