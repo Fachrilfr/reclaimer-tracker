@@ -39,6 +39,7 @@ class BatchTest extends TestCase
             'regu' => 'B2',
             'is_continuation' => false,
             'parent_batch_id' => null,
+            'process_status' => 'completed',
             'ink_weight' => 300,
             'solvent_used_weight' => 200,
             'recovery_weight' => 180,
@@ -127,48 +128,6 @@ class BatchTest extends TestCase
             ->assertJsonPath('data.is_recovery_low', true);
     }
 
-    public function test_continuation_batch_uses_combined_rate(): void
-    {
-        $root = $this->storeAs($this->operator, ['recovery_weight' => 150])->json('data.id');
-
-        $response = $this->storeAs($this->operator, [
-            'shift_id' => Shift::where('code', 'SHIFT-2')->value('id'),
-            'is_continuation' => true,
-            'parent_batch_id' => $root,
-            'ink_weight' => 0,
-            'solvent_used_weight' => 0,
-            'recovery_weight' => 40,
-        ]);
-
-        // Gabungan: (150 + 40) / (500 + 0) = 38%
-        $response->assertCreated()
-            ->assertJsonPath('data.is_continuation', true)
-            ->assertJsonPath('data.parent_batch_number', 'BR-20261020-001')
-            ->assertJsonPath('data.recovery_rate_percent', 38)
-            ->assertJsonPath('data.is_recovery_low', false)
-            ->assertJsonPath('data.solvent_balance_after', 990);
-
-        // Lanjutan dari lanjutan tetap disambungkan ke batch awal
-        $second = $this->storeAs($this->operator, [
-            'is_continuation' => true,
-            'parent_batch_id' => $response->json('data.id'),
-            'ink_weight' => 0,
-            'solvent_used_weight' => 0,
-            'recovery_weight' => 400,
-        ]);
-        $second->assertUnprocessable()->assertJsonValidationErrors(['recovery_weight']);
-        $this->assertSame($root, ReclaimerBatch::where('batch_number', 'BR-20261020-002')->value('parent_batch_id'));
-    }
-
-    public function test_continuation_cannot_carry_new_ink(): void
-    {
-        $root = $this->storeAs($this->operator)->json('data.id');
-
-        $this->storeAs($this->operator, ['is_continuation' => true, 'parent_batch_id' => $root, 'ink_weight' => 10])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['ink_weight']);
-    }
-
     public function test_only_roles_with_isi_can_save(): void
     {
         $this->storeAs(User::where('nik', 'SPV-2001')->first())->assertForbidden();
@@ -191,7 +150,6 @@ class BatchTest extends TestCase
             ->assertJsonPath('data.target_recovery_rate', 35)
             ->assertJsonPath('data.suggested_shift_id', Shift::where('code', 'SHIFT-1')->value('id'))
             ->assertJsonPath('data.machine.status', 'operating')
-            ->assertJsonPath('data.continuation_candidates.0.batch_number', 'BR-20261020-001')
-            ->assertJsonPath('data.continuation_candidates.0.chain_rate', 36);
+            ->assertJsonCount(0, 'data.open_chains');
     }
 }

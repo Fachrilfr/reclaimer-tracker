@@ -31,7 +31,21 @@ class ReclaimerBatch extends Model
             'recovery_rate_percent' => 'float',
             'residue_rate_percent' => 'float',
             'solvent_balance_after' => 'float',
+            'chain_completed_at' => 'datetime',
+            'chain_recovery_rate' => 'float',
+            'target_recovery_rate' => 'float',
         ];
+    }
+
+    public function isInProgress(): bool
+    {
+        return $this->process_status === 'in_progress';
+    }
+
+    /** Batch awal rangkaian: dirinya sendiri, atau batch yang ditunjuk parent_batch_id. */
+    public function root(): self
+    {
+        return $this->parent_batch_id ? $this->parent : $this;
     }
 
     public function shift(): BelongsTo
@@ -51,6 +65,6 @@ class ReclaimerBatch extends Model
 
     public function continuations(): HasMany
     {
-        return $this->hasMany(self::class, 'parent_batch_id');
+        return $this->hasMany(self::class, 'parent_batch_id')->orderBy('id');
     }
 }

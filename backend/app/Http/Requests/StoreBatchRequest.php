@@ -2,9 +2,7 @@
 
 namespace App\Http\Requests;
 
-use App\Models\ReclaimerBatch;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Support\Carbon;
 use Illuminate\Validation\Validator;
 
 /**
@@ -22,6 +20,7 @@ class StoreBatchRequest extends FormRequest
             'regu' => ['nullable', 'string', 'max:20'],
             'is_continuation' => ['required', 'boolean'],
             'parent_batch_id' => ['nullable', 'required_if:is_continuation,true', 'integer', 'exists:reclaimer_batches,id'],
+            'process_status' => ['required', 'in:in_progress,completed'],
             'ink_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
             'solvent_used_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
             'recovery_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
@@ -51,14 +50,15 @@ class StoreBatchRequest extends FormRequest
                 $validator->errors()->add('ink_weight', 'Batch lanjutan tidak membawa Tinta X baru. Kosongkan berat Tinta X, atau catat sebagai batch baru.');
             }
 
-            $parent = ReclaimerBatch::find($this->input('parent_batch_id'));
-            $date = Carbon::parse($this->input('date'));
-            $maxDays = config('reclaimer.continuation_max_days');
-            if ($parent->date->gt($date) || $parent->date->lt($date->copy()->subDays($maxDays))) {
-                $validator->errors()->add('parent_batch_id', "Batch awal harus bertanggal sama atau paling lama {$maxDays} hari sebelum tanggal batch lanjutan.");
+            // Keterangan batch lanjutan wajib mencatat jam, misalnya "Lanjutan Pkl 15.30"
+            if (! preg_match(self::TIME_PATTERN, (string) $this->input('notes'))) {
+                $validator->errors()->add('notes', 'Batch lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
             }
         }];
     }
+
+    /** Jam 00.00 sampai 23.59, dengan titik atau titik dua. */
+    public const TIME_PATTERN = '/(?<!\d)([01]?\d|2[0-3])[.:][0-5]\d(?!\d)/';
 
     public function messages(): array
     {
@@ -70,6 +70,8 @@ class StoreBatchRequest extends FormRequest
             'shift_id.exists' => 'Shift tidak ditemukan. Pilih ulang shift.',
             'parent_batch_id.required_if' => 'Pilih batch awal yang dilanjutkan.',
             'parent_batch_id.exists' => 'Batch awal tidak ditemukan. Pilih ulang batch awal.',
+            'process_status.required' => 'Pilih status proses: selesai atau belum selesai.',
+            'process_status.in' => 'Status proses tidak dikenal. Pilih selesai atau belum selesai.',
             'ink_weight.required' => 'Isi berat Tinta X dalam kg.',
             'solvent_used_weight.required' => 'Isi berat solvent dipakai dalam kg. Isi 0 bila tidak memakai solvent.',
             'recovery_weight.required' => 'Isi berat hasil recovery dalam kg. Isi 0 bila belum ada hasil.',
@@ -96,6 +98,7 @@ class StoreBatchRequest extends FormRequest
             'regu' => $data['regu'] ?? null,
             'is_continuation' => (bool) $data['is_continuation'],
             'parent_batch_id' => isset($data['parent_batch_id']) ? (int) $data['parent_batch_id'] : null,
+            'process_status' => $data['process_status'],
             'ink_weight' => round((float) $data['ink_weight'], 2),
             'solvent_used_weight' => round((float) $data['solvent_used_weight'], 2),
             'recovery_weight' => round((float) $data['recovery_weight'], 2),

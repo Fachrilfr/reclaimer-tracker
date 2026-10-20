@@ -9,8 +9,4 @@ return [
         'vapour' => ['min' => 40, 'max' => 60],
     ],
 
-    // Batch lanjutan (FR-05) hanya bisa disambungkan ke batch awal yang
-    // tanggalnya paling lama sekian hari sebelum tanggal batch lanjutan.
-    'continuation_max_days' => 3,
-
 ];

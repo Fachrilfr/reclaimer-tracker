@@ -11,7 +11,7 @@ use App\Models\Parameter;
 use App\Models\ReclaimerBatch;
 use App\Models\Shift;
 use App\Models\SolventLedger;
-use App\Support\MaterialBalance;
+use App\Support\BatchChain;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -25,28 +25,6 @@ class BatchController extends Controller
     {
         $machine = Machine::orderBy('id')->first();
         $today = now()->startOfDay();
-        $maxDays = config('reclaimer.continuation_max_days');
-
-        $candidates = ReclaimerBatch::with('shift')
-            ->where('is_continuation', false)
-            ->whereDate('date', '>=', $today->copy()->subDays($maxDays))
-            ->orderByDesc('date')->orderByDesc('id')
-            ->get()
-            ->map(function (ReclaimerBatch $batch) {
-                $chain = ReclaimerBatch::where('id', $batch->id)->orWhere('parent_batch_id', $batch->id);
-                $input = (float) $chain->sum('total_input_weight');
-                $recovery = (float) $chain->sum('recovery_weight');
-
-                return [
-                    'id' => $batch->id,
-                    'batch_number' => $batch->batch_number,
-                    'date' => $batch->date->toDateString(),
-                    'shift' => $batch->shift->name,
-                    'chain_input' => $input,
-                    'chain_recovery' => $recovery,
-                    'chain_rate' => MaterialBalance::rate($recovery, $input),
-                ];
-            });
 
         return response()->json([
             'status' => 'success',
@@ -60,7 +38,8 @@ class BatchController extends Controller
                 'solvent_balance' => SolventLedger::currentBalance(),
                 'target_recovery_rate' => Parameter::number('target_recovery_rate'),
                 'temperature' => config('reclaimer.temperature'),
-                'continuation_candidates' => $candidates,
+                // Rangkaian yang menunggu batch lanjutan dari shift berikutnya
+                'open_chains' => BatchChain::open()->map(fn (BatchChain $chain) => $chain->toArray())->values(),
             ],
         ]);
     }
@@ -91,6 +70,9 @@ class BatchController extends Controller
 
     public static function present(ReclaimerBatch $batch): array
     {
+        $root = $batch->root();
+        $chainComplete = $root->chain_completed_at !== null;
+
         return [
             'id' => $batch->id,
             'batch_number' => $batch->batch_number,
@@ -100,6 +82,13 @@ class BatchController extends Controller
             'operator' => $batch->operator?->name,
             'is_continuation' => $batch->is_continuation,
             'parent_batch_number' => $batch->parent?->batch_number,
+            'process_status' => $batch->process_status,
+            // Recovery rate rangkaian baru ada setelah rangkaian selesai; sebelumnya
+            // tampil sebagai "menunggu lanjutan"
+            'chain_complete' => $chainComplete,
+            'chain_recovery_rate' => $chainComplete ? $root->chain_recovery_rate : null,
+            'chain_batch_count' => $root->continuations()->count() + 1,
+            'target_recovery_rate' => $batch->target_recovery_rate,
             'ink_weight' => $batch->ink_weight,
             'solvent_used_weight' => $batch->solvent_used_weight,
             'recovery_weight' => $batch->recovery_weight,

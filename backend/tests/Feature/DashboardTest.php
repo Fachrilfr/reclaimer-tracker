@@ -25,7 +25,7 @@ class DashboardTest extends TestCase
         $shift1 = Shift::where('code', 'SHIFT-1')->value('id');
         $shift2 = Shift::where('code', 'SHIFT-2')->value('id');
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [
-            'shift_id' => $shift1, 'is_continuation' => false, 'oil_temp' => 140, 'vapour_temp' => 50,
+            'shift_id' => $shift1, 'is_continuation' => false, 'process_status' => 'completed', 'oil_temp' => 140, 'vapour_temp' => 50,
             'solvent_used_weight' => 0,
         ])->assertCreated();
 
@@ -56,7 +56,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.by_shift.0.recovery_rate', 10)
             ->assertJsonPath('data.by_shift.1.recovery_rate', 40)
             ->assertJsonPath('data.by_shift.2.batch_count', 0)
-            ->assertJsonPath('data.breakdown.unit', 'batch')
+            ->assertJsonPath('data.breakdown.unit', 'chain')
             ->assertJsonCount(2, 'data.breakdown.rows');
     }
 
@@ -93,8 +93,8 @@ class DashboardTest extends TestCase
 
         $response = $this->getJson('/api/dashboard')->assertOk();
 
-        $response->assertJsonCount(1, 'data.action_items.low_recovery_batches')
-            ->assertJsonPath('data.action_items.low_recovery_batches.0.recovery_rate', 10)
+        $response->assertJsonCount(1, 'data.action_items.low_recovery_chains')
+            ->assertJsonPath('data.action_items.low_recovery_chains.0.recovery_rate', 10)
             ->assertJsonCount(1, 'data.action_items.pallets')
             ->assertJsonPath('data.action_items.pallets.0.pallet_number', 'PLT-202608-001')
             ->assertJsonPath('data.action_items.pallets.0.storage.days_remaining', 10)

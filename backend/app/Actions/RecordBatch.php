@@ -8,6 +8,7 @@ use App\Models\Material;
 use App\Models\Parameter;
 use App\Models\ReclaimerBatch;
 use App\Models\SolventLedger;
+use App\Support\BatchChain;
 use App\Support\MaterialBalance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -20,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 class RecordBatch
 {
     /**
-     * @param  array{date: string, shift_id: int, regu: ?string, is_continuation: bool, parent_batch_id: ?int,
+     * @param  array{date: string, shift_id: int, regu: ?string, is_continuation: bool, parent_batch_id: ?int, process_status: string,
      *               ink_weight: float, solvent_used_weight: float, recovery_weight: float,
      *               oil_temp: float, vapour_temp: float, notes: ?string}  $data
      */
@@ -49,6 +50,7 @@ class RecordBatch
                 || $data['vapour_temp'] < $temperature['vapour']['min'] || $data['vapour_temp'] > $temperature['vapour']['max'];
 
             $balanceAfter = $balance->solventBalanceAfter($balanceBefore);
+            $isCompleted = $data['process_status'] === 'completed';
 
             $batch = ReclaimerBatch::create([
                 'batch_number' => $this->nextBatchNumber($data['date']),
@@ -60,6 +62,7 @@ class RecordBatch
                 'material_id' => Material::where('type', 'ink')->where('is_active', true)->orderBy('id')->value('id'),
                 'is_continuation' => $root !== null,
                 'parent_batch_id' => $root?->id,
+                'process_status' => $data['process_status'],
                 'ink_weight' => $data['ink_weight'],
                 'solvent_used_weight' => $data['solvent_used_weight'],
                 'recovery_weight' => $data['recovery_weight'],
@@ -68,24 +71,58 @@ class RecordBatch
                 'is_temp_abnormal' => $isTempAbnormal,
                 'total_input_weight' => $balance->totalInput(),
                 'residue_estimated_weight' => $balance->residue(),
-                // Untuk batch lanjutan, persentase ini gabungan seluruh rangkaian (FR-05)
+                // Recovery gabungan rangkaian sampai batch ini (FR-05). Angka resmi untuk
+                // target dan agregat baru diambil saat rangkaian selesai (completeChain).
                 'recovery_rate_percent' => $balance->recoveryRate(),
                 'residue_rate_percent' => $balance->residueRate(),
                 'solvent_balance_after' => $balanceAfter,
-                'is_recovery_low' => $balance->recoveryRate() < Parameter::number('target_recovery_rate'),
+                'is_recovery_low' => false,
                 'notes' => $data['notes'] ?? null,
                 'created_by' => $request->user()->id,
             ]);
 
+            // Saldo solvent tetap bergerak per batch, tidak menunggu rangkaian selesai
             $this->writeLedger($batch, $request, $balanceBefore, $balance);
 
             AuditLog::record($request, 'create', $batch, $batch->only([
-                'batch_number', 'date', 'shift_id', 'is_continuation', 'parent_batch_id', 'ink_weight',
+                'batch_number', 'date', 'shift_id', 'is_continuation', 'parent_batch_id', 'process_status', 'ink_weight',
                 'solvent_used_weight', 'recovery_weight', 'oil_temp', 'vapour_temp', 'solvent_balance_after',
             ]));
 
-            return $batch;
+            if ($isCompleted) {
+                $this->completeChain($request, $root ?? $batch);
+            }
+
+            return $batch->fresh();
         });
+    }
+
+    /**
+     * Rangkaian selesai: recovery gabungan = total recovery / total input seluruh batch
+     * rangkaian, dibandingkan dengan target saat ini (disimpan sebagai snapshot).
+     * Alert recovery ke supervisor muncul dari is_recovery_low (dashboard, Perlu ditindak).
+     */
+    private function completeChain(Request $request, ReclaimerBatch $root): void
+    {
+        $chain = BatchChain::of($root->fresh());
+        $rate = $chain->rate();
+        $target = Parameter::number('target_recovery_rate');
+        $belowTarget = $rate < $target;
+
+        ReclaimerBatch::whereIn('id', $chain->batches->pluck('id'))->update([
+            'is_recovery_low' => $belowTarget,
+            'target_recovery_rate' => $target,
+        ]);
+        $root->update(['chain_completed_at' => now(), 'chain_recovery_rate' => $rate]);
+
+        AuditLog::record($request, 'complete', $root, [
+            'batch_numbers' => $chain->batches->pluck('batch_number')->all(),
+            'input' => $chain->input(),
+            'recovery' => $chain->recovery(),
+            'recovery_rate' => $rate,
+            'target_recovery_rate' => $target,
+            'below_target' => $belowTarget,
+        ]);
     }
 
     /**
@@ -99,13 +136,24 @@ class RecordBatch
             return [null, 0.0, 0.0];
         }
 
-        $picked = ReclaimerBatch::findOrFail($data['parent_batch_id']);
         // Lanjutan dari batch lanjutan tetap disambungkan ke batch awalnya
-        $root = $picked->is_continuation ? $picked->parent : $picked;
+        $root = ReclaimerBatch::findOrFail($data['parent_batch_id'])->root();
+        $chain = BatchChain::of($root);
 
-        $chain = ReclaimerBatch::where('id', $root->id)->orWhere('parent_batch_id', $root->id);
+        if ($chain->isComplete()) {
+            throw ValidationException::withMessages([
+                'parent_batch_id' => "Rangkaian {$root->batch_number} sudah selesai. Catat sebagai batch baru.",
+            ]);
+        }
 
-        return [$root, (float) $chain->sum('total_input_weight'), (float) $chain->sum('recovery_weight')];
+        $last = $chain->last();
+        if ($last->date->gt(Carbon::parse($data['date']))) {
+            throw ValidationException::withMessages([
+                'date' => 'Tanggal batch lanjutan tidak boleh sebelum batch sebelumnya (' . $last->date->locale('id')->translatedFormat('j M Y') . ').',
+            ]);
+        }
+
+        return [$root, $chain->input(), $chain->recovery()];
     }
 
     private function ensureValid(MaterialBalance $balance, float $balanceBefore, bool $isContinuation): void
