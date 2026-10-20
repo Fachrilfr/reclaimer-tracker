@@ -9,4 +9,7 @@ return [
         'vapour' => ['min' => 40, 'max' => 60],
     ],
 
+    // Penerima pemberitahuan di aplikasi saat mesin mulai dan selesai maintenance (FR-21)
+    'maintenance_notify_roles' => ['hse', 'supervisor', 'management', 'admin'],
+
 ];

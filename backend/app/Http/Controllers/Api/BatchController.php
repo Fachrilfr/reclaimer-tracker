@@ -23,7 +23,7 @@ class BatchController extends Controller
      */
     public function create(Request $request): JsonResponse
     {
-        $machine = Machine::orderBy('id')->first();
+        $machine = Machine::main()?->load('reporter');
         $today = now()->startOfDay();
 
         return response()->json([
@@ -33,7 +33,7 @@ class BatchController extends Controller
                 'operator' => $request->user()->only(['id', 'nik', 'name']),
                 'shifts' => Shift::where('is_active', true)->orderBy('id')->get(['id', 'name']),
                 'suggested_shift_id' => Shift::current(now())?->id,
-                'machine' => $machine?->only(['code', 'name', 'status', 'maintenance_reason']),
+                'machine' => $machine?->summary(),
                 'material' => Material::where('type', 'ink')->where('is_active', true)->value('name'),
                 'solvent_balance' => SolventLedger::currentBalance(),
                 'target_recovery_rate' => Parameter::number('target_recovery_rate'),

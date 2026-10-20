@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Support\StorageStatus;
 use App\Support\TpsDeliveryStatus;
+use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -40,8 +41,8 @@ class B3Pallet extends Model
     }
 
     /** Pengiriman dari area reclaimer ke TPS (operator). */
-    public function tpsStatus(?array $thresholds = null): TpsDeliveryStatus
+    public function tpsStatus(?array $thresholds = null, ?Collection $maintenance = null): TpsDeliveryStatus
     {
-        return TpsDeliveryStatus::forPallet($this, null, $thresholds);
+        return TpsDeliveryStatus::forPallet($this, null, $thresholds, $maintenance);
     }
 }

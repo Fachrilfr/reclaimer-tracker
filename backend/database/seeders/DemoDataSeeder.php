@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Actions\RecordBatch;
 use App\Actions\RecordPallet;
+use App\Actions\SetMachineStatus;
 use App\Models\B3Pallet;
 use App\Models\ReclaimerBatch;
 use App\Models\Shift;
@@ -11,6 +12,7 @@ use App\Models\SolventLedger;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
 use RuntimeException;
 
@@ -58,6 +60,7 @@ class DemoDataSeeder extends Seeder
         ]);
 
         try {
+            $this->seedMaintenance($realNow);
             $this->seedPallets($realNow);
             $this->seedBatches($realNow);
         } finally {
@@ -192,6 +195,29 @@ class DemoDataSeeder extends Seeder
                 $pallets->addDrum($this->request, $pallet, Carbon::now()->toDateString(), null);
             }
         }
+    }
+
+    /**
+     * Dua riwayat maintenance. Yang pertama bertepatan dengan pallet yang terlambat
+     * dikirim ke TPS, jadi keterangan "terlambat karena mesin maintenance" ikut terlihat.
+     */
+    private function seedMaintenance(Carbon $realNow): void
+    {
+        $status = app(SetMachineStatus::class);
+        $periods = [
+            [79, '09:00', 77, '16:00', 'Kondensor tersumbat', 'Kondensor dibersihkan dan diuji ulang'],
+            [20, '07:30', 20, '12:30', 'Pompa vakum bocor', 'Seal pompa vakum diganti'],
+        ];
+
+        foreach ($periods as [$startAgo, $startTime, $endAgo, $endTime, $reason, $note]) {
+            Carbon::setTestNow($realNow->copy()->subDays($startAgo)->setTimeFromTimeString($startTime));
+            $status->startMaintenance($this->request, $reason, null);
+            Carbon::setTestNow($realNow->copy()->subDays($endAgo)->setTimeFromTimeString($endTime));
+            $status->endMaintenance($this->request, $note);
+        }
+
+        // Riwayat lama tidak perlu muncul sebagai pemberitahuan baru di lonceng
+        DatabaseNotification::query()->update(['read_at' => $realNow]);
     }
 
     private function between(float $min, float $max): float

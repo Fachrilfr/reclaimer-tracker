@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Actions\RecordPallet;
 use App\Http\Controllers\Controller;
 use App\Models\B3Pallet;
+use App\Models\Machine;
 use App\Models\Parameter;
 use App\Support\StorageStatus;
+use App\Support\MaintenanceHistory;
 use App\Support\TpsDeliveryStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -25,6 +27,7 @@ class PalletController extends Controller
             'status' => 'success',
             'data' => [
                 'today' => now()->toDateString(),
+                'machine' => Machine::main()?->load('reporter')->summary(),
                 'drums_per_pallet' => (int) Parameter::number('drums_per_pallet'),
                 'max_storage_days' => (int) Parameter::number('b3_max_storage_days'),
                 'tps_delivery_days' => (int) Parameter::number('tps_delivery_days'),
@@ -79,10 +82,14 @@ class PalletController extends Controller
         ], 201);
     }
 
-    /** Ambang kedua status, diambil sekali per request. */
+    /** Ambang kedua status dan periode maintenance, diambil sekali per request. */
     public static function thresholds(): array
     {
-        return ['storage' => StorageStatus::thresholds(), 'tps' => TpsDeliveryStatus::thresholds()];
+        return [
+            'storage' => StorageStatus::thresholds(),
+            'tps' => TpsDeliveryStatus::thresholds(),
+            'maintenance' => MaintenanceHistory::windows(),
+        ];
     }
 
     public static function present(B3Pallet $pallet, array $thresholds, bool $withDrums = false): array
@@ -97,7 +104,7 @@ class PalletController extends Controller
             'expiry_date' => $pallet->expiry_date->toDateString(),
             'tps_due_date' => $pallet->tps_due_date?->toDateString(),
             // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.
-            'tps' => $pallet->tpsStatus($thresholds['tps'])->toArray(),
+            'tps' => $pallet->tpsStatus($thresholds['tps'], $thresholds['maintenance'] ?? null)->toArray(),
             'storage' => $pallet->storageStatus($thresholds['storage'])->toArray(),
         ];
 

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Http\Controllers\Api\PalletController;
 use App\Models\B3Pallet;
+use App\Models\Machine;
 use App\Models\Parameter;
 use App\Models\Shift;
 use App\Models\SolventLedger;
@@ -80,6 +81,8 @@ final class DashboardReport
                 'low_recovery_chains' => $this->lowRecoveryChains(),
             ],
             'active_pallets' => $activePallets,
+            // Saat maintenance, pengiriman residu ke TPS ikut terhenti (batas kirim tetap berjalan)
+            'machine' => Machine::main()?->load('reporter')->summary(),
             'tps_pallets' => $tpsPallets,
         ];
     }

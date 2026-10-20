@@ -31,6 +31,14 @@ class RecordBatch
             // Kunci saldo (PRD §9): baris bahan SOLVENT dipakai sebagai kunci, supaya dua
             // operator yang menyimpan bersamaan tidak membaca saldo yang sama lalu saling menimpa.
             Material::where('code', 'SOLVENT')->lockForUpdate()->firstOrFail();
+
+            // Mesin sedang diperbaiki: tidak ada batch baru sampai kembali beroperasi
+            $machine = Machine::main();
+            if ($machine?->isUnderMaintenance()) {
+                throw ValidationException::withMessages([
+                    'machine' => "Mesin {$machine->code} sedang maintenance. Batch tidak bisa disimpan sampai mesin kembali beroperasi.",
+                ]);
+            }
             $balanceBefore = SolventLedger::currentBalance(lock: true);
 
             [$root, $priorInput, $priorRecovery] = $this->chainBefore($data);
@@ -58,7 +66,7 @@ class RecordBatch
                 'shift_id' => $data['shift_id'],
                 'regu' => $data['regu'] ?? null,
                 'operator_id' => $request->user()->id,
-                'machine_id' => Machine::orderBy('id')->value('id'),
+                'machine_id' => $machine?->id,
                 'material_id' => Material::where('type', 'ink')->where('is_active', true)->orderBy('id')->value('id'),
                 'is_continuation' => $root !== null,
                 'parent_batch_id' => $root?->id,
