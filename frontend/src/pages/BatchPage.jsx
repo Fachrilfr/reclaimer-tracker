@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from 'react';
-import { Calculator, CircleCheck, LoaderCircle, Recycle, TriangleAlert } from 'lucide-react';
+import { forwardRef, useMemo, useRef, useState } from 'react';
+import { Calculator, CircleCheck, Hourglass, LoaderCircle, Recycle, TriangleAlert } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDate, formatNumber, formatPercent, parseDecimal } from '../lib/format.js';
@@ -8,16 +8,26 @@ import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
+import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
 // Tombol isi cepat keterangan (FR-07)
 const QUICK_NOTES = ['Start Pkl', 'Stop Pkl', 'Lanjutan', 'Kuras residu'];
+
+// Sama dengan StoreBatchRequest::TIME_PATTERN: jam 00.00 sampai 23.59
+const TIME_PATTERN = /(?<!\d)([01]?\d|2[0-3])[.:][0-5]\d(?!\d)/;
+const CONTINUATION_NOTE_ERROR = 'Batch lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const numberOrZero = (raw) => {
   const n = parseDecimal(raw);
   return n === null || Number.isNaN(n) ? 0 : n;
 };
+
+function nowTime() {
+  const now = new Date();
+  return `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}`;
+}
 
 function emptyForm(formData, keep = {}) {
   return {
@@ -26,6 +36,7 @@ function emptyForm(formData, keep = {}) {
     regu: keep.regu ?? '',
     is_continuation: false,
     parent_batch_id: '',
+    process_status: 'completed',
     ink_weight: '',
     solvent_used_weight: '',
     recovery_weight: '',
@@ -36,11 +47,12 @@ function emptyForm(formData, keep = {}) {
 }
 
 // Angka rata kanan, tabular, satuan di dalam field (design.md §6.2)
-function NumberInput({ suffix, ...props }) {
+const NumberInput = forwardRef(function NumberInput({ suffix, ...props }, ref) {
   return (
     <div className="relative">
       <input
         {...props}
+        ref={ref}
         type="text"
         inputMode="decimal"
         autoComplete="off"
@@ -51,6 +63,31 @@ function NumberInput({ suffix, ...props }) {
       </span>
     </div>
   );
+});
+
+function RadioOption({ name, checked, onChange, disabled = false, describedBy, children }) {
+  return (
+    <label
+      className={`flex min-h-11 items-center gap-3 text-body-lg ${
+        disabled ? 'cursor-not-allowed text-gray-600' : 'cursor-pointer text-gray-900'
+      }`}
+    >
+      <input
+        type="radio"
+        name={name}
+        checked={checked}
+        disabled={disabled}
+        onChange={onChange}
+        aria-describedby={describedBy}
+        className="h-5 w-5 shrink-0 accent-brand-blue-600"
+      />
+      {children}
+    </label>
+  );
+}
+
+function chainLabel(chain) {
+  return chain.batch_count > 1 ? `${chain.batch_number} + ${chain.batch_count - 1} lanjutan` : chain.batch_number;
 }
 
 function outOfRange(value, range) {
@@ -66,6 +103,7 @@ function BatchForm({ formData, onSaved }) {
   const [saved, setSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const notesRef = useRef(null);
+  const solventRef = useRef(null);
 
   const set = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -74,8 +112,23 @@ function BatchForm({ formData, onSaved }) {
   };
 
   const { temperature, target_recovery_rate: target, solvent_balance: balance } = formData;
-  const candidates = formData.continuation_candidates;
-  const parent = candidates.find((c) => String(c.id) === form.parent_batch_id);
+  const openChains = formData.open_chains;
+  const parent = openChains.find((c) => String(c.root_id) === form.parent_batch_id);
+  const isFinishing = form.process_status === 'completed';
+
+  // Tombol "Lanjutkan" di banner: isi form batch lanjutan dari rangkaian yang dipilih
+  const continueChain = (chain) => {
+    setForm((f) => ({
+      ...emptyForm(formData, { regu: f.regu }),
+      is_continuation: true,
+      parent_batch_id: String(chain.root_id),
+      notes: `Lanjutan Pkl ${nowTime()}`,
+    }));
+    setErrors({});
+    setFormError('');
+    setSaved(null);
+    requestAnimationFrame(() => solventRef.current?.focus());
+  };
 
   // Ringkasan material balance langsung saat angka diisi (FR-04), rumus PRD §8
   const summary = useMemo(() => {
@@ -83,19 +136,19 @@ function BatchForm({ formData, onSaved }) {
     const solvent = numberOrZero(form.solvent_used_weight);
     const recovery = numberOrZero(form.recovery_weight);
     const input = round2(ink + solvent);
-    const chainInput = round2((parent?.chain_input ?? 0) + input);
-    const chainRecovery = round2((parent?.chain_recovery ?? 0) + recovery);
+    const chainInput = round2((parent?.input ?? 0) + input);
+    const chainRecovery = round2((parent?.recovery ?? 0) + recovery);
 
     return {
       input,
       recovery,
       residue: round2(input - recovery),
+      chainInput,
+      chainRecovery,
       rate: chainInput > 0 ? round2((chainRecovery / chainInput) * 100) : null,
-      residueRate: chainInput > 0 ? round2(((chainInput - chainRecovery) / chainInput) * 100) : null,
       balanceAfter: round2(balance - solvent + recovery),
       recoveryExceeds: chainRecovery > chainInput,
       solventExceeds: solvent > balance,
-      chainInput,
     };
   }, [form, parent, balance]);
 
@@ -122,6 +175,7 @@ function BatchForm({ formData, onSaved }) {
     numberField('recovery_weight', 'Isi berat hasil recovery dalam kg. Isi 0 bila belum ada hasil.');
     numberField('oil_temp', 'Isi suhu oli (Oil Temperature).');
     numberField('vapour_temp', 'Isi suhu uap (Vapour Temperature).');
+    if (form.is_continuation && !TIME_PATTERN.test(form.notes)) errs.notes = CONTINUATION_NOTE_ERROR;
 
     if (!errs.recovery_weight && summary.recoveryExceeds) {
       errs.recovery_weight = form.is_continuation
@@ -156,6 +210,7 @@ function BatchForm({ formData, onSaved }) {
           regu: form.regu.trim() || null,
           is_continuation: form.is_continuation,
           parent_batch_id: form.is_continuation ? Number(form.parent_batch_id) : null,
+          process_status: form.process_status,
           ink_weight: form.is_continuation ? 0 : parseDecimal(form.ink_weight),
           solvent_used_weight: parseDecimal(form.solvent_used_weight),
           recovery_weight: parseDecimal(form.recovery_weight),
@@ -178,23 +233,63 @@ function BatchForm({ formData, onSaved }) {
 
   const addQuickNote = (text) => {
     setForm((f) => ({ ...f, notes: f.notes ? `${f.notes.trimEnd()}, ${text} ` : `${text} ` }));
+    setErrors((errs) => ({ ...errs, notes: undefined }));
     notesRef.current?.focus();
   };
 
   const oilWarning = outOfRange(form.oil_temp, temperature.oil);
   const vapourWarning = outOfRange(form.vapour_temp, temperature.vapour);
-  const rateBelowTarget = summary.rate !== null && summary.rate < target;
+  const rateBelowTarget = isFinishing && summary.rate !== null && summary.rate < target;
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
       <div className="space-y-6 lg:col-span-8">
         {formData.machine?.status === 'maintenance' && (
           <Alert tone="warning" title={`${formData.machine.name} sedang maintenance.`}>
-            {formData.machine.maintenance_reason
-              ? `Alasan: ${formData.machine.maintenance_reason}. `
-              : ''}
+            {formData.machine.maintenance_reason ? `Alasan: ${formData.machine.maintenance_reason}. ` : ''}
             Pastikan mesin sudah boleh dipakai sebelum mencatat batch.
           </Alert>
+        )}
+
+        {openChains.length > 0 && (
+          <section
+            aria-labelledby="open-chains-title"
+            className="rounded-card border border-info-border bg-info-bg p-4 text-info-fg sm:p-5"
+          >
+            <h2 id="open-chains-title" className="flex items-center gap-2 text-h3 font-semibold">
+              <Hourglass className="h-5 w-5 shrink-0" aria-hidden="true" />
+              Ada batch belum selesai dari shift sebelumnya
+            </h2>
+            <p className="mt-1 text-body">
+              Bila proses ini dilanjutkan di shift Anda, catat sebagai batch lanjutan. Recovery rate dinilai setelah
+              rangkaiannya selesai.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {openChains.map((chain) => (
+                <li
+                  key={chain.root_id}
+                  className="flex flex-col gap-3 rounded-lg border border-info-border bg-white p-3 text-gray-800 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0 text-body">
+                    <p className="font-mono font-medium text-gray-900">{chainLabel(chain)}</p>
+                    <p className="text-caption text-gray-600">
+                      Mulai {formatDate(chain.date)} · {chain.shift}. Terakhir {chain.last_shift},{' '}
+                      {formatDate(chain.last_date)}. Bahan masuk {formatNumber(chain.input)} kg, recovery sejauh ini{' '}
+                      {formatNumber(chain.recovery)} kg.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => continueChain(chain)}
+                    aria-label={`Lanjutkan ${chain.batch_number}`}
+                    className="btn-secondary h-11 shrink-0 px-4 text-body"
+                  >
+                    Lanjutkan
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
         )}
 
         <section aria-labelledby="info-title" className="card p-4 sm:p-5">
@@ -248,55 +343,74 @@ function BatchForm({ formData, onSaved }) {
 
           <fieldset className="mt-4">
             <legend className="mb-1.5 text-label font-medium text-gray-800">Jenis batch</legend>
-            <div className="flex flex-col gap-2 sm:flex-row sm:gap-6">
-              <label className="flex min-h-11 cursor-pointer items-center gap-3 text-body-lg text-gray-900">
-                <input
-                  type="radio"
-                  name="is_continuation"
-                  checked={!form.is_continuation}
-                  onChange={() => setForm((f) => ({ ...f, is_continuation: false, parent_batch_id: '' }))}
-                  className="h-5 w-5 accent-brand-blue-600"
-                />
-                Batch baru
-              </label>
-              <label
-                className={`flex min-h-11 items-center gap-3 text-body-lg ${
-                  candidates.length ? 'cursor-pointer text-gray-900' : 'cursor-not-allowed text-gray-600'
-                }`}
+            <div className="flex flex-col gap-x-6 sm:flex-row">
+              <RadioOption
+                name="is_continuation"
+                checked={!form.is_continuation}
+                onChange={() => setForm((f) => ({ ...f, is_continuation: false, parent_batch_id: '' }))}
               >
-                <input
-                  type="radio"
-                  name="is_continuation"
-                  checked={form.is_continuation}
-                  disabled={!candidates.length}
-                  onChange={() => setForm((f) => ({ ...f, is_continuation: true, ink_weight: '' }))}
-                  aria-describedby="continuation-hint"
-                  className="h-5 w-5 accent-brand-blue-600"
-                />
+                Batch baru
+              </RadioOption>
+              <RadioOption
+                name="is_continuation"
+                checked={form.is_continuation}
+                disabled={!openChains.length}
+                describedBy="continuation-hint"
+                onChange={() =>
+                  setForm((f) => ({
+                    ...f,
+                    is_continuation: true,
+                    ink_weight: '',
+                    parent_batch_id: openChains.length === 1 ? String(openChains[0].root_id) : '',
+                  }))
+                }
+              >
                 Batch lanjutan dari shift sebelumnya
-              </label>
+              </RadioOption>
             </div>
             <p id="continuation-hint" className="mt-1 text-caption text-gray-600">
-              {candidates.length
-                ? 'Batch lanjutan tidak membawa Tinta X baru. Recovery rate dihitung gabungan dengan batch awalnya.'
-                : 'Belum ada batch awal dalam 3 hari terakhir yang bisa dilanjutkan.'}
+              {openChains.length
+                ? 'Batch lanjutan tidak membawa Tinta X baru. Solvent dan hasil recovery boleh ditambah.'
+                : 'Tidak ada batch belum selesai yang bisa dilanjutkan.'}
             </p>
           </fieldset>
 
           {form.is_continuation && (
-            <div className="mt-4">
+            <div className="mt-4 space-y-3">
               <Field id="parent_batch_id" label="Lanjutan dari batch" required error={errors.parent_batch_id}>
                 {(props) => (
                   <select {...props} value={form.parent_batch_id} onChange={set('parent_batch_id')} className="field">
-                    <option value="">Pilih batch awal</option>
-                    {candidates.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.batch_number} · {formatDate(c.date)} · {c.shift} · recovery {formatPercent(c.chain_rate)}
+                    <option value="">Pilih batch yang belum selesai</option>
+                    {openChains.map((c) => (
+                      <option key={c.root_id} value={c.root_id}>
+                        {chainLabel(c)} · mulai {formatDate(c.date)} · {c.shift}
                       </option>
                     ))}
                   </select>
                 )}
               </Field>
+              {parent && (
+                <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-gray-25 p-3 text-body sm:grid-cols-4">
+                  <div>
+                    <dt className="text-caption text-gray-600">Batch awal</dt>
+                    <dd className="font-mono text-gray-900">{parent.batch_number}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-caption text-gray-600">Batch terakhir</dt>
+                    <dd className="text-gray-900">
+                      {parent.last_shift}, {formatDate(parent.last_date)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-caption text-gray-600">Bahan masuk sejauh ini</dt>
+                    <dd className="tabular-nums text-gray-900">{formatNumber(parent.input)} kg</dd>
+                  </div>
+                  <div>
+                    <dt className="text-caption text-gray-600">Recovery sejauh ini</dt>
+                    <dd className="tabular-nums text-gray-900">{formatNumber(parent.recovery)} kg</dd>
+                  </div>
+                </dl>
+              )}
             </div>
           )}
         </section>
@@ -328,7 +442,13 @@ function BatchForm({ formData, onSaved }) {
               error={errors.solvent_used_weight}
             >
               {(props) => (
-                <NumberInput {...props} suffix="kg" value={form.solvent_used_weight} onChange={set('solvent_used_weight')} />
+                <NumberInput
+                  {...props}
+                  ref={solventRef}
+                  suffix="kg"
+                  value={form.solvent_used_weight}
+                  onChange={set('solvent_used_weight')}
+                />
               )}
             </Field>
             <Field id="recovery_weight" label="Hasil recovery" required error={errors.recovery_weight}>
@@ -343,11 +463,7 @@ function BatchForm({ formData, onSaved }) {
               id="oil_temp"
               label="Oil Temperature"
               required
-              hint={
-                oilWarning
-                  ? undefined
-                  : `Normal ${temperature.oil.min}–${temperature.oil.max} °C.`
-              }
+              hint={oilWarning ? undefined : `Normal ${temperature.oil.min}–${temperature.oil.max} °C.`}
               error={errors.oil_temp}
             >
               {(props) => (
@@ -400,9 +516,40 @@ function BatchForm({ formData, onSaved }) {
 
         <section aria-labelledby="notes-title" className="card p-4 sm:p-5">
           <h2 id="notes-title" className="text-h2 font-semibold">
-            Keterangan
+            Status dan keterangan
           </h2>
-          <div className="mt-3 flex flex-wrap gap-2" role="group" aria-label="Isi cepat keterangan">
+
+          <fieldset className="mt-3">
+            <legend className="mb-1.5 text-label font-medium text-gray-800">
+              Status proses <span className="text-danger-fg" aria-hidden="true">*</span>
+            </legend>
+            <div className="flex flex-col gap-x-6 sm:flex-row">
+              <RadioOption
+                name="process_status"
+                checked={form.process_status === 'completed'}
+                onChange={() => setForm((f) => ({ ...f, process_status: 'completed' }))}
+              >
+                Selesai
+              </RadioOption>
+              <RadioOption
+                name="process_status"
+                checked={form.process_status === 'in_progress'}
+                describedBy="process-status-hint"
+                onChange={() => setForm((f) => ({ ...f, process_status: 'in_progress' }))}
+              >
+                Belum selesai, dilanjutkan shift berikutnya
+              </RadioOption>
+            </div>
+            <p id="process-status-hint" className="mt-1 text-caption text-gray-600">
+              {isFinishing
+                ? form.is_continuation
+                  ? 'Menyimpan sebagai selesai menutup rangkaian ini dan menghitung recovery gabungannya.'
+                  : 'Pilih belum selesai bila mesin masih berjalan saat shift berganti.'
+                : 'Batch ini belum dinilai terhadap target. Shift berikutnya mencatat batch lanjutannya.'}
+            </p>
+          </fieldset>
+
+          <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Isi cepat keterangan">
             {QUICK_NOTES.map((text) => (
               <button
                 key={text}
@@ -415,7 +562,17 @@ function BatchForm({ formData, onSaved }) {
             ))}
           </div>
           <div className="mt-3">
-            <Field id="notes" label="Keterangan" hint="Opsional. Tombol di atas menambahkan teks yang sering dipakai." error={errors.notes}>
+            <Field
+              id="notes"
+              label="Keterangan"
+              required={form.is_continuation}
+              hint={
+                form.is_continuation
+                  ? 'Wajib mencatat jam, contoh: Lanjutan Pkl 15.30.'
+                  : 'Opsional. Tombol di atas menambahkan teks yang sering dipakai.'
+              }
+              error={errors.notes}
+            >
               {(props) => (
                 <textarea
                   {...props}
@@ -443,36 +600,51 @@ function BatchForm({ formData, onSaved }) {
           <dl className="mt-4 space-y-2 text-body tabular-nums" aria-live="polite">
             <div className="flex justify-between gap-4">
               <dt className="text-gray-600">Bahan masuk</dt>
-              <dd className="text-right font-medium text-gray-900">{formatNumber(summary.input)} kg</dd>
+              <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.input)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-gray-600">Hasil recovery</dt>
-              <dd className="text-right font-medium text-gray-900">{formatNumber(summary.recovery)} kg</dd>
+              <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.recovery)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
               <dt className="text-gray-600">Selisih bahan (residu estimasi)</dt>
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.residue)} kg</dd>
             </div>
+            {form.is_continuation && (
+              <div className="flex justify-between gap-4">
+                <dt className="text-gray-600">Rangkaian: masuk / recovery</dt>
+                <dd className="whitespace-nowrap text-right font-medium text-gray-900">
+                  {formatNumber(summary.chainInput)} / {formatNumber(summary.chainRecovery)} kg
+                </dd>
+              </div>
+            )}
             <div className="flex justify-between gap-4 border-t border-gray-100 pt-2">
               <dt className="text-gray-600">Recovery rate{form.is_continuation && ' (gabungan)'}</dt>
-              <dd className={`text-right font-semibold ${rateBelowTarget ? 'text-danger-fg' : 'text-gray-900'}`}>
-                {summary.rate === null ? '–' : formatPercent(summary.rate)}
-              </dd>
-            </div>
-            <div className="flex justify-between gap-4">
-              <dt className="text-gray-600">Residu rate (estimasi)</dt>
-              <dd className="text-right font-medium text-gray-900">
-                {summary.residueRate === null ? '–' : formatPercent(summary.residueRate)}
+              <dd
+                className={`whitespace-nowrap text-right font-semibold ${
+                  rateBelowTarget ? 'text-danger-fg' : isFinishing ? 'text-gray-900' : 'text-gray-600'
+                }`}
+              >
+                {!isFinishing ? 'menunggu lanjutan' : summary.rate === null ? '–' : formatPercent(summary.rate)}
               </dd>
             </div>
             <div className="flex justify-between gap-4 border-t border-gray-100 pt-2">
               <dt className="text-gray-600">Saldo solvent</dt>
-              <dd className={`text-right font-medium ${summary.balanceAfter < 0 ? 'text-danger-fg' : 'text-gray-900'}`}>
+              <dd
+                className={`whitespace-nowrap text-right font-medium ${
+                  summary.balanceAfter < 0 ? 'text-danger-fg' : 'text-gray-900'
+                }`}
+              >
                 {formatNumber(balance)} → {formatNumber(summary.balanceAfter)} kg
               </dd>
             </div>
           </dl>
 
+          {!isFinishing && (
+            <p className="mt-3 text-caption text-gray-600">
+              Recovery rate dinilai setelah rangkaian selesai. Saldo solvent tetap bergerak sekarang.
+            </p>
+          )}
           {rateBelowTarget && (
             <p className="mt-3 flex items-start gap-1.5 text-caption text-danger-fg">
               <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -487,8 +659,12 @@ function BatchForm({ formData, onSaved }) {
           )}
           {saved && (
             <Alert tone="success" className="mt-4" title={`Batch ${saved.batch_number} tersimpan.`}>
-              Recovery {formatPercent(saved.recovery_rate_percent)}, saldo solvent sekarang{' '}
-              {formatNumber(saved.solvent_balance_after)} kg.
+              {saved.chain_complete
+                ? `Rangkaian selesai, recovery ${saved.chain_batch_count > 1 ? 'gabungan ' : ''}${formatPercent(
+                    saved.chain_recovery_rate,
+                  )}. `
+                : 'Status belum selesai, lanjutkan di shift berikutnya. '}
+              Saldo solvent sekarang {formatNumber(saved.solvent_balance_after)} kg.
             </Alert>
           )}
 
@@ -498,8 +674,10 @@ function BatchForm({ formData, onSaved }) {
                 <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
                 Menyimpan…
               </>
-            ) : (
+            ) : isFinishing ? (
               'Simpan batch'
+            ) : (
+              'Simpan sebagai belum selesai'
             )}
           </button>
         </div>
@@ -540,6 +718,11 @@ function BatchList({ batches }) {
                   Lanjutan dari <span className="font-mono">{b.parent_batch_number}</span>
                 </span>
               )}
+              {!b.chain_complete && (
+                <span className="mt-1 block">
+                  <UnfinishedBadge />
+                </span>
+              )}
             </Td>
             <Td className="whitespace-nowrap">
               {formatDate(b.date)}
@@ -552,8 +735,16 @@ function BatchList({ batches }) {
               {formatNumber(b.recovery_weight)} <span className="text-gray-600">kg</span>
             </Td>
             <Td numeric className={`whitespace-nowrap ${b.is_recovery_low ? 'font-semibold text-danger-fg' : ''}`}>
-              {formatPercent(b.recovery_rate_percent)}
-              {b.is_continuation && <span className="block text-caption font-normal text-gray-600">gabungan</span>}
+              {b.chain_complete ? (
+                <>
+                  {formatPercent(b.chain_recovery_rate)}
+                  {b.chain_batch_count > 1 && (
+                    <span className="block text-caption font-normal text-gray-600">gabungan {b.chain_batch_count} batch</span>
+                  )}
+                </>
+              ) : (
+                <span className="text-caption font-normal text-gray-600">menunggu lanjutan</span>
+              )}
             </Td>
             <Td numeric className="whitespace-nowrap">
               {formatNumber(b.solvent_balance_after)} <span className="text-gray-600">kg</span>
@@ -569,7 +760,7 @@ function BatchList({ batches }) {
                   <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Suhu di luar normal
                 </span>
               )}
-              {!b.is_recovery_low && !b.is_temp_abnormal && (
+              {b.chain_complete && !b.is_recovery_low && !b.is_temp_abnormal && (
                 <span className="flex items-center gap-1 text-gray-600">
                   <CircleCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Normal
                 </span>
@@ -623,7 +814,9 @@ export default function BatchPage() {
           <h2 id="recent-title" className="text-h2 font-semibold">
             Batch terbaru
           </h2>
-          <p className="mt-1 text-body text-gray-600">20 batch terakhir, urut dari tanggal terbaru.</p>
+          <p className="mt-1 text-body text-gray-600">
+            20 batch terakhir. Recovery rate tampil setelah rangkaian batch selesai.
+          </p>
         </div>
         {list.data ? (
           <BatchList batches={list.data} />

@@ -6,6 +6,7 @@ import {
   formatDate,
   formatDateRange,
   formatMonth,
+  formatMonthShort,
   formatNumber,
   formatPercent,
   parseDate,
@@ -13,6 +14,9 @@ import {
 } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import StatCard from '../components/StatCard.jsx';
+import Alert from '../components/Alert.jsx';
+import TrendChart from '../components/TrendChart.jsx';
+import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter } from '../components/StorageBadge.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
@@ -149,8 +153,102 @@ function PeriodPicker({ period, anchor, today, onChange }) {
   );
 }
 
+function chainLabel(chain) {
+  return chain.batch_count > 1 ? `${chain.batch_number} + ${chain.batch_count - 1} lanjutan` : chain.batch_number;
+}
+
+// Warna seri mengikuti design.md §2.5: output reclaim hijau, losses/limbah oranye
+const RECOVERY_COLOR = '#157F3D';
+const RESIDUE_COLOR = '#C2410C';
+
+function trendPoints(trend, valueOf) {
+  return trend.points.map((p) => ({
+    key: p.start,
+    label: trend.unit === 'month' ? formatMonthShort(p.start) : String(parseDate(p.start).d),
+    longLabel: trend.unit === 'month' ? formatMonth(p.start) : formatDate(p.start),
+    value: p.chain_count ? valueOf(p) : null,
+    note: p.chain_count ? `${p.chain_count} rangkaian selesai` : 'Belum ada rangkaian selesai',
+  }));
+}
+
+function TrendCharts({ trend, period, anchor }) {
+  const range =
+    period === 'day'
+      ? `14 hari sampai ${formatDate(anchor)}`
+      : period === 'month'
+        ? `per hari, ${formatMonth(anchor)}`
+        : `per bulan, ${parseDate(anchor).y}`;
+  const target = trend.target_recovery_rate;
+
+  return (
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+      <section aria-labelledby="trend-recovery-title" className="card">
+        <div className="p-4 sm:p-5">
+          <h2 id="trend-recovery-title" className="text-h2 font-semibold">
+            Tren recovery rate
+          </h2>
+          <p className="mt-1 text-body text-gray-600">
+            {range}. Garis putus-putus adalah target {formatPercent(target)}.
+          </p>
+        </div>
+        <TrendChart
+          title={`Tren recovery rate, ${range}`}
+          kind="line"
+          color={RECOVERY_COLOR}
+          points={trendPoints(trend, (p) => p.recovery_rate)}
+          format={formatPercent}
+          axisFormat={(v) => `${formatNumber(v, 0)}%`}
+          reference={{ value: target, label: `Target ${formatNumber(target, 0)}%` }}
+          emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
+        />
+      </section>
+      <section aria-labelledby="trend-residue-title" className="card">
+        <div className="p-4 sm:p-5">
+          <h2 id="trend-residue-title" className="text-h2 font-semibold">
+            Tren residu (estimasi)
+          </h2>
+          <p className="mt-1 text-body text-gray-600">{range}, dalam kg.</p>
+        </div>
+        <TrendChart
+          title={`Tren residu estimasi, ${range}`}
+          kind="column"
+          color={RESIDUE_COLOR}
+          points={trendPoints(trend, (p) => p.residue)}
+          format={(v) => `${formatNumber(v)} kg`}
+          axisFormat={(v) => formatNumber(v, 0)}
+          emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
+        />
+      </section>
+    </div>
+  );
+}
+
+// Alert toleransi recovery: recovery gabungan periode dibanding target
+function ToleranceAlert({ tolerance, target, openCount, label }) {
+  return (
+    <>
+      {tolerance.is_below && (
+        <Alert
+          tone="danger"
+          title={`Recovery ${label} ${formatPercent(tolerance.recovery_rate)}, di bawah target ${formatPercent(target)}.`}
+        >
+          Selisih {formatNumber(Math.abs(tolerance.gap), 1)} poin. {tolerance.below_target_count} dari{' '}
+          {tolerance.chain_count} rangkaian batch selesai di bawah target. Tinjau batch di bagian Perlu ditindak dan
+          tabel rincian.
+        </Alert>
+      )}
+      {openCount > 0 && (
+        <Alert tone="info">
+          {openCount} rangkaian batch belum selesai dan belum dihitung. Angka di bawah hanya dari rangkaian yang sudah
+          selesai.
+        </Alert>
+      )}
+    </>
+  );
+}
+
 function ActionItems({ items, target }) {
-  const { pallets, low_recovery_batches: batches } = items;
+  const { pallets, low_recovery_chains: batches } = items;
 
   if (!pallets.length && !batches.length) {
     return (
@@ -161,7 +259,8 @@ function ActionItems({ items, target }) {
             Tidak ada yang perlu ditindak
           </h2>
           <p className="text-body text-gray-600">
-            Tidak ada pallet B3 mendesak atau kritis, dan semua batch 14 hari terakhir memenuhi target recovery.
+            Tidak ada pallet B3 mendesak atau kritis, dan semua rangkaian batch yang selesai dalam 14 hari terakhir
+            memenuhi target recovery.
           </p>
         </div>
       </section>
@@ -200,11 +299,12 @@ function ActionItems({ items, target }) {
           {batches.length ? (
             <ul className="mt-2 divide-y divide-gray-100">
               {batches.map((b) => (
-                <li key={b.batch_number} className="flex flex-wrap items-center justify-between gap-2 py-2">
+                <li key={b.root_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                   <span>
-                    <span className="font-mono text-gray-900">{b.batch_number}</span>
+                    <span className="font-mono text-gray-900">{chainLabel(b)}</span>
                     <span className="block text-caption text-gray-600">
-                      {formatDate(b.date)} · {b.shift}
+                      Mulai {formatDate(b.date)} · {b.shift}
+                      {b.target_recovery_rate !== target && ` · target saat selesai ${formatPercent(b.target_recovery_rate)}`}
                     </span>
                   </span>
                   <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(b.recovery_rate)}</span>
@@ -222,60 +322,69 @@ function ActionItems({ items, target }) {
 
 function Breakdown({ breakdown, target }) {
   const { unit, rows } = breakdown;
-  const visible = unit === 'batch' ? rows : rows.filter((r) => r.batch_count > 0);
+  const visible = unit === 'chain' ? rows : rows.filter((r) => r.chain_count > 0);
 
   if (!visible.length) {
     return (
       <EmptyState icon={Recycle} title="Belum ada batch di periode ini.">
-        Batch yang dicatat operator di periode ini akan muncul di sini.
+        {unit === 'chain'
+          ? 'Batch yang dicatat operator di periode ini akan muncul di sini.'
+          : 'Belum ada rangkaian batch yang selesai di periode ini.'}
       </EmptyState>
     );
   }
 
-  if (unit === 'batch') {
+  if (unit === 'chain') {
     return (
-      <Table caption="Rincian per batch">
+      <Table caption="Rincian per rangkaian batch">
         <thead>
           <tr>
-            <Th>No. batch</Th>
-            <Th>Shift</Th>
+            <Th>Rangkaian batch</Th>
+            <Th>Shift awal</Th>
             <Th numeric>Bahan masuk</Th>
             <Th numeric>Recovery</Th>
             <Th numeric>Residu estimasi</Th>
             <Th numeric>Recovery rate</Th>
-            <Th numeric>Saldo solvent</Th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((b) => (
-            <tr key={b.batch_number}>
+          {rows.map((c) => (
+            <tr key={c.root_id}>
               <Td>
-                <span className="font-mono text-gray-900">{b.batch_number}</span>
-                {b.is_continuation && (
+                <span className="font-mono text-gray-900">{c.batch_number}</span>
+                {c.batch_count > 1 && (
                   <span className="block text-caption text-gray-600">
-                    Lanjutan dari <span className="font-mono">{b.parent_batch_number}</span>
+                    + lanjutan <span className="font-mono">{c.batch_numbers.slice(1).join(', ')}</span>
+                  </span>
+                )}
+                {!c.is_complete && (
+                  <span className="mt-1 block">
+                    <UnfinishedBadge />
                   </span>
                 )}
               </Td>
               <Td className="whitespace-nowrap">
-                {b.shift}
-                <span className="block text-caption text-gray-600">{b.operator}</span>
+                {c.shift}
+                <span className="block text-caption text-gray-600">{c.operator}</span>
               </Td>
               <Td numeric>
-                <Kg value={b.input} />
+                <Kg value={c.input} />
               </Td>
               <Td numeric>
-                <Kg value={b.recovery} />
+                <Kg value={c.recovery} />
               </Td>
-              <Td numeric>
-                <Kg value={b.residue} />
-              </Td>
-              <Td numeric className={b.recovery_rate < target ? 'font-semibold text-danger-fg' : ''}>
-                {formatPercent(b.recovery_rate)}
-                {b.is_continuation && <span className="block text-caption font-normal text-gray-600">gabungan</span>}
-              </Td>
-              <Td numeric>
-                <Kg value={b.solvent_balance_after} />
+              <Td numeric>{c.is_complete ? <Kg value={c.residue} /> : '–'}</Td>
+              <Td numeric className={c.is_below_target ? 'font-semibold text-danger-fg' : ''}>
+                {c.is_complete ? (
+                  <>
+                    {formatPercent(c.recovery_rate)}
+                    {c.batch_count > 1 && (
+                      <span className="block text-caption font-normal text-gray-600">gabungan {c.batch_count} batch</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-caption font-normal text-gray-600">menunggu lanjutan</span>
+                )}
               </Td>
             </tr>
           ))}
@@ -289,7 +398,7 @@ function Breakdown({ breakdown, target }) {
       <thead>
         <tr>
           <Th>{unit === 'week' ? 'Minggu' : 'Bulan'}</Th>
-          <Th numeric>Batch</Th>
+          <Th numeric>Rangkaian</Th>
           <Th numeric>Bahan masuk</Th>
           <Th numeric>Recovery</Th>
           <Th numeric>Residu estimasi</Th>
@@ -300,7 +409,7 @@ function Breakdown({ breakdown, target }) {
         {visible.map((r) => (
           <tr key={r.start}>
             <Td className="whitespace-nowrap">{unit === 'week' ? formatDateRange(r.start, r.end) : formatMonth(r.start)}</Td>
-            <Td numeric>{r.batch_count}</Td>
+            <Td numeric>{r.chain_count}</Td>
             <Td numeric>
               <Kg value={r.input} />
             </Td>
@@ -425,6 +534,13 @@ export default function DashboardPage() {
             </p>
           )}
 
+          <ToleranceAlert
+            tolerance={data.tolerance}
+            target={data.target_recovery_rate}
+            openCount={data.totals.open_chain_count}
+            label={periodLabel(anchor, period)}
+          />
+
           <ActionItems items={data.action_items} target={data.target_recovery_rate} />
 
           <section aria-labelledby="totals-title">
@@ -437,27 +553,27 @@ export default function DashboardPage() {
                 value={formatNumber(data.totals.input)}
                 unit="kg"
                 note={
-                  data.totals.batch_count
-                    ? `${data.totals.batch_count} batch · Tinta X ${formatNumber(data.totals.ink)} + solvent ${formatNumber(data.totals.solvent_used)}`
-                    : 'Belum ada batch di periode ini'
+                  data.totals.chain_count
+                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} batch) · Tinta X ${formatNumber(data.totals.ink)} + solvent ${formatNumber(data.totals.solvent_used)}`
+                    : 'Belum ada rangkaian batch selesai di periode ini'
                 }
               />
               <StatCard
                 label="Residu (estimasi)"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
-                note={data.totals.batch_count ? `${formatPercent(data.totals.residue_rate)} dari bahan masuk` : undefined}
+                note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari bahan masuk` : undefined}
               />
               <StatCard
                 label="Recovery rate"
-                value={data.totals.batch_count ? formatPercent(data.totals.recovery_rate) : '–'}
+                value={data.totals.chain_count ? formatPercent(data.totals.recovery_rate) : '–'}
                 note={
-                  data.totals.batch_count
+                  data.totals.chain_count
                     ? `${data.totals.recovery_rate >= data.target_recovery_rate ? 'Memenuhi' : 'Di bawah'} target ${formatPercent(data.target_recovery_rate)}`
                     : `Target ${formatPercent(data.target_recovery_rate)}`
                 }
                 tone={
-                  !data.totals.batch_count ? 'neutral' : data.totals.recovery_rate >= data.target_recovery_rate ? 'good' : 'bad'
+                  !data.totals.chain_count ? 'neutral' : data.totals.recovery_rate >= data.target_recovery_rate ? 'good' : 'bad'
                 }
               />
               <StatCard
@@ -469,17 +585,22 @@ export default function DashboardPage() {
             </div>
           </section>
 
+          <TrendCharts trend={data.trend} period={period} anchor={anchor} />
+
           <section aria-labelledby="shift-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="shift-title" className="text-h2 font-semibold">
                 Perbandingan per shift
               </h2>
+              <p className="mt-1 text-body text-gray-600">
+                Rangkaian yang dilanjutkan lintas shift dihitung di shift batch awalnya.
+              </p>
             </div>
             <Table caption="Perbandingan per shift">
               <thead>
                 <tr>
                   <Th>Shift</Th>
-                  <Th numeric>Batch</Th>
+                  <Th numeric>Rangkaian</Th>
                   <Th numeric>Bahan masuk</Th>
                   <Th numeric>Recovery</Th>
                   <Th numeric>Recovery rate</Th>
@@ -489,7 +610,7 @@ export default function DashboardPage() {
                 {data.by_shift.map((s) => (
                   <tr key={s.shift}>
                     <Td className="whitespace-nowrap font-medium text-gray-900">{s.shift}</Td>
-                    <Td numeric>{s.batch_count}</Td>
+                    <Td numeric>{s.chain_count}</Td>
                     <Td numeric>
                       <Kg value={s.input} />
                     </Td>
@@ -498,9 +619,9 @@ export default function DashboardPage() {
                     </Td>
                     <Td
                       numeric
-                      className={s.batch_count && s.recovery_rate < data.target_recovery_rate ? 'font-semibold text-danger-fg' : ''}
+                      className={s.chain_count && s.recovery_rate < data.target_recovery_rate ? 'font-semibold text-danger-fg' : ''}
                     >
-                      {s.batch_count ? formatPercent(s.recovery_rate) : '–'}
+                      {s.chain_count ? formatPercent(s.recovery_rate) : '–'}
                     </Td>
                   </tr>
                 ))}
@@ -511,10 +632,16 @@ export default function DashboardPage() {
           <section aria-labelledby="breakdown-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="breakdown-title" className="text-h2 font-semibold">
-                {data.breakdown.unit === 'batch' ? 'Batch' : data.breakdown.unit === 'week' ? 'Per minggu' : 'Per bulan'}
+                {data.breakdown.unit === 'chain'
+                  ? 'Rangkaian batch'
+                  : data.breakdown.unit === 'week'
+                    ? 'Per minggu'
+                    : 'Per bulan'}
               </h2>
               <p className="mt-1 text-body text-gray-600">
-                Recovery rate dihitung dari total recovery dibagi total bahan masuk, bukan rata-rata persentase.
+                {data.breakdown.unit === 'chain'
+                  ? 'Rangkaian dicatat pada tanggal batch awalnya. Recovery rate gabungan muncul setelah rangkaian selesai.'
+                  : 'Hanya rangkaian selesai. Recovery rate dari total recovery dibagi total bahan masuk, bukan rata-rata persentase.'}
               </p>
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} />

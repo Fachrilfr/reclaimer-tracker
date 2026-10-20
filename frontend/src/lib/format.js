@@ -30,6 +30,10 @@ export function formatDate(iso) {
   return `${d} ${MONTHS[m - 1]} ${y}`;
 }
 
+export function formatMonthShort(iso) {
+  return MONTHS[parseDate(iso).m - 1];
+}
+
 export function formatMonth(iso) {
   const { y, m } = parseDate(iso);
   return `${MONTHS_LONG[m - 1]} ${y}`;
