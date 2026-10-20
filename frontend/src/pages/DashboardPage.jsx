@@ -17,7 +17,8 @@ import StatCard from '../components/StatCard.jsx';
 import TrendChart, { FLAG_COLOR, FLAG_TRIANGLE } from '../components/TrendChart.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import StorageBadge, { StorageMeter } from '../components/StorageBadge.jsx';
+import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
+import { useAuth } from '../auth/AuthContext.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
@@ -288,16 +289,45 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
 }
 
 // FR-45 bagian limbah B3: pallet mendesak dan kritis
-function B3AlertCard({ pallets }) {
+// Dua tahap limbah B3. Operator: dari area reclaimer ke TPS (batas kirim). HSE dan role
+// dengan akses Limbah B3: masa simpan di TPS sampai diserahkan ke vendor.
+const B3_VIEWS = {
+  tps: {
+    title: 'Kirim ke TPS',
+    status: (p) => p.tps,
+    badge: (p) => <TpsBadge tps={p.tps} />,
+    due: (p) => `Batas kirim ${formatDate(p.tps_due_date)}`,
+    actionNoun: 'perlu dikirim',
+    noAction: 'Tidak ada pallet yang mendesak atau lewat batas kirim ke TPS.',
+    listTitle: 'Pallet belum dikirim ke TPS',
+    listDescription: 'Masih di area reclaimer, urut dari batas kirim terdekat.',
+    meterLabel: 'Batas kirim ke TPS',
+    empty: 'Semua pallet sudah dikirim ke TPS.',
+  },
+  storage: {
+    title: 'Limbah B3 di TPS',
+    status: (p) => p.storage,
+    badge: (p) => <StorageBadge storage={p.storage} />,
+    due: (p) => `Batas simpan ${formatDate(p.expiry_date)}`,
+    actionNoun: 'perlu ditindak',
+    noAction: 'Tidak ada pallet yang mendesak atau kritis.',
+    listTitle: 'Pallet B3 aktif',
+    listDescription: 'Belum diangkut vendor, urut dari batas simpan terdekat.',
+    meterLabel: 'Masa simpan',
+    empty: 'Tidak ada pallet B3 yang tersimpan.',
+  },
+};
+
+function B3AlertCard({ pallets, view }) {
   const urgent = pallets.length > 0;
-  const hasCritical = pallets.some((p) => p.storage.level === 'kritis');
+  const hasCritical = pallets.some((p) => view.status(p).level === 'kritis');
 
   return (
     <AlertCard
       id="alert-b3-title"
       icon={Biohazard}
-      title="Limbah B3"
-      status={urgent ? `${pallets.length} pallet perlu ditindak` : 'Aman'}
+      title={view.title}
+      status={urgent ? `${pallets.length} pallet ${view.actionNoun}` : 'Aman'}
       tone={!urgent ? 'ok' : hasCritical ? 'bad' : 'warn'}
       needsAction={urgent}
       more={pallets.length - PREVIEW_LIMIT}
@@ -309,14 +339,14 @@ function B3AlertCard({ pallets }) {
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0">
               <span>
                 <span className="font-mono text-gray-900">{p.pallet_number}</span>
-                <span className="block text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
+                <span className="block text-caption text-gray-600">{view.due(p)}</span>
               </span>
-              <StorageBadge storage={p.storage} />
+              {view.badge(p)}
             </li>
           ))}
         </ul>
       ) : (
-        <p className="text-body text-gray-600">Tidak ada pallet yang mendesak atau kritis.</p>
+        <p className="text-body text-gray-600">{view.noAction}</p>
       )}
     </AlertCard>
   );
@@ -493,18 +523,18 @@ function Breakdown({ breakdown, target }) {
   );
 }
 
-function ActivePallets({ pallets }) {
+function ActivePallets({ pallets, view }) {
   const [onlyAction, setOnlyAction] = useState(false);
-  const shown = onlyAction ? pallets.filter((p) => p.storage.needs_action) : pallets;
+  const shown = onlyAction ? pallets.filter((p) => view.status(p).needs_action) : pallets;
 
   return (
     <section aria-labelledby="pallets-title" className="card">
       <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
         <div>
           <h2 id="pallets-title" className="text-h2 font-semibold">
-            Pallet B3 aktif
+            {view.listTitle}
           </h2>
-          <p className="mt-1 text-body text-gray-600">Belum diangkut, urut dari batas simpan terdekat.</p>
+          <p className="mt-1 text-body text-gray-600">{view.listDescription}</p>
         </div>
         <button
           type="button"
@@ -530,20 +560,20 @@ function ActivePallets({ pallets }) {
                 </span>
               </div>
               <div className="sm:col-span-5">
-                <StorageMeter storage={p.storage} label={`Masa simpan pallet ${p.pallet_number}`} />
+                <StorageMeter storage={view.status(p)} label={`${view.meterLabel} pallet ${p.pallet_number}`} />
                 <span className="mt-1 block text-caption text-gray-600">
-                  {p.storage.days_elapsed} dari {p.storage.max_days} hari · batas {formatDate(p.expiry_date)}
+                  {view.status(p).days_elapsed} dari {view.status(p).max_days} hari · {view.due(p).replace(/^./, (c) => c.toLowerCase())}
                 </span>
               </div>
               <div className="sm:col-span-4 sm:text-right">
-                <StorageBadge storage={p.storage} />
+                {view.badge(p)}
               </div>
             </li>
           ))}
         </ul>
       ) : (
         <p className="border-t border-gray-100 px-4 py-6 text-body text-gray-600 sm:px-5">
-          {onlyAction ? 'Tidak ada pallet yang mendesak atau kritis.' : 'Tidak ada pallet B3 yang tersimpan.'}
+          {onlyAction ? view.noAction : view.empty}
         </p>
       )}
     </section>
@@ -551,6 +581,8 @@ function ActivePallets({ pallets }) {
 }
 
 export default function DashboardPage() {
+  const { can } = useAuth();
+  const b3View = can('limbah_b3') ? B3_VIEWS.storage : B3_VIEWS.tps;
   const [params, setParams] = useSearchParams();
   const today = localToday();
   const period = PERIODS.some((p) => p.value === params.get('period')) ? params.get('period') : 'day';
@@ -599,7 +631,10 @@ export default function DashboardPage() {
           )}
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <B3AlertCard pallets={data.action_items.pallets} />
+            <B3AlertCard
+              view={b3View}
+              pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
+            />
             <RecoveryAlertCard
               tolerance={data.tolerance}
               target={data.target_recovery_rate}
@@ -713,7 +748,7 @@ export default function DashboardPage() {
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} />
           </section>
 
-          <ActivePallets pallets={data.active_pallets} />
+          <ActivePallets view={b3View} pallets={b3View === B3_VIEWS.tps ? data.tps_pallets : data.active_pallets} />
         </div>
       )}
     </>

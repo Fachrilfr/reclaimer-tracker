@@ -7,16 +7,12 @@ import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import StorageBadge, { StorageMeter } from '../components/StorageBadge.jsx';
+import { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
-const STATUS_LABELS = {
-  filling: 'Sedang diisi',
-  full: 'Penuh',
-  scheduled: 'Terjadwal diangkut',
-  transported: 'Diangkut',
-};
+// Halaman ini tahap operator: dari area reclaimer ke TPS. Pallet penuh dianggap
+// dikirim ke TPS dan diserahkan ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
 
 // Form satu tanggal + keterangan, dipakai untuk mulai pallet dan catat drum penuh
 function DateForm({ id, dateField, label, hint, submitLabel, today, onSubmit }) {
@@ -102,17 +98,22 @@ function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
             Pallet <span className="font-mono">{pallet.pallet_number}</span>
           </h2>
           <p className="mt-1 text-body text-gray-600">
-            Mulai terisi {formatDate(pallet.start_date)}. Batas simpan {formatDate(pallet.expiry_date)}.
+            Mulai terisi {formatDate(pallet.start_date)}. Batas kirim ke TPS {formatDate(pallet.tps_due_date)}.
           </p>
         </div>
-        <StorageBadge storage={pallet.storage} />
+        <TpsBadge tps={pallet.tps} />
       </div>
 
       <div className="mt-3">
-        <StorageMeter storage={pallet.storage} label={`Masa simpan pallet ${pallet.pallet_number}`} />
+        <StorageMeter storage={pallet.tps} label={`Batas kirim ke TPS pallet ${pallet.pallet_number}`} />
         <p className="mt-1 text-caption text-gray-600">
-          {pallet.storage.days_elapsed} dari {pallet.storage.max_days} hari masa simpan terpakai.
+          {pallet.tps.days_elapsed} dari {pallet.tps.max_days} hari batas kirim ke TPS terpakai.
         </p>
+        {pallet.tps.level === 'kritis' && (
+          <Alert tone="danger" className="mt-3">
+            Pallet ini sudah lewat batas kirim ke TPS. Selesaikan drum terakhir dan serahkan ke HSE secepatnya.
+          </Alert>
+        )}
       </div>
 
       <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Drum di pallet ini">
@@ -145,7 +146,7 @@ function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
           <h3 className="text-h3 font-semibold">Catat drum ke-{nextDrum} penuh</h3>
           <p className="mb-4 mt-1 text-body text-gray-600">
             {nextDrum === capacity
-              ? `Ini drum terakhir. Setelah dicatat, pallet ${pallet.pallet_number} berstatus penuh.`
+              ? `Ini drum terakhir. Setelah dicatat, pallet ${pallet.pallet_number} penuh dan tercatat sudah dikirim ke TPS.`
               : 'Catat saat drum residu sudah penuh. Berat tidak perlu diisi.'}
           </p>
           <DateForm
@@ -184,8 +185,8 @@ export default function DrumPage() {
         title="Input drum B3"
         description={
           data
-            ? `Residu tidak ditimbang per batch. Catat drum yang sudah penuh; ${data.drums_per_pallet} drum penuh menjadi satu pallet.`
-            : 'Catat drum residu yang sudah penuh.'
+            ? `Catat drum residu di area reclaimer. Pallet yang sudah penuh (${data.drums_per_pallet} drum) dikirim ke TPS dan diserahkan ke HSE, paling lambat ${data.tps_delivery_days} hari sejak pallet mulai terisi.`
+            : 'Catat drum residu di area reclaimer sampai dikirim ke TPS.'
         }
       />
 
@@ -215,8 +216,8 @@ export default function DrumPage() {
                 Mulai pallet baru
               </h2>
               <p className="mb-4 mt-1 text-body text-gray-600">
-                Tidak ada pallet yang sedang diisi. Masa simpan {data.max_storage_days} hari dihitung sejak tanggal
-                pallet mulai terisi.
+                Tidak ada pallet yang sedang diisi. Batas kirim ke TPS {data.tps_delivery_days} hari dihitung sejak
+                tanggal pallet mulai terisi.
               </p>
               <DateForm
                 id="pallet"
@@ -240,34 +241,32 @@ export default function DrumPage() {
               <h2 id="pallets-title" className="text-h2 font-semibold">
                 Pallet terbaru
               </h2>
-              <p className="mt-1 text-body text-gray-600">10 pallet terakhir. Sisa hari dihitung sampai batas simpan.</p>
+              <p className="mt-1 text-body text-gray-600">
+                10 pallet terakhir. Pallet penuh sudah diserahkan ke HSE untuk disimpan di TPS.
+              </p>
             </div>
             {data.recent.length ? (
               <Table caption="Pallet terbaru">
                 <thead>
                   <tr>
                     <Th>No. pallet</Th>
-                    <Th>Status</Th>
                     <Th numeric>Drum</Th>
                     <Th>Mulai terisi</Th>
-                    <Th>Penuh</Th>
-                    <Th>Batas simpan</Th>
-                    <Th>Masa simpan</Th>
+                    <Th>Batas kirim ke TPS</Th>
+                    <Th>Status kirim ke TPS</Th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.recent.map((p) => (
                     <tr key={p.id}>
                       <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
-                      <Td className="whitespace-nowrap">{STATUS_LABELS[p.status]}</Td>
                       <Td numeric>
                         {p.drum_count}/{data.drums_per_pallet}
                       </Td>
                       <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
-                      <Td className="whitespace-nowrap">{formatDate(p.full_date)}</Td>
-                      <Td className="whitespace-nowrap">{formatDate(p.expiry_date)}</Td>
+                      <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
                       <Td>
-                        <StorageBadge storage={p.storage} />
+                        <TpsBadge tps={p.tps} />
                       </Td>
                     </tr>
                   ))}
@@ -275,7 +274,7 @@ export default function DrumPage() {
               </Table>
             ) : (
               <EmptyState icon={Cylinder} title="Belum ada pallet tercatat.">
-                Pallet yang dimulai akan muncul di sini dengan hitung mundur masa simpannya.
+                Pallet yang dimulai akan muncul di sini dengan hitung mundur batas kirim ke TPS.
               </EmptyState>
             )}
           </section>

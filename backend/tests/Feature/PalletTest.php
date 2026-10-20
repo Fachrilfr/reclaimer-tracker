@@ -50,13 +50,85 @@ class PalletTest extends TestCase
             ->assertCreated()
             ->assertJsonPath('data.status', 'full')
             ->assertJsonPath('data.full_date', '2026-10-19')
-            ->assertJsonPath('message', 'Drum ke-3 tercatat. Pallet PLT-202610-001 penuh.');
+            ->assertJsonPath('message', 'Drum ke-3 tercatat. Pallet PLT-202610-001 penuh dan dikirim ke TPS.');
 
         $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-20'])
             ->assertUnprocessable()->assertJsonValidationErrors(['filled_date']);
 
         $this->assertDatabaseCount('b3_drum_logs', 3);
         $this->getJson('/api/pallets')->assertOk()->assertJsonPath('data.filling', null);
+    }
+
+    public function test_full_pallet_is_sent_to_tps(): void
+    {
+        $pallet = $this->postJson('/api/pallets', ['start_date' => '2026-10-15'])
+            ->assertCreated()
+            // Batas kirim ke TPS 7 hari sejak mulai terisi: 22 Okt, sisa 2 hari per 20 Okt
+            ->assertJsonPath('data.tps_due_date', '2026-10-22')
+            ->assertJsonPath('data.tps.level', 'perhatian')
+            ->assertJsonPath('data.tps.days_remaining', 2)
+            ->assertJsonPath('data.tps.sent_at', null)
+            ->json('data');
+
+        foreach (['2026-10-16', '2026-10-18'] as $date) {
+            $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => $date])
+                ->assertJsonPath('data.tps.sent_at', null);
+        }
+
+        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-20'])
+            ->assertCreated()
+            ->assertJsonPath('message', 'Drum ke-3 tercatat. Pallet PLT-202610-001 penuh dan dikirim ke TPS.')
+            ->assertJsonPath('data.tps.level', 'terkirim')
+            ->assertJsonPath('data.tps.sent_at', '2026-10-20')
+            ->assertJsonPath('data.tps.late_days', 0)
+            ->assertJsonPath('data.tps.needs_action', false)
+            // Masa simpan TPS ke vendor (HSE) tetap 90 hari dari mulai terisi
+            ->assertJsonPath('data.expiry_date', '2027-01-13');
+    }
+
+    public function test_tps_level_follows_delivery_deadline(): void
+    {
+        $cases = [
+            '2026-10-19' => [6, 'aman'],
+            '2026-10-16' => [3, 'perhatian'],
+            '2026-10-14' => [1, 'mendesak'],
+            '2026-10-13' => [0, 'mendesak'],  // batas hari ini
+            '2026-10-10' => [-3, 'kritis'],   // lewat 3 hari
+        ];
+
+        foreach ($cases as $start => [$days, $level]) {
+            $pallet = B3Pallet::create([
+                'pallet_number' => "PLT-TPS-{$start}",
+                'start_date' => $start,
+                'max_storage_days' => 90,
+                'expiry_date' => Carbon::parse($start)->addDays(90),
+                'tps_due_date' => Carbon::parse($start)->addDays(7),
+                'status' => 'filling',
+            ]);
+
+            $status = $pallet->tpsStatus();
+            $this->assertSame($days, $status->daysRemaining, "start {$start}");
+            $this->assertSame($level, $status->level, "start {$start}");
+        }
+
+        // Dikirim terlambat tetap tercatat berapa hari lewatnya
+        $late = B3Pallet::create([
+            'pallet_number' => 'PLT-TPS-LATE', 'start_date' => '2026-10-01', 'max_storage_days' => 90,
+            'expiry_date' => '2026-12-30', 'tps_due_date' => '2026-10-08', 'sent_to_tps_at' => '2026-10-11', 'status' => 'full',
+        ]);
+        $this->assertSame('terkirim', $late->tpsStatus()->level);
+        $this->assertSame(3, $late->tpsStatus()->lateDays);
+    }
+
+    public function test_dashboard_lists_pallets_late_for_tps(): void
+    {
+        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertCreated();
+
+        $this->getJson('/api/dashboard')->assertOk()
+            ->assertJsonCount(1, 'data.tps_pallets')
+            ->assertJsonCount(1, 'data.action_items.tps_pallets')
+            ->assertJsonPath('data.action_items.tps_pallets.0.tps.level', 'kritis')
+            ->assertJsonPath('data.action_items.tps_pallets.0.tps.days_remaining', -3);
     }
 
     public function test_only_one_pallet_can_be_filling(): void

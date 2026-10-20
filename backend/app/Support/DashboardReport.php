@@ -42,8 +42,12 @@ final class DashboardReport
         $completed = $chains->filter(fn (BatchChain $c) => $c->isComplete())->values();
         $totals = BatchChain::summarize($completed);
 
-        $thresholds = StorageStatus::thresholds();
+        $thresholds = PalletController::thresholds();
+        // Masa simpan di TPS sampai diserahkan ke vendor (HSE)
         $activePallets = B3Pallet::where('status', '!=', 'transported')->orderBy('expiry_date')->get()
+            ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
+        // Pallet yang masih di area reclaimer, belum dikirim ke TPS (operator)
+        $tpsPallets = B3Pallet::whereNull('sent_to_tps_at')->orderBy('tps_due_date')->get()
             ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
 
         // Saldo pada akhir periode; untuk periode yang masih berjalan, saldo saat ini
@@ -72,9 +76,11 @@ final class DashboardReport
             'trend' => $this->trend(),
             'action_items' => [
                 'pallets' => $activePallets->filter(fn ($pallet) => $pallet['storage']['needs_action'])->values(),
+                'tps_pallets' => $tpsPallets->filter(fn ($pallet) => $pallet['tps']['needs_action'])->values(),
                 'low_recovery_chains' => $this->lowRecoveryChains(),
             ],
             'active_pallets' => $activePallets,
+            'tps_pallets' => $tpsPallets,
         ];
     }
 

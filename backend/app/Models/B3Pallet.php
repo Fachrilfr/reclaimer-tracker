@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\StorageStatus;
+use App\Support\TpsDeliveryStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -21,6 +22,8 @@ class B3Pallet extends Model
             'start_date' => 'date',
             'full_date' => 'date',
             'expiry_date' => 'date',
+            'tps_due_date' => 'date',
+            'sent_to_tps_at' => 'date',
             'scheduled_date' => 'date',
         ];
     }
@@ -30,8 +33,15 @@ class B3Pallet extends Model
         return $this->hasMany(B3DrumLog::class, 'pallet_id')->orderBy('drum_sequence');
     }
 
+    /** Masa simpan di TPS sampai diserahkan ke vendor (HSE). */
     public function storageStatus(?array $thresholds = null): StorageStatus
     {
         return StorageStatus::forPallet($this, null, $thresholds);
+    }
+
+    /** Pengiriman dari area reclaimer ke TPS (operator). */
+    public function tpsStatus(?array $thresholds = null): TpsDeliveryStatus
+    {
+        return TpsDeliveryStatus::forPallet($this, null, $thresholds);
     }
 }

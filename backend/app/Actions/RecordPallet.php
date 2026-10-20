@@ -42,13 +42,14 @@ class RecordPallet
                 'start_date' => $start,
                 'max_storage_days' => $maxDays,
                 'expiry_date' => $start->copy()->addDays($maxDays),
+                'tps_due_date' => $start->copy()->addDays((int) Parameter::number('tps_delivery_days')),
                 'status' => 'filling',
                 'notes' => $notes,
                 'created_by' => $request->user()->id,
             ]);
 
             AuditLog::record($request, 'create', $pallet, $pallet->only([
-                'pallet_number', 'start_date', 'max_storage_days', 'expiry_date',
+                'pallet_number', 'start_date', 'max_storage_days', 'expiry_date', 'tps_due_date',
             ]));
 
             return $pallet;
@@ -90,6 +91,8 @@ class RecordPallet
                 'drum_count' => $drum->drum_sequence,
                 'status' => $isFull ? 'full' : 'filling',
                 'full_date' => $isFull ? $filled : null,
+                // Pallet penuh dikirim ke TPS dan diserahkan ke HSE
+                'sent_to_tps_at' => $isFull ? $filled : null,
             ]);
 
             AuditLog::record($request, 'create', $drum, [
@@ -97,6 +100,7 @@ class RecordPallet
                 'drum_sequence' => $drum->drum_sequence,
                 'filled_date' => $filled->toDateString(),
                 'pallet_full' => $isFull,
+                'sent_to_tps' => $isFull,
             ]);
 
             return $drum;

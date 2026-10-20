@@ -168,18 +168,19 @@ class DemoDataSeeder extends Seeder
     }
 
     /**
-     * Pallet dengan sisa masa simpan beragam (batas 90 hari dari mulai terisi).
+     * Pallet dengan status kirim ke TPS dan sisa masa simpan TPS yang beragam.
      * Pallet baru dimulai setelah pallet sebelumnya penuh.
      */
     private function seedPallets(Carbon $realNow): void
     {
         $pallets = app(RecordPallet::class);
         // [mulai terisi (hari lalu), [drum penuh (hari lalu), ...]]
+        // Pallet penuh = dikirim ke TPS. Masa simpan TPS (HSE) 90 hari dari mulai terisi.
         $plan = [
-            [85, [83, 81, 80]],   // sisa 5 hari: kritis
-            [78, [75, 72, 68]],   // sisa 12 hari: mendesak
-            [66, [60, 45, 30]],   // sisa 24 hari: perhatian
-            [25, [15, 5]],        // sisa 65 hari: aman, sedang diisi (2 dari 3 drum)
+            [85, [83, 81, 76]],   // dikirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
+            [75, [73, 71, 69]],   // dikirim tepat waktu; di TPS sisa 15 hari: perhatian
+            [66, [64, 62, 61]],   // di TPS sisa 24 hari: perhatian
+            [6, [4, 2]],          // sedang diisi (2 dari 3 drum), batas kirim ke TPS besok: mendesak
         ];
 
         foreach ($plan as [$startAgo, $drumsAgo]) {

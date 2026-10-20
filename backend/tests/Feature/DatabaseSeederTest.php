@@ -20,7 +20,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseCount('shifts', 3);
         $this->assertDatabaseCount('materials', 2);
         $this->assertDatabaseCount('vendors', 2);
-        $this->assertDatabaseCount('parameters', 9);
+        $this->assertDatabaseCount('parameters', 12);
         $this->assertDatabaseHas('parameters', ['param_key' => 'target_recovery_rate', 'param_value' => '35.0']);
         $this->assertDatabaseHas('solvent_ledger', ['type' => 'adjustment', 'current_balance' => 1000]);
     }
@@ -34,7 +34,7 @@ class DatabaseSeederTest extends TestCase
 
         $this->assertDatabaseCount('users', 5);
         $this->assertDatabaseCount('vendors', 2);
-        $this->assertDatabaseCount('parameters', 9);
+        $this->assertDatabaseCount('parameters', 12);
         $this->assertDatabaseCount('solvent_ledger', 1);
         $this->assertDatabaseHas('parameters', ['param_key' => 'target_recovery_rate', 'param_value' => '40.0']);
     }
