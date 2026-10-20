@@ -17,9 +17,9 @@ export function useResource(path) {
     setState((s) => ({ ...s, loading: true, error: '' }));
     try {
       const response = await request(path);
-      if (id === latest.current) setState({ data: response.data, error: '', loading: false });
+      if (id === latest.current) setState({ data: response.data, meta: response.meta ?? null, error: '', loading: false });
     } catch (err) {
-      if (id === latest.current) setState((s) => ({ data: s.data, error: err.message, loading: false }));
+      if (id === latest.current) setState((s) => ({ ...s, error: err.message, loading: false }));
     }
   }, [request, path]);
 

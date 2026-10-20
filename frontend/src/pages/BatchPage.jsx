@@ -1,5 +1,5 @@
 import { forwardRef, useMemo, useRef, useState } from 'react';
-import { Calculator, CircleCheck, Hourglass, LoaderCircle, Recycle, TriangleAlert, Wrench } from 'lucide-react';
+import { Calculator, Hourglass, LoaderCircle, TriangleAlert, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -8,10 +8,8 @@ import { formatDate, formatNumber, formatPercent, parseDecimal } from '../lib/fo
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
-import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
-import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
-import { Table, Td, Th } from '../components/Table.jsx';
+import BatchHistory from './BatchHistory.jsx';
 
 // Tombol isi cepat keterangan (FR-07)
 const QUICK_NOTES = ['Start Pkl', 'Stop Pkl', 'Lanjutan', 'Kuras residu'];
@@ -715,111 +713,15 @@ function BatchForm({ formData, onSaved }) {
   );
 }
 
-function BatchList({ batches }) {
-  if (!batches.length) {
-    return (
-      <EmptyState icon={Recycle} title="Belum ada batch tercatat.">
-        Batch yang disimpan akan muncul di sini.
-      </EmptyState>
-    );
-  }
-
-  return (
-    <Table caption="Batch terbaru">
-      <thead>
-        <tr>
-          <Th>No. batch</Th>
-          <Th>Tanggal dan shift</Th>
-          <Th numeric>Bahan masuk</Th>
-          <Th numeric>Recovery</Th>
-          <Th numeric>Recovery rate</Th>
-          <Th numeric>Saldo solvent</Th>
-          <Th>Catatan</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {batches.map((b) => (
-          <tr key={b.id}>
-            <Td>
-              <span className="font-mono text-gray-900">{b.batch_number}</span>
-              {b.is_continuation && (
-                <span className="block text-caption text-gray-600">
-                  Lanjutan dari <span className="font-mono">{b.parent_batch_number}</span>
-                </span>
-              )}
-              {!b.chain_complete && (
-                <span className="mt-1 block">
-                  <UnfinishedBadge />
-                </span>
-              )}
-            </Td>
-            <Td className="whitespace-nowrap">
-              {formatDate(b.date)}
-              <span className="block text-caption text-gray-600">{b.shift}</span>
-            </Td>
-            <Td numeric className="whitespace-nowrap">
-              {formatNumber(b.total_input_weight)} <span className="text-gray-600">kg</span>
-            </Td>
-            <Td numeric className="whitespace-nowrap">
-              {formatNumber(b.recovery_weight)} <span className="text-gray-600">kg</span>
-            </Td>
-            <Td numeric className={`whitespace-nowrap ${b.is_recovery_low ? 'font-semibold text-danger-fg' : ''}`}>
-              {b.chain_complete ? (
-                <>
-                  {formatPercent(b.chain_recovery_rate)}
-                  {b.chain_batch_count > 1 && (
-                    <span className="block text-caption font-normal text-gray-600">gabungan {b.chain_batch_count} batch</span>
-                  )}
-                </>
-              ) : (
-                <span className="text-caption font-normal text-gray-600">menunggu lanjutan</span>
-              )}
-            </Td>
-            <Td numeric className="whitespace-nowrap">
-              {formatNumber(b.solvent_balance_after)} <span className="text-gray-600">kg</span>
-            </Td>
-            <Td className="min-w-[10rem] text-caption">
-              {b.is_recovery_low && (
-                <span className="flex items-center gap-1 text-danger-fg">
-                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Di bawah target
-                </span>
-              )}
-              {b.is_temp_abnormal && (
-                <span className="flex items-center gap-1 text-warning-fg">
-                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Suhu di luar normal
-                </span>
-              )}
-              {b.chain_complete && !b.is_recovery_low && !b.is_temp_abnormal && (
-                <span className="flex items-center gap-1 text-gray-600">
-                  <CircleCheck className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Normal
-                </span>
-              )}
-              {b.review && (
-                <span className="mt-0.5 flex items-start gap-1 text-gray-600">
-                  <CircleCheck className="mt-px h-3.5 w-3.5 shrink-0 text-success-fg" aria-hidden="true" />
-                  <span>
-                    Ditinjau {b.review.by}: {b.review.notes}
-                  </span>
-                </span>
-              )}
-              {b.notes && <span className="mt-0.5 block text-gray-600">{b.notes}</span>}
-            </Td>
-          </tr>
-        ))}
-      </tbody>
-    </Table>
-  );
-}
-
 export default function BatchPage() {
   const { can } = useAuth();
   const canFill = can('batch', 'isi');
   const formData = useResource(canFill ? '/batches/create' : null);
-  const list = useResource('/batches');
+  const historyRef = useRef(null);
 
   const handleSaved = () => {
     formData.reload();
-    list.reload();
+    historyRef.current?.reload();
   };
 
   return (
@@ -846,32 +748,7 @@ export default function BatchPage() {
           </div>
         ))}
 
-      <section aria-labelledby="recent-title" className="card mt-6">
-        <div className="p-4 sm:p-5">
-          <h2 id="recent-title" className="text-h2 font-semibold">
-            Batch terbaru
-          </h2>
-          <p className="mt-1 text-body text-gray-600">
-            20 batch terakhir. Recovery rate tampil setelah rangkaian batch selesai.
-          </p>
-        </div>
-        {list.data ? (
-          <BatchList batches={list.data} />
-        ) : list.loading ? (
-          <p role="status" className="px-4 pb-6 text-body text-gray-600 sm:px-5">
-            Memuat daftar batch…
-          </p>
-        ) : (
-          <div className="px-4 pb-5 sm:px-5">
-            <Alert tone="danger">
-              {list.error}{' '}
-              <button type="button" onClick={list.reload} className="focus-ring rounded font-semibold underline">
-                Coba lagi
-              </button>
-            </Alert>
-          </div>
-        )}
-      </section>
+      <BatchHistory ref={historyRef} />
     </>
   );
 }

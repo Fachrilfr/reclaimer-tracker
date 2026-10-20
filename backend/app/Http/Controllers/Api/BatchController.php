@@ -12,6 +12,7 @@ use App\Models\ReclaimerBatch;
 use App\Models\Shift;
 use App\Models\SolventLedger;
 use App\Support\BatchChain;
+use App\Support\BatchHistoryQuery;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -45,15 +46,59 @@ class BatchController extends Controller
     }
 
     /** Batch terbaru, untuk dicek ulang operator dan dibaca role lain. */
-    public function index(): JsonResponse
+    /**
+     * Riwayat batch dengan filter tanggal, cari, status, dan shift, dihalaman per
+     * rangkaian. Setiap baris tetap satu batch; batch satu rangkaian tampil berurutan.
+     */
+    public function index(Request $request): JsonResponse
     {
-        $batches = ReclaimerBatch::with(['shift', 'operator', 'reviewer', 'parent.reviewer'])
-            ->orderByDesc('date')->orderByDesc('id')
-            ->limit(20)
-            ->get()
-            ->map(fn (ReclaimerBatch $batch) => self::present($batch));
+        $filters = $request->validate([
+            'from' => ['nullable', 'date_format:Y-m-d'],
+            'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'status' => ['nullable', 'in:' . implode(',', BatchHistoryQuery::STATUSES)],
+            'shift_id' => ['nullable', 'integer', 'exists:shifts,id'],
+            'page' => ['nullable', 'integer', 'min:1'],
+            'per_page' => ['nullable', 'integer', 'min:5', 'max:100'],
+        ], [
+            'from.date_format' => 'Tanggal awal tidak valid.',
+            'to.date_format' => 'Tanggal akhir tidak valid.',
+            'to.after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal awal.',
+            'status.in' => 'Status filter tidak dikenal.',
+            'shift_id.exists' => 'Shift tidak ditemukan.',
+            'q.max' => 'Kata kunci paling panjang 100 karakter.',
+        ]);
 
-        return response()->json(['status' => 'success', 'data' => $batches]);
+        $roots = BatchHistoryQuery::roots($filters);
+        $totalBatches = ReclaimerBatch::whereIn('id', (clone $roots)->select('id'))
+            ->orWhereIn('parent_batch_id', (clone $roots)->select('id'))
+            ->count();
+
+        $page = $roots->with(['shift', 'operator', 'reviewer', 'continuations' => fn ($q) => $q->with(['shift', 'operator', 'parent'])])
+            ->paginate($filters['per_page'] ?? 20);
+
+        $rows = $page->getCollection()->flatMap(function (ReclaimerBatch $root) {
+            $chainSize = $root->continuations->count() + 1;
+            $batches = collect([$root])->concat($root->continuations->each->setRelation('parent', $root));
+
+            return $batches->map(fn (ReclaimerBatch $batch) => self::present($batch, $chainSize) + ['chain_root_id' => $root->id]);
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $rows->values(),
+            'meta' => [
+                'page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'from' => $page->firstItem(),
+                'to' => $page->lastItem(),
+                'total_chains' => $page->total(),
+                'total_batches' => $totalBatches,
+                // Pilihan filter shift, juga untuk role yang tidak memuat data form batch
+                'shifts' => Shift::where('is_active', true)->orderBy('id')->get(['id', 'name']),
+            ],
+        ]);
     }
 
     public function store(StoreBatchRequest $request, RecordBatch $recordBatch): JsonResponse
@@ -68,7 +113,7 @@ class BatchController extends Controller
         ], 201);
     }
 
-    public static function present(ReclaimerBatch $batch): array
+    public static function present(ReclaimerBatch $batch, ?int $chainSize = null): array
     {
         $root = $batch->root();
         $chainComplete = $root->chain_completed_at !== null;
@@ -87,7 +132,7 @@ class BatchController extends Controller
             // tampil sebagai "menunggu lanjutan"
             'chain_complete' => $chainComplete,
             'chain_recovery_rate' => $chainComplete ? $root->chain_recovery_rate : null,
-            'chain_batch_count' => $root->continuations()->count() + 1,
+            'chain_batch_count' => $chainSize ?? $root->continuations()->count() + 1,
             'target_recovery_rate' => $batch->target_recovery_rate,
             'review' => $root->reviewSummary(),
             'ink_weight' => $batch->ink_weight,

@@ -431,7 +431,13 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (
             <li key={c.root_id} className="flex flex-wrap items-center gap-x-3">
               <div className="min-w-0 flex-1">
-                <AlertItemLink to={`/dashboard?period=day&date=${c.date}&sorot=rangkaian-${c.root_id}`}>
+                <AlertItemLink
+                  to={
+                    can('batch')
+                      ? `/batch?rentang=pilih&dari=${c.date}&sampai=${c.date}&status=di-bawah-target&sorot=rangkaian-${c.root_id}`
+                      : `/dashboard?period=day&date=${c.date}&sorot=rangkaian-${c.root_id}`
+                  }
+                >
                   <span>
                     <span className="font-mono text-gray-900">{chainLabel(c)}</span>
                     <span className="block text-caption text-gray-600">
