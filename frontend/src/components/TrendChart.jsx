@@ -11,6 +11,13 @@ const GRID = '#EEF1F5'; // gray-100
 const AXIS_TEXT = '#5B6673'; // gray-600
 const REFERENCE = '#2B333D'; // gray-800
 
+// Titik yang ditandai (misalnya di bawah target): merah tua (cukup beda dari hijau recovery
+// untuk buta warna, ΔE 7,1 di validator dataviz) dan bentuk
+// segitiga ke bawah, supaya bedanya terbaca tanpa mengandalkan warna saja
+export const FLAG_COLOR = '#9A1C1C';
+export const FLAG_TRIANGLE = (cx, cy, r) =>
+  `M${cx - r},${cy - r * 0.75} L${cx + r},${cy - r * 0.75} L${cx},${cy + r} Z`;
+
 // Langkah sumbu bulat (1, 2, 5 × 10^n) dengan sekitar 4–6 garis
 function niceScale(maxValue) {
   if (maxValue <= 0) return { max: 1, step: 0.25 };
@@ -30,7 +37,7 @@ function columnPath(x, y, w, h, r) {
  * @param {{ key: string, label: string, longLabel: string, value: number|null, note?: string }[]} points
  * @param {'line'|'column'} kind
  */
-export default function TrendChart({ title, points, kind, color, format, axisFormat, reference, emptyText }) {
+export default function TrendChart({ title, points, kind, color, format, axisFormat, reference, emptyText, flagLabel }) {
   const containerRef = useRef(null);
   const [width, setWidth] = useState(640);
   const [active, setActive] = useState(null);
@@ -156,19 +163,22 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
           {kind === 'line' && (
             <>
               <path d={segments.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-              {points.map((p, i) =>
-                p.value === null ? null : (
-                  <circle
+              {points.map((p, i) => {
+                if (p.value === null) return null;
+                const r = active === i ? 6 : 4;
+                return p.flagged ? (
+                  <path
                     key={p.key}
-                    cx={x(i)}
-                    cy={y(p.value)}
-                    r={active === i ? 6 : 4}
-                    fill={color}
+                    d={FLAG_TRIANGLE(x(i), y(p.value), r + 1.5)}
+                    fill={FLAG_COLOR}
                     stroke="#FFFFFF"
                     strokeWidth="2"
+                    strokeLinejoin="round"
                   />
-                ),
-              )}
+                ) : (
+                  <circle key={p.key} cx={x(i)} cy={y(p.value)} r={r} fill={color} stroke="#FFFFFF" strokeWidth="2" />
+                );
+              })}
             </>
           )}
 
@@ -200,12 +210,22 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
               <span aria-hidden="true" className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: color }} />
               {activePoint.value === null ? 'Tidak ada data' : format(activePoint.value)}
             </p>
+            {activePoint.flagged && (
+              <p className="flex items-center gap-1 text-caption font-medium text-danger-fg">
+                <svg width="10" height="10" aria-hidden="true">
+                  <path d={FLAG_TRIANGLE(5, 5, 4.5)} fill={FLAG_COLOR} />
+                </svg>
+                {flagLabel}
+              </p>
+            )}
             {activePoint.note && <p className="text-caption text-gray-600">{activePoint.note}</p>}
           </div>
         )}
         <p className="sr-only" aria-live="polite">
           {activePoint
-            ? `${activePoint.longLabel}: ${activePoint.value === null ? 'tidak ada data' : format(activePoint.value)}`
+            ? `${activePoint.longLabel}: ${activePoint.value === null ? 'tidak ada data' : format(activePoint.value)}${
+                activePoint.flagged ? `, ${flagLabel}` : ''
+              }`
             : ''}
         </p>
       </div>
@@ -223,8 +243,9 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
                   <th scope="row" className="px-3 py-2 font-normal text-gray-600">
                     {p.longLabel}
                   </th>
-                  <td className="px-3 py-2 text-right tabular-nums text-gray-900">
+                  <td className={`px-3 py-2 text-right tabular-nums ${p.flagged ? 'font-semibold text-danger-fg' : 'text-gray-900'}`}>
                     {p.value === null ? '–' : format(p.value)}
+                    {p.flagged && <span className="block text-caption font-normal">{flagLabel}</span>}
                   </td>
                 </tr>
               ))}

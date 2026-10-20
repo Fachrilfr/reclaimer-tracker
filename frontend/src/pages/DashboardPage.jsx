@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, CircleCheck, Recycle, TriangleAlert } from 'lucide-react';
+import { Biohazard, ChevronLeft, ChevronRight, CircleCheck, Recycle, TriangleAlert } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import {
   formatDate,
@@ -14,8 +14,7 @@ import {
 } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import StatCard from '../components/StatCard.jsx';
-import Alert from '../components/Alert.jsx';
-import TrendChart from '../components/TrendChart.jsx';
+import TrendChart, { FLAG_COLOR, FLAG_TRIANGLE } from '../components/TrendChart.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter } from '../components/StorageBadge.jsx';
@@ -161,12 +160,13 @@ function chainLabel(chain) {
 const RECOVERY_COLOR = '#157F3D';
 const RESIDUE_COLOR = '#C2410C';
 
-function trendPoints(trend, valueOf) {
+function trendPoints(trend, valueOf, flagOf = () => false) {
   return trend.points.map((p) => ({
     key: p.start,
     label: trend.unit === 'month' ? formatMonthShort(p.start) : String(parseDate(p.start).d),
     longLabel: trend.unit === 'month' ? formatMonth(p.start) : formatDate(p.start),
     value: p.chain_count ? valueOf(p) : null,
+    flagged: Boolean(p.chain_count) && flagOf(p),
     note: p.chain_count ? `${p.chain_count} rangkaian selesai` : 'Belum ada rangkaian selesai',
   }));
 }
@@ -187,15 +187,34 @@ function TrendCharts({ trend, period, anchor }) {
           <h2 id="trend-recovery-title" className="text-h2 font-semibold">
             Tren recovery rate
           </h2>
-          <p className="mt-1 text-body text-gray-600">
-            {range}. Garis putus-putus adalah target {formatPercent(target)}.
-          </p>
+          <p className="mt-1 text-body text-gray-600">{range}.</p>
+          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
+            <li className="flex items-center gap-1.5">
+              <svg width="12" height="12" aria-hidden="true">
+                <circle cx="6" cy="6" r="4.5" fill={RECOVERY_COLOR} />
+              </svg>
+              Memenuhi target
+            </li>
+            <li className="flex items-center gap-1.5">
+              <svg width="12" height="12" aria-hidden="true">
+                <path d={FLAG_TRIANGLE(6, 6, 5.5)} fill={FLAG_COLOR} />
+              </svg>
+              Di bawah target
+            </li>
+            <li className="flex items-center gap-1.5">
+              <svg width="18" height="12" aria-hidden="true">
+                <line x1="0" x2="18" y1="6" y2="6" stroke="#2B333D" strokeWidth="1.5" strokeDasharray="4 3" />
+              </svg>
+              Target {formatPercent(target)}
+            </li>
+          </ul>
         </div>
         <TrendChart
           title={`Tren recovery rate, ${range}`}
           kind="line"
           color={RECOVERY_COLOR}
-          points={trendPoints(trend, (p) => p.recovery_rate)}
+          points={trendPoints(trend, (p) => p.recovery_rate, (p) => p.recovery_rate < target)}
+          flagLabel="di bawah target"
           format={formatPercent}
           axisFormat={(v) => `${formatNumber(v, 0)}%`}
           reference={{ value: target, label: `Target ${formatNumber(target, 0)}%` }}
@@ -223,100 +242,145 @@ function TrendCharts({ trend, period, anchor }) {
   );
 }
 
-// Alert toleransi recovery: recovery gabungan periode dibanding target
-function ToleranceAlert({ tolerance, target, openCount, label }) {
+const PREVIEW_LIMIT = 3;
+
+const STATUS_PILL = {
+  ok: 'border-success-border bg-success-bg text-success-fg',
+  warn: 'border-urgent-border bg-urgent-bg text-urgent-fg',
+  bad: 'border-danger-border bg-danger-bg text-danger-fg',
+  neutral: 'border-gray-200 bg-gray-25 text-gray-600',
+};
+
+// Kartu peringatan: judul + status singkat, paling banyak 3 item, lalu tautan ke daftar lengkap
+function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children, more, link }) {
   return (
-    <>
-      {tolerance.is_below && (
-        <Alert
-          tone="danger"
-          title={`Recovery ${label} ${formatPercent(tolerance.recovery_rate)}, di bawah target ${formatPercent(target)}.`}
-        >
-          Selisih {formatNumber(Math.abs(tolerance.gap), 1)} poin. {tolerance.below_target_count} dari{' '}
-          {tolerance.chain_count} rangkaian batch selesai di bawah target. Tinjau batch di bagian Perlu ditindak dan
-          tabel rincian.
-        </Alert>
+    <section
+      aria-labelledby={id}
+      className={`card flex flex-col p-4 sm:p-5 ${needsAction ? (tone === 'bad' ? 'border-danger-border' : 'border-urgent-border') : ''}`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 id={id} className="flex items-center gap-2 text-h3 font-semibold">
+          <Icon className="h-5 w-5 shrink-0 text-gray-600" aria-hidden="true" />
+          {title}
+        </h2>
+        <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-caption font-medium ${STATUS_PILL[tone]}`}>
+          {needsAction ? (
+            <TriangleAlert className="h-3.5 w-3.5" aria-hidden="true" />
+          ) : (
+            <CircleCheck className="h-3.5 w-3.5" aria-hidden="true" />
+          )}
+          {status}
+        </span>
+      </div>
+      <div className="mt-3 flex-1">{children}</div>
+      {(more > 0 || link) && (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3 text-body">
+          <span className="text-gray-600">{more > 0 ? `${more} lainnya tidak ditampilkan.` : ''}</span>
+          {link && (
+            <a href={link.href} className="focus-ring inline-flex min-h-11 items-center rounded font-semibold text-brand-blue-700 hover:underline">
+              {link.label}
+            </a>
+          )}
+        </div>
       )}
-      {openCount > 0 && (
-        <Alert tone="info">
-          {openCount} rangkaian batch belum selesai dan belum dihitung. Angka di bawah hanya dari rangkaian yang sudah
-          selesai.
-        </Alert>
-      )}
-    </>
+    </section>
   );
 }
 
-function ActionItems({ items, target }) {
-  const { pallets, low_recovery_chains: batches } = items;
-
-  if (!pallets.length && !batches.length) {
-    return (
-      <section aria-labelledby="action-title" className="card flex items-start gap-3 p-4 sm:p-5">
-        <CircleCheck className="mt-0.5 h-5 w-5 shrink-0 text-success-fg" aria-hidden="true" />
-        <div>
-          <h2 id="action-title" className="text-h3 font-semibold">
-            Tidak ada yang perlu ditindak
-          </h2>
-          <p className="text-body text-gray-600">
-            Tidak ada pallet B3 mendesak atau kritis, dan semua rangkaian batch yang selesai dalam 14 hari terakhir
-            memenuhi target recovery.
-          </p>
-        </div>
-      </section>
-    );
-  }
+// FR-45 bagian limbah B3: pallet mendesak dan kritis
+function B3AlertCard({ pallets }) {
+  const urgent = pallets.length > 0;
+  const hasCritical = pallets.some((p) => p.storage.level === 'kritis');
 
   return (
-    <section aria-labelledby="action-title" className="card border-urgent-border p-4 sm:p-5">
-      <h2 id="action-title" className="flex items-center gap-2 text-h2 font-semibold">
-        <TriangleAlert className="h-5 w-5 text-urgent-fg" aria-hidden="true" />
-        Perlu ditindak
-      </h2>
-      <div className="mt-4 grid grid-cols-1 gap-6 md:grid-cols-2">
-        <div>
-          <h3 className="text-h3 font-semibold">Pallet B3 mendesak dan kritis ({pallets.length})</h3>
-          {pallets.length ? (
-            <ul className="mt-2 divide-y divide-gray-100">
-              {pallets.map((p) => (
-                <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span>
-                    <span className="font-mono text-gray-900">{p.pallet_number}</span>
-                    <span className="block text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
-                  </span>
-                  <StorageBadge storage={p.storage} />
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-body text-gray-600">Tidak ada.</p>
-          )}
-        </div>
-        <div>
-          <h3 className="text-h3 font-semibold">
-            Batch di bawah target {formatPercent(target)}, 14 hari terakhir ({batches.length})
-          </h3>
-          {batches.length ? (
-            <ul className="mt-2 divide-y divide-gray-100">
-              {batches.map((b) => (
-                <li key={b.root_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                  <span>
-                    <span className="font-mono text-gray-900">{chainLabel(b)}</span>
-                    <span className="block text-caption text-gray-600">
-                      Mulai {formatDate(b.date)} · {b.shift}
-                      {b.target_recovery_rate !== target && ` · target saat selesai ${formatPercent(b.target_recovery_rate)}`}
-                    </span>
-                  </span>
-                  <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(b.recovery_rate)}</span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="mt-2 text-body text-gray-600">Tidak ada.</p>
-          )}
-        </div>
-      </div>
-    </section>
+    <AlertCard
+      id="alert-b3-title"
+      icon={Biohazard}
+      title="Limbah B3"
+      status={urgent ? `${pallets.length} pallet perlu ditindak` : 'Aman'}
+      tone={!urgent ? 'ok' : hasCritical ? 'bad' : 'warn'}
+      needsAction={urgent}
+      more={pallets.length - PREVIEW_LIMIT}
+      link={{ href: '#pallets-title', label: 'Lihat semua pallet' }}
+    >
+      {urgent ? (
+        <ul className="divide-y divide-gray-100">
+          {pallets.slice(0, PREVIEW_LIMIT).map((p) => (
+            <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 py-2 first:pt-0">
+              <span>
+                <span className="font-mono text-gray-900">{p.pallet_number}</span>
+                <span className="block text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
+              </span>
+              <StorageBadge storage={p.storage} />
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-body text-gray-600">Tidak ada pallet yang mendesak atau kritis.</p>
+      )}
+    </AlertCard>
+  );
+}
+
+// Alert toleransi recovery: recovery gabungan periode dibanding target, dan rangkaian
+// di bawah target dalam 14 hari terakhir (FR-45)
+function RecoveryAlertCard({ tolerance, target, chains, openCount, label }) {
+  const below = tolerance.is_below;
+  const needsAction = below || chains.length > 0;
+
+  return (
+    <AlertCard
+      id="alert-recovery-title"
+      icon={Recycle}
+      title="Target recovery"
+      status={
+        !tolerance.has_data ? 'Belum ada data' : below ? 'Di bawah target' : chains.length ? `${chains.length} rangkaian di bawah target` : 'Memenuhi target'
+      }
+      tone={!tolerance.has_data ? 'neutral' : below ? 'bad' : chains.length ? 'warn' : 'ok'}
+      needsAction={needsAction}
+      more={chains.length - PREVIEW_LIMIT}
+      link={{ href: '#breakdown-title', label: 'Lihat rincian' }}
+    >
+      <p className="text-body text-gray-800">
+        {tolerance.has_data ? (
+          <>
+            Recovery {label}{' '}
+            <span className={`font-semibold tabular-nums ${below ? 'text-danger-fg' : 'text-gray-900'}`}>
+              {formatPercent(tolerance.recovery_rate)}
+            </span>
+            , target {formatPercent(target)}
+            {below && <> (kurang {formatNumber(Math.abs(tolerance.gap), 1)} poin)</>}.
+          </>
+        ) : (
+          <>Belum ada rangkaian batch selesai di {label}.</>
+        )}
+        {openCount > 0 && (
+          <span className="block text-caption text-gray-600">
+            {openCount} rangkaian belum selesai, belum dihitung.
+          </span>
+        )}
+      </p>
+
+      <h3 className="mt-3 text-label font-medium text-gray-600">Rangkaian di bawah target, 14 hari terakhir</h3>
+      {chains.length ? (
+        <ul className="mt-1 divide-y divide-gray-100">
+          {chains.slice(0, PREVIEW_LIMIT).map((c) => (
+            <li key={c.root_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
+              <span>
+                <span className="font-mono text-gray-900">{chainLabel(c)}</span>
+                <span className="block text-caption text-gray-600">
+                  Mulai {formatDate(c.date)} · {c.shift}
+                  {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+                </span>
+              </span>
+              <span className="font-semibold tabular-nums text-danger-fg">{formatPercent(c.recovery_rate)}</span>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-1 text-body text-gray-600">Tidak ada.</p>
+      )}
+    </AlertCard>
   );
 }
 
@@ -534,14 +598,16 @@ export default function DashboardPage() {
             </p>
           )}
 
-          <ToleranceAlert
-            tolerance={data.tolerance}
-            target={data.target_recovery_rate}
-            openCount={data.totals.open_chain_count}
-            label={periodLabel(anchor, period)}
-          />
-
-          <ActionItems items={data.action_items} target={data.target_recovery_rate} />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <B3AlertCard pallets={data.action_items.pallets} />
+            <RecoveryAlertCard
+              tolerance={data.tolerance}
+              target={data.target_recovery_rate}
+              chains={data.action_items.low_recovery_chains}
+              openCount={data.totals.open_chain_count}
+              label={periodLabel(anchor, period)}
+            />
+          </div>
 
           <section aria-labelledby="totals-title">
             <h2 id="totals-title" className="sr-only">
