@@ -15,12 +15,20 @@ import { Table, Td, Th } from '../components/Table.jsx';
 // Halaman ini tahap operator: dari area reclaimer ke TPS. Pallet penuh dianggap
 // dikirim ke TPS dan diserahkan ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
 
-// Keterangan yang diisi saat mulai pallet dan saat mencatat drum
+// Keterangan yang diisi saat mulai pallet dan saat mencatat drum, ditambah keterangan
+// otomatis dari sistem (misalnya terlambat karena mesin maintenance)
 function PalletNotes({ pallet }) {
-  if (!pallet.notes && !pallet.drum_notes.length) return <span className="text-gray-600">–</span>;
+  const systemNote = tpsDelayText(pallet.tps);
+  if (!pallet.notes && !pallet.drum_notes.length && !systemNote) return <span className="text-gray-600">–</span>;
 
   return (
     <ul className="space-y-0.5">
+      {systemNote && (
+        <li>
+          <span className="text-gray-600">Sistem: </span>
+          {systemNote}
+        </li>
+      )}
       {pallet.notes && (
         <li>
           <span className="text-gray-600">Pallet: </span>
@@ -299,9 +307,6 @@ export default function DrumPage() {
                       <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
                       <Td className="min-w-[14rem]">
                         <TpsBadge tps={p.tps} />
-                        {tpsDelayText(p.tps) && (
-                          <span className="mt-1 block text-caption text-gray-600">{tpsDelayText(p.tps)}</span>
-                        )}
                       </Td>
                       <Td className="min-w-[12rem] text-body">
                         <PalletNotes pallet={p} />
