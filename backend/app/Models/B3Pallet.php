@@ -1,0 +1,37 @@
+<?php
+
+namespace App\Models;
+
+use App\Support\StorageStatus;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class B3Pallet extends Model
+{
+    use SoftDeletes;
+
+    protected $table = 'b3_pallets';
+
+    protected $guarded = ['id'];
+
+    protected function casts(): array
+    {
+        return [
+            'start_date' => 'date',
+            'full_date' => 'date',
+            'expiry_date' => 'date',
+            'scheduled_date' => 'date',
+        ];
+    }
+
+    public function drums(): HasMany
+    {
+        return $this->hasMany(B3DrumLog::class, 'pallet_id')->orderBy('drum_sequence');
+    }
+
+    public function storageStatus(?array $thresholds = null): StorageStatus
+    {
+        return StorageStatus::forPallet($this, null, $thresholds);
+    }
+}

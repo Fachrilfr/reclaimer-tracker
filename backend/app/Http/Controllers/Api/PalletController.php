@@ -1,0 +1,104 @@
+<?php
+
+namespace App\Http\Controllers\Api;
+
+use App\Actions\RecordPallet;
+use App\Http\Controllers\Controller;
+use App\Models\B3Pallet;
+use App\Models\Parameter;
+use App\Support\StorageStatus;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class PalletController extends Controller
+{
+    /** Pallet yang sedang diisi beserta drumnya, dan pallet terbaru (FR-25, FR-26). */
+    public function index(): JsonResponse
+    {
+        $thresholds = StorageStatus::thresholds();
+
+        $filling = B3Pallet::with('drums.operator')->where('status', 'filling')->first();
+        $recent = B3Pallet::orderByDesc('start_date')->orderByDesc('id')->limit(10)->get();
+
+        return response()->json([
+            'status' => 'success',
+            'data' => [
+                'today' => now()->toDateString(),
+                'drums_per_pallet' => (int) Parameter::number('drums_per_pallet'),
+                'max_storage_days' => (int) Parameter::number('b3_max_storage_days'),
+                'filling' => $filling ? self::present($filling, $thresholds, withDrums: true) : null,
+                'recent' => $recent->map(fn (B3Pallet $pallet) => self::present($pallet, $thresholds)),
+            ],
+        ]);
+    }
+
+    public function store(Request $request, RecordPallet $recordPallet): JsonResponse
+    {
+        $data = $request->validate([
+            'start_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'start_date.required' => 'Isi tanggal pallet mulai terisi.',
+            'start_date.date_format' => 'Tanggal tidak valid.',
+            'start_date.before_or_equal' => 'Tanggal mulai terisi tidak boleh setelah hari ini.',
+            'notes.max' => 'Keterangan paling panjang 500 karakter.',
+        ]);
+
+        $pallet = $recordPallet->start($request, $data['start_date'], $data['notes'] ?? null);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Pallet {$pallet->pallet_number} dimulai.",
+            'data' => self::present($pallet, StorageStatus::thresholds()),
+        ], 201);
+    }
+
+    public function storeDrum(Request $request, B3Pallet $pallet, RecordPallet $recordPallet): JsonResponse
+    {
+        $data = $request->validate([
+            'filled_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'filled_date.required' => 'Isi tanggal drum penuh.',
+            'filled_date.date_format' => 'Tanggal tidak valid.',
+            'filled_date.before_or_equal' => 'Tanggal drum penuh tidak boleh setelah hari ini.',
+            'notes.max' => 'Keterangan paling panjang 500 karakter.',
+        ]);
+
+        $drum = $recordPallet->addDrum($request, $pallet, $data['filled_date'], $data['notes'] ?? null);
+        $pallet->refresh();
+
+        return response()->json([
+            'status' => 'success',
+            'message' => $pallet->status === 'full'
+                ? "Drum ke-{$drum->drum_sequence} tercatat. Pallet {$pallet->pallet_number} penuh."
+                : "Drum ke-{$drum->drum_sequence} tercatat di pallet {$pallet->pallet_number}.",
+            'data' => self::present($pallet->load('drums.operator'), StorageStatus::thresholds(), withDrums: true),
+        ], 201);
+    }
+
+    public static function present(B3Pallet $pallet, array $thresholds, bool $withDrums = false): array
+    {
+        $data = [
+            'id' => $pallet->id,
+            'pallet_number' => $pallet->pallet_number,
+            'status' => $pallet->status,
+            'drum_count' => $pallet->drum_count,
+            'start_date' => $pallet->start_date->toDateString(),
+            'full_date' => $pallet->full_date?->toDateString(),
+            'expiry_date' => $pallet->expiry_date->toDateString(),
+            'storage' => $pallet->storageStatus($thresholds)->toArray(),
+        ];
+
+        if ($withDrums) {
+            $data['drums'] = $pallet->drums->map(fn ($drum) => [
+                'sequence' => $drum->drum_sequence,
+                'filled_date' => $drum->filled_date->toDateString(),
+                'operator' => $drum->operator?->name,
+                'notes' => $drum->notes,
+            ]);
+        }
+
+        return $data;
+    }
+}
