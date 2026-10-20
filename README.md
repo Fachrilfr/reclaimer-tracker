@@ -53,6 +53,15 @@ Untuk mengulang database dari awal (semua data terhapus):
 php artisan migrate:fresh --seed
 ```
 
+### Data dummy untuk mencoba fitur
+
+Untuk melihat dashboard, daftar batch, dan pallet B3 dengan isi, tambahkan data dummy 45 hari terakhir ke database yang baru dibuat. Data ini bukan data produksi, dan seeder menolak berjalan di production atau di database yang sudah berisi batch.
+
+```bash
+php artisan migrate:fresh --seed
+php artisan db:seed --class=DemoDataSeeder
+```
+
 ## Hak akses
 
 Matriks hak akses PRD §5.1 ada di satu tempat: `backend/config/access.php`. Frontend menerimanya lewat `/api/auth/me`, jadi menu dan halaman ikut berubah tanpa perlu diubah terpisah.
