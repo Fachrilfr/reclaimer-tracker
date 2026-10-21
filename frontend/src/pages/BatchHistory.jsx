@@ -62,7 +62,7 @@ function BatchRows({ batches, sorot }) {
         <tr>
           <Th>No. batch</Th>
           <Th>Tanggal dan shift</Th>
-          <Th numeric>Bahan masuk</Th>
+          <Th numeric>Tinta X masuk</Th>
           <Th numeric>Recovery</Th>
           <Th numeric>Recovery rate</Th>
           <Th numeric>Saldo solvent</Th>

@@ -85,6 +85,44 @@ function ExportButtons({ period, anchor }) {
   );
 }
 
+// Pengambilan solvent dari saldo di periode ini, terpisah dari batch
+function SolventUsages({ usages }) {
+  if (!usages.length) {
+    return <p className="mt-3 text-caption text-gray-600">Tidak ada solvent yang diambil dari saldo di periode ini.</p>;
+  }
+
+  return (
+    <div className="-mx-4 mt-4 sm:-mx-5">
+      <Table caption="Pemakaian solvent di periode">
+        <thead>
+          <tr>
+            <Th>Tanggal</Th>
+            <Th>Keperluan</Th>
+            <Th numeric>Diambil</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {usages.map((u) => (
+            <tr key={u.id}>
+              <Td className="whitespace-nowrap">
+                {formatDate(u.date)}
+                <span className="block text-caption text-gray-600">{u.shift}</span>
+              </Td>
+              <Td>
+                {u.purpose}
+                {u.notes && <span className="block text-caption text-gray-600">{u.notes}</span>}
+              </Td>
+              <Td numeric>
+                <Kg value={u.weight} />
+              </Td>
+            </tr>
+          ))}
+        </tbody>
+      </Table>
+    </div>
+  );
+}
+
 function ReportBody({ report }) {
   const s = report.summary;
   const target = report.target_recovery_rate;
@@ -99,12 +137,7 @@ function ReportBody({ report }) {
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Bahan masuk"
-          value={formatNumber(s.input)}
-          unit="kg"
-          note={`Tinta X ${formatNumber(s.ink)} + solvent ${formatNumber(s.solvent_used)}`}
-        />
+        <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" note="Bahan masuk ke mesin reclaimer" />
         <StatCard label="Hasil recovery" value={formatNumber(s.recovery)} unit="kg" note={`Residu estimasi ${formatNumber(s.residue)} kg`} />
         <StatCard
           label="Recovery rate"
@@ -124,14 +157,14 @@ function ReportBody({ report }) {
         <Section
           id="lap-solvent"
           title="Saldo solvent"
-          description="Bergerak per batch, termasuk batch yang rangkaiannya belum selesai."
+          description="Bertambah dari hasil recovery tiap batch, berkurang saat solvent diambil dari saldo."
           padded
         >
           <dl className="divide-y divide-gray-100 text-body tabular-nums">
             {[
               ['Saldo awal', report.solvent.opening],
-              ['Solvent dipakai', -report.solvent.used],
               ['Hasil recovery masuk', report.solvent.recovered],
+              ['Solvent dipakai', -report.solvent.used],
               ...(report.solvent.adjustment ? [['Penyesuaian', report.solvent.adjustment]] : []),
             ].map(([label, value]) => (
               <div key={label} className="flex justify-between gap-4 py-2">
@@ -149,6 +182,7 @@ function ReportBody({ report }) {
               </dd>
             </div>
           </dl>
+          <SolventUsages usages={report.solvent_usages} />
         </Section>
 
         <Section
@@ -194,7 +228,7 @@ function ReportBody({ report }) {
             <tr>
               <Th>Shift</Th>
               <Th numeric>Rangkaian</Th>
-              <Th numeric>Bahan masuk</Th>
+              <Th numeric>Tinta X masuk</Th>
               <Th numeric>Recovery</Th>
               <Th numeric>Residu estimasi</Th>
               <Th numeric>Recovery rate</Th>
@@ -224,7 +258,7 @@ function ReportBody({ report }) {
               <tr>
                 <Th>{BREAKDOWN_LABEL[report.breakdown.unit]}</Th>
                 <Th numeric>Rangkaian</Th>
-                <Th numeric>Bahan masuk</Th>
+                <Th numeric>Tinta X masuk</Th>
                 <Th numeric>Recovery</Th>
                 <Th numeric>Residu estimasi</Th>
                 <Th numeric>Recovery rate</Th>
@@ -335,7 +369,6 @@ function ReportBody({ report }) {
                   <Th>Tanggal dan shift</Th>
                   <Th>Operator</Th>
                   <Th numeric>Tinta X</Th>
-                  <Th numeric>Solvent</Th>
                   <Th numeric>Recovery</Th>
                   <Th numeric>Recovery rate</Th>
                 </tr>
@@ -352,8 +385,7 @@ function ReportBody({ report }) {
                       <span className="block text-caption text-gray-600">{c.shift}</span>
                     </Td>
                     <Td className="whitespace-nowrap">{c.operator}</Td>
-                    <Td numeric><Kg value={c.ink} /></Td>
-                    <Td numeric><Kg value={c.solvent_used} /></Td>
+                    <Td numeric><Kg value={c.input} /></Td>
                     <Td numeric><Kg value={c.recovery} /></Td>
                     <Td numeric className={c.is_below_target ? 'font-semibold text-danger-fg' : ''}>
                       {c.is_complete ? formatPercent(c.recovery_rate) : <span className="text-caption text-gray-600">belum selesai</span>}

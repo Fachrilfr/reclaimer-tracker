@@ -72,7 +72,7 @@ final class ReclaimerReportExcel
         $this->summarySheet($book->getActiveSheet());
 
         $this->table($book->createSheet(), 'Per shift', 'Material balance per shift awal rangkaian',
-            ['Shift', 'Rangkaian', 'Batch', 'Bahan masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate'],
+            ['Shift', 'Rangkaian', 'Batch', 'Tinta X masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate'],
             array_map(fn ($x) => [$x['shift'], $x['chain_count'], $x['batch_count'], $x['input'], $x['recovery'], $x['residue'], $x['chain_count'] ? $x['recovery_rate'] : null], $r['by_shift']),
             formats: [4 => self::KG, 5 => self::KG, 6 => self::KG, 7 => self::PERCENT],
             tones: [7 => fn ($row) => $belowTarget($row[6])],
@@ -82,7 +82,7 @@ final class ReclaimerReportExcel
         if ($breakdown = $r['breakdown']) {
             $label = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$breakdown['unit']];
             $this->table($book->createSheet(), "Per {$label}", "Material balance per " . strtolower($label),
-                [$label, 'Rangkaian', 'Bahan masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate'],
+                [$label, 'Rangkaian', 'Tinta X masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate'],
                 array_map(fn ($x) => [
                     $breakdown['unit'] === 'month' ? self::month($x['start']) : ($x['start'] === $x['end'] ? self::date($x['start']) : self::date($x['start']) . ' – ' . self::date($x['end'])),
                     $x['chain_count'], $x['input'], $x['recovery'], $x['residue'], $x['chain_count'] ? $x['recovery_rate'] : null,
@@ -96,16 +96,25 @@ final class ReclaimerReportExcel
         $status = fn ($c) => ! $c['is_complete'] ? 'Belum selesai' : ($c['is_below_target'] ? 'Di bawah target' : 'Memenuhi target');
         $statusTone = ['Belum selesai' => 'warning', 'Di bawah target' => 'danger', 'Memenuhi target' => null];
         $this->table($book->createSheet(), 'Rangkaian', 'Semua rangkaian batch yang dimulai di periode ini',
-            ['No. batch awal', 'Batch lanjutan', 'Tanggal', 'Shift awal', 'Regu', 'Operator', 'Status', 'Tinta X (kg)', 'Solvent dipakai (kg)', 'Bahan masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate', 'Target saat selesai', 'Catatan tinjauan'],
+            ['No. batch awal', 'Batch lanjutan', 'Tanggal', 'Shift awal', 'Regu', 'Operator', 'Status', 'Tinta X masuk (kg)', 'Recovery (kg)', 'Residu estimasi (kg)', 'Recovery rate', 'Target saat selesai', 'Catatan tinjauan'],
             array_map(fn ($c) => [
                 $c['batch_number'], implode(', ', array_slice($c['batch_numbers'], 1)) ?: null, self::date($c['date']), $c['shift'], $c['regu'], $c['operator'],
-                $status($c), $c['ink'], $c['solvent_used'], $c['input'], $c['recovery'], $c['is_complete'] ? $c['residue'] : null,
+                $status($c), $c['input'], $c['recovery'], $c['is_complete'] ? $c['residue'] : null,
                 $c['recovery_rate'], $c['target_recovery_rate'], $c['review'] ? "{$c['review']['by']}: {$c['review']['notes']}" : null,
             ], $r['chains']),
-            formats: [8 => self::KG, 9 => self::KG, 10 => self::KG, 11 => self::KG, 12 => self::KG, 13 => self::PERCENT, 14 => self::PERCENT],
-            tones: [7 => fn ($row) => $statusTone[$row[6]], 13 => fn ($row) => $row[6] === 'Di bawah target' ? 'danger' : null],
-            wrap: [2 => 24, 15 => 40],
+            formats: [8 => self::KG, 9 => self::KG, 10 => self::KG, 11 => self::PERCENT, 12 => self::PERCENT],
+            tones: [7 => fn ($row) => $statusTone[$row[6]], 11 => fn ($row) => $row[6] === 'Di bawah target' ? 'danger' : null],
+            wrap: [2 => 24, 13 => 40],
             empty: 'Belum ada rangkaian batch di periode ini.');
+
+        $usages = $r['solvent_usages'];
+        $this->table($book->createSheet(), 'Pemakaian solvent', 'Solvent yang diambil dari saldo hasil recovery',
+            ['Tanggal', 'Shift', 'Berat diambil (kg)', 'Keperluan', 'Catatan', 'Saldo sesudah (kg)', 'Dicatat oleh'],
+            array_map(fn ($u) => [self::date($u['date']), $u['shift'], $u['weight'], $u['purpose'], $u['notes'], $u['balance_after'], $u['used_by']], $usages),
+            formats: [3 => self::KG, 6 => self::KG],
+            wrap: [4 => 36, 5 => 36],
+            total: $usages ? ['Total', null, round(array_sum(array_column($usages, 'weight')), 2), null, null, null, null] : null,
+            empty: 'Tidak ada solvent yang diambil dari saldo di periode ini.');
 
         $this->table($book->createSheet(), 'Di bawah target', "Rangkaian selesai dengan recovery rate di bawah target",
             ['No. batch awal', 'Tanggal', 'Shift awal', 'Recovery rate', 'Target saat selesai', 'Ditinjau oleh', 'Catatan tinjauan'],
@@ -148,75 +157,75 @@ final class ReclaimerReportExcel
         $isBelow = $rate !== null && $rate < $r['target_recovery_rate'];
         $closing = $r['solvent']['closing_is_current'] ? 'Saldo saat ini (kg)' : 'Saldo akhir (kg)';
 
-        // Baris tetap: angka-angka utama dirujuk oleh tes dan mudah dicari pembaca
+        $usageCount = count($r['solvent_usages']);
+        // Setiap baris: [kunci, label, nilai, keterangan, format angka]
         $sections = [
-            5 => ['Material balance (rangkaian selesai)', [
-                ['Rangkaian selesai', $s['chain_count'], null],
-                ['Batch', $s['batch_count'], null],
-                ['Rangkaian belum selesai', $s['open_chain_count'], 'Tidak dihitung sampai batch terakhirnya disimpan selesai'],
-                ['Tinta X masuk (kg)', $s['ink'], null],
-                ['Solvent dipakai (kg)', $s['solvent_used'], null],
-                ['Bahan masuk (kg)', $s['input'], 'Tinta X + solvent dipakai'],
-                ['Hasil recovery (kg)', $s['recovery'], null],
-                ['Residu estimasi (kg)', $s['residue'], 'Bahan masuk − hasil recovery'],
-                ['Recovery rate', $rate, $rate === null ? 'Belum ada rangkaian selesai' : ($isBelow ? 'Di bawah target' : 'Memenuhi target')],
-                ['Target recovery', $r['target_recovery_rate'], null],
-                ['Rangkaian di bawah target', $s['below_target_count'], $s['below_target_count'] ? 'Rincian di sheet "Di bawah target"' : null],
+            ['Material balance (rangkaian selesai)', [
+                ['chains', 'Rangkaian selesai', $s['chain_count'], null, null],
+                ['batches', 'Batch', $s['batch_count'], null, null],
+                ['open', 'Rangkaian belum selesai', $s['open_chain_count'], 'Tidak dihitung sampai batch terakhirnya disimpan selesai', null],
+                ['input', 'Tinta X masuk (kg)', $s['input'], 'Bahan masuk ke mesin reclaimer', self::KG],
+                ['recovery', 'Hasil recovery (kg)', $s['recovery'], 'Solvent yang dihasilkan dari Tinta X', self::KG],
+                ['residue', 'Residu estimasi (kg)', $s['residue'], 'Tinta X − hasil recovery', self::KG],
+                ['rate', 'Recovery rate', $rate, $rate === null ? 'Belum ada rangkaian selesai' : ($isBelow ? 'Di bawah target' : 'Memenuhi target') . ' · hasil recovery ÷ Tinta X', self::PERCENT],
+                ['target', 'Target recovery', $r['target_recovery_rate'], null, self::PERCENT],
+                ['below', 'Rangkaian di bawah target', $s['below_target_count'], $s['below_target_count'] ? 'Rincian di sheet "Di bawah target"' : null, null],
             ]],
-            18 => ['Saldo solvent', [
-                ['Saldo awal (kg)', $r['solvent']['opening'], null],
-                ['Solvent dipakai (kg)', -$r['solvent']['used'], null],
-                ['Hasil recovery masuk (kg)', $r['solvent']['recovered'], null],
-                ['Penyesuaian (kg)', $r['solvent']['adjustment'], null],
-                [$closing, $r['solvent']['closing'], null],
+            ['Saldo solvent', [
+                ['opening', 'Saldo awal (kg)', $r['solvent']['opening'], null, self::KG],
+                ['recovered', 'Hasil recovery masuk (kg)', $r['solvent']['recovered'], null, self::KG],
+                ['used', 'Solvent dipakai (kg)', -$r['solvent']['used'], $usageCount ? "{$usageCount} kali diambil, rincian di sheet \"Pemakaian solvent\"" : 'Tidak ada pengambilan di periode ini', self::KG],
+                ['adjustment', 'Penyesuaian (kg)', $r['solvent']['adjustment'], null, self::KG],
+                ['closing', $closing, $r['solvent']['closing'], null, self::KG],
             ]],
-            25 => ['Maintenance mesin', [
-                ['Jumlah maintenance', $r['maintenance']['count'], null],
-                ['Total downtime di periode (jam)', round($r['maintenance']['total_minutes'] / 60, 2), null],
+            ['Maintenance mesin', [
+                ['maintenance', 'Jumlah maintenance', $r['maintenance']['count'], null, null],
+                ['downtime', 'Total downtime di periode (jam)', round($r['maintenance']['total_minutes'] / 60, 2), null, self::HOURS],
             ]],
         ];
 
-        foreach ($sections as $row => [$title, $items]) {
+        $row = self::HEADER_ROW;
+        $at = [];
+        foreach ($sections as [$title, $items]) {
             $sheet->fromArray([$title, 'Nilai', 'Keterangan'], null, "A{$row}");
             $this->headerStyle($sheet, "A{$row}:C{$row}");
             $sheet->getStyle("B{$row}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-            $sheet->fromArray($items, null, 'A' . ($row + 1), true);
-            $last = $row + count($items);
-            $this->bodyStyle($sheet, 'A' . ($row + 1) . ":C{$last}");
+            $first = $row + 1;
+            foreach ($items as [$key, $label, $value, $note, $format]) {
+                $row++;
+                $at[$key] = $row;
+                $sheet->fromArray([$label, $value, $note], null, "A{$row}", true);
+                if ($format) {
+                    $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode($format);
+                }
+            }
+            $this->bodyStyle($sheet, "A{$first}:C{$row}");
+            $sheet->getStyle("C{$first}:C{$row}")->getFont()->getColor()->setRGB(self::GRAY_600);
+            $row += 2;
         }
-
-        $kg = [9, 10, 11, 12, 13, 19, 20, 21, 22, 23];
-        foreach ($kg as $row) {
-            $sheet->getStyle("B{$row}")->getNumberFormat()->setFormatCode(self::KG);
-        }
-        $sheet->getStyle('B27')->getNumberFormat()->setFormatCode(self::HOURS);
-        $sheet->getStyle('B14:B15')->getNumberFormat()->setFormatCode(self::PERCENT);
+        $lastRow = $row - 2;
 
         // Angka kunci laporan: recovery rate dan saldo akhir dicetak tebal
-        $sheet->getStyle('A14:B14')->getFont()->setBold(true)->setSize(11);
-        $sheet->getStyle('A23:B23')->getFont()->setBold(true);
-        $sheet->getStyle('A23:C23')->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB(self::GRAY_600);
+        $sheet->getStyle("A{$at['rate']}:B{$at['rate']}")->getFont()->setBold(true)->setSize(11);
+        $sheet->getStyle("A{$at['closing']}:B{$at['closing']}")->getFont()->setBold(true);
+        $sheet->getStyle("A{$at['closing']}:C{$at['closing']}")->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN)->getColor()->setRGB(self::GRAY_600);
         if ($rate !== null) {
-            $this->tone($sheet, 'C14', $isBelow ? 'danger' : 'success');
+            $this->tone($sheet, "C{$at['rate']}", $isBelow ? 'danger' : 'success');
             if ($isBelow) {
-                $sheet->getStyle('B14')->getFont()->getColor()->setRGB(self::TONES['danger'][0]);
+                $sheet->getStyle("B{$at['rate']}")->getFont()->getColor()->setRGB(self::TONES['danger'][0]);
             }
         }
         if ($s['below_target_count']) {
-            $this->tone($sheet, 'B16', 'danger');
+            $this->tone($sheet, "B{$at['below']}", 'danger');
         }
         if ($s['open_chain_count']) {
-            $this->tone($sheet, 'B8', 'warning');
+            $this->tone($sheet, "B{$at['open']}", 'warning');
         }
-        foreach (['C6:C16', 'C19:C23', 'C26:C27'] as $range) {
-            $sheet->getStyle($range)->getFont()->getColor()->setRGB(self::GRAY_600);
-        }
-        $sheet->getStyle('C14')->getFont()->setBold(true);
 
         $sheet->getColumnDimension('A')->setWidth(38);
         $sheet->getColumnDimension('B')->setWidth(18);
-        $sheet->getColumnDimension('C')->setWidth(56);
-        $this->pageSetup($sheet, 'A1:C27', PageSetup::ORIENTATION_PORTRAIT);
+        $sheet->getColumnDimension('C')->setWidth(60);
+        $this->pageSetup($sheet, "A1:C{$lastRow}", PageSetup::ORIENTATION_PORTRAIT);
     }
 
     /**

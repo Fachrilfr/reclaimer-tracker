@@ -22,7 +22,6 @@ class ReclaimerBatch extends Model
             'is_recovery_low' => 'boolean',
             'supervisor_reviewed' => 'boolean',
             'ink_weight' => 'float',
-            'solvent_used_weight' => 'float',
             'recovery_weight' => 'float',
             'oil_temp' => 'float',
             'vapour_temp' => 'float',

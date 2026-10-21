@@ -27,11 +27,11 @@ class ChainReviewTest extends TestCase
         // Rangkaian dua batch, gabungan (50 + 50) / 500 = 20%, di bawah target 35%
         $base = [
             'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'oil_temp' => 140,
-            'vapour_temp' => 50, 'solvent_used_weight' => 0,
+            'vapour_temp' => 50,
         ];
         $this->root = $this->postJson('/api/batches', $base + [
-            'is_continuation' => false, 'process_status' => 'in_progress', 'ink_weight' => 400,
-            'solvent_used_weight' => 100, 'recovery_weight' => 50,
+            'is_continuation' => false, 'process_status' => 'in_progress', 'ink_weight' => 500,
+            'recovery_weight' => 50,
         ])->json('data.id');
         $this->postJson('/api/batches', $base + [
             'is_continuation' => true, 'parent_batch_id' => $this->root, 'process_status' => 'completed',
@@ -101,7 +101,7 @@ class ChainReviewTest extends TestCase
     {
         $base = [
             'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
-            'oil_temp' => 140, 'vapour_temp' => 50, 'ink_weight' => 300, 'solvent_used_weight' => 200,
+            'oil_temp' => 140, 'vapour_temp' => 50, 'ink_weight' => 500,
         ];
         $good = $this->postJson('/api/batches', $base + ['process_status' => 'completed', 'recovery_weight' => 200])->json('data.id');
         $open = $this->postJson('/api/batches', $base + ['process_status' => 'in_progress', 'recovery_weight' => 20])->json('data.id');

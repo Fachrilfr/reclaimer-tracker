@@ -4,6 +4,7 @@ import {
   Biohazard,
   Cylinder,
   Database,
+  Droplets,
   FileChartColumn,
   History,
   LayoutDashboard,
@@ -18,6 +19,7 @@ import ReportPage from './pages/ReportPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import BatchPage from './pages/BatchPage.jsx';
 import DrumPage from './pages/DrumPage.jsx';
+import SolventPage from './pages/SolventPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -41,8 +43,16 @@ export const MODULE_GROUPS = [
         path: '/batch',
         icon: Recycle,
         summary:
-          'Catat Tinta X, solvent, hasil recovery, dan suhu per batch. Selisih, recovery rate, dan saldo solvent dihitung langsung.',
+          'Catat Tinta X, hasil recovery, dan suhu per batch. Residu, recovery rate, dan saldo solvent dihitung langsung.',
         page: BatchPage,
+      },
+      {
+        key: 'solvent',
+        label: 'Pemakaian solvent',
+        path: '/solvent',
+        icon: Droplets,
+        summary: 'Catat solvent yang diambil dari saldo hasil recovery. Saldo langsung berkurang.',
+        page: SolventPage,
       },
       {
         key: 'mesin',

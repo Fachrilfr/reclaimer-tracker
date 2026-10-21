@@ -17,6 +17,9 @@ return [
     'features' => [
         'dashboard' => ['operator' => 'lihat', 'supervisor' => 'tinjau', 'hse' => 'lihat', 'management' => 'lihat'],
         'batch' => ['operator' => 'isi', 'supervisor' => 'lihat', 'hse' => 'lihat'],
+        // Pemakaian solvent dari saldo hasil recovery, dicatat terpisah dari batch.
+        // Belum ada di matriks PRD §5.1: operator mencatat, supervisor memantau.
+        'solvent' => ['operator' => 'isi', 'supervisor' => 'lihat'],
         // Status maintenance mesin (FR-20). Belum ada di matriks PRD §5.1: operator
         // melapor, supervisor mengelola, penerima pemberitahuan bisa melihat.
         'mesin' => ['operator' => 'isi', 'supervisor' => 'kelola', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],

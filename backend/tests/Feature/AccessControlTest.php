@@ -44,7 +44,7 @@ class AccessControlTest extends TestCase
     public function test_permissions_follow_prd_matrix(): void
     {
         $this->assertSame(
-            ['dashboard' => 'lihat', 'batch' => 'isi', 'mesin' => 'isi', 'drum_b3' => 'isi'],
+            ['dashboard' => 'lihat', 'batch' => 'isi', 'solvent' => 'isi', 'mesin' => 'isi', 'drum_b3' => 'isi'],
             User::factory()->role('operator')->make()->permissions(),
         );
         $this->assertSame(

@@ -26,14 +26,13 @@ class DashboardTest extends TestCase
         $shift2 = Shift::where('code', 'SHIFT-2')->value('id');
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [
             'shift_id' => $shift1, 'is_continuation' => false, 'process_status' => 'completed', 'oil_temp' => 140, 'vapour_temp' => 50,
-            'solvent_used_weight' => 0,
         ])->assertCreated();
 
         // 20 Okt: 10/100 (10%) di shift 1 dan 360/900 (40%) di shift 2
         $batch(['date' => '2026-10-20', 'ink_weight' => 100, 'recovery_weight' => 10]);
         $batch(['date' => '2026-10-20', 'ink_weight' => 900, 'recovery_weight' => 360, 'shift_id' => $shift2]);
         // 3 Okt: 200/500 (40%), di bulan yang sama tapi minggu lain
-        $batch(['date' => '2026-10-03', 'ink_weight' => 300, 'solvent_used_weight' => 200, 'recovery_weight' => 200]);
+        $batch(['date' => '2026-10-03', 'ink_weight' => 500, 'recovery_weight' => 200]);
     }
 
     protected function tearDown(): void
@@ -52,7 +51,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.totals.recovery', 370)
             ->assertJsonPath('data.totals.residue', 630)
             ->assertJsonPath('data.totals.recovery_rate', 37)
-            ->assertJsonPath('data.totals.solvent_balance', 1370)
+            ->assertJsonPath('data.totals.solvent_balance', 1570)
             ->assertJsonPath('data.by_shift.0.recovery_rate', 10)
             ->assertJsonPath('data.by_shift.1.recovery_rate', 40)
             ->assertJsonPath('data.by_shift.2.batch_count', 0)

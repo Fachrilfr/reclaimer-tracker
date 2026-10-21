@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\MachineController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\PalletController;
+use App\Http\Controllers\Api\SolventUsageController;
 use Illuminate\Support\Facades\Route;
 
 // Public Auth Routes (Rate limited: maks 10 request per menit untuk proteksi brute force)
@@ -40,7 +41,10 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/batches/create', [BatchController::class, 'create'])->middleware('akses:batch,isi');
     Route::post('/batches', [BatchController::class, 'store'])->middleware('akses:batch,isi');
 
-    Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
+    Route::get('/solvent-usages', [SolventUsageController::class, 'index'])->middleware('akses:solvent');
+    Route::post('/solvent-usages', [SolventUsageController::class, 'store'])->middleware('akses:solvent,isi');
+
+    Route::get('/pallets',[PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
     Route::post('/pallets/{pallet}/drums', [PalletController::class, 'storeDrum'])->middleware('akses:drum_b3,isi');
 });

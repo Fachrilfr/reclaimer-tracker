@@ -393,7 +393,7 @@ function Breakdown({ breakdown, target, sorot }) {
           <tr>
             <Th>Rangkaian batch</Th>
             <Th>Shift awal</Th>
-            <Th numeric>Bahan masuk</Th>
+            <Th numeric>Tinta X masuk</Th>
             <Th numeric>Recovery</Th>
             <Th numeric>Residu estimasi</Th>
             <Th numeric>Recovery rate</Th>
@@ -457,7 +457,7 @@ function Breakdown({ breakdown, target, sorot }) {
         <tr>
           <Th>{unit === 'week' ? 'Minggu' : 'Bulan'}</Th>
           <Th numeric>Rangkaian</Th>
-          <Th numeric>Bahan masuk</Th>
+          <Th numeric>Tinta X masuk</Th>
           <Th numeric>Recovery</Th>
           <Th numeric>Residu estimasi</Th>
           <Th numeric>Recovery rate</Th>
@@ -634,12 +634,12 @@ export default function DashboardPage() {
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
               <StatCard
-                label="Bahan masuk"
+                label="Tinta X masuk"
                 value={formatNumber(data.totals.input)}
                 unit="kg"
                 note={
                   data.totals.chain_count
-                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} batch) · Tinta X ${formatNumber(data.totals.ink)} + solvent ${formatNumber(data.totals.solvent_used)}`
+                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} batch)`
                     : 'Belum ada rangkaian batch selesai di periode ini'
                 }
               />
@@ -647,7 +647,7 @@ export default function DashboardPage() {
                 label="Residu (estimasi)"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
-                note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari bahan masuk` : undefined}
+                note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
               />
               <StatCard
                 label="Recovery rate"
@@ -686,7 +686,7 @@ export default function DashboardPage() {
                 <tr>
                   <Th>Shift</Th>
                   <Th numeric>Rangkaian</Th>
-                  <Th numeric>Bahan masuk</Th>
+                  <Th numeric>Tinta X masuk</Th>
                   <Th numeric>Recovery</Th>
                   <Th numeric>Recovery rate</Th>
                 </tr>
@@ -726,7 +726,7 @@ export default function DashboardPage() {
               <p className="mt-1 text-body text-gray-600">
                 {data.breakdown.unit === 'chain'
                   ? 'Rangkaian dicatat pada tanggal batch awalnya. Recovery rate gabungan muncul setelah rangkaian selesai.'
-                  : 'Hanya rangkaian selesai. Recovery rate dari total recovery dibagi total bahan masuk, bukan rata-rata persentase.'}
+                  : 'Hanya rangkaian selesai. Recovery rate dari total recovery dibagi total Tinta X masuk, bukan rata-rata persentase.'}
               </p>
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />

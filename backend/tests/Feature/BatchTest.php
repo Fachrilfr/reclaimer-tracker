@@ -41,8 +41,7 @@ class BatchTest extends TestCase
             'parent_batch_id' => null,
             'process_status' => 'completed',
             'ink_weight' => 300,
-            'solvent_used_weight' => 200,
-            'recovery_weight' => 180,
+            'recovery_weight' => 120,
             'oil_temp' => 140,
             'vapour_temp' => 50,
             'notes' => 'Start Pkl 07.30',
@@ -62,18 +61,18 @@ class BatchTest extends TestCase
 
         $response->assertCreated()
             ->assertJsonPath('data.batch_number', 'BR-20261020-001')
-            ->assertJsonPath('data.total_input_weight', 500)
-            ->assertJsonPath('data.residue_estimated_weight', 320)
-            ->assertJsonPath('data.recovery_rate_percent', 36)
-            ->assertJsonPath('data.residue_rate_percent', 64)
-            ->assertJsonPath('data.solvent_balance_after', 980)
+            ->assertJsonPath('data.total_input_weight', 300)
+            ->assertJsonPath('data.residue_estimated_weight', 180)
+            ->assertJsonPath('data.recovery_rate_percent', 40)
+            ->assertJsonPath('data.residue_rate_percent', 60)
+            ->assertJsonPath('data.solvent_balance_after', 1120)
             ->assertJsonPath('data.is_recovery_low', false)
             ->assertJsonPath('data.is_temp_abnormal', false)
             ->assertJsonPath('data.operator', 'Operator Aziz');
 
-        // Buku besar: saldo awal 1000, keluar 200 -> 800, masuk 180 -> 980
-        $this->assertDatabaseHas('solvent_ledger', ['type' => 'out', 'amount' => 200, 'previous_balance' => 1000, 'current_balance' => 800]);
-        $this->assertDatabaseHas('solvent_ledger', ['type' => 'in', 'amount' => 180, 'previous_balance' => 800, 'current_balance' => 980]);
+        // Buku besar: saldo awal 1000, hasil recovery masuk 120 -> 1120. Batch tidak mengurangi saldo.
+        $this->assertDatabaseHas('solvent_ledger', ['type' => 'in', 'amount' => 120, 'previous_balance' => 1000, 'current_balance' => 1120]);
+        $this->assertDatabaseMissing('solvent_ledger', ['type' => 'out']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'create', 'entity_type' => 'reclaimer_batches']);
 
         $this->storeAs($this->operator)->assertJsonPath('data.batch_number', 'BR-20261020-002');
@@ -81,7 +80,7 @@ class BatchTest extends TestCase
 
     public function test_batch_rejected_when_recovery_exceeds_input(): void
     {
-        $this->storeAs($this->operator, ['recovery_weight' => 500.01])
+        $this->storeAs($this->operator, ['recovery_weight' => 300.01])
             ->assertUnprocessable()
             ->assertJsonValidationErrors(['recovery_weight']);
 
@@ -89,12 +88,13 @@ class BatchTest extends TestCase
         $this->assertDatabaseCount('solvent_ledger', 1);
     }
 
-    public function test_batch_rejected_when_solvent_exceeds_balance(): void
+    public function test_batch_ignores_solvent_used_field(): void
     {
-        $this->storeAs($this->operator, ['solvent_used_weight' => 1000.5, 'recovery_weight' => 100])
-            ->assertUnprocessable()
-            ->assertJsonValidationErrors(['solvent_used_weight'])
-            ->assertJsonPath('errors.solvent_used_weight.0', 'Solvent dipakai melebihi saldo penyimpanan (1.000,00 kg). Periksa kembali angka solvent.');
+        // Solvent dipakai dicatat lewat /api/solvent-usages, bukan di batch
+        $this->storeAs($this->operator, ['solvent_used_weight' => 200])
+            ->assertCreated()
+            ->assertJsonPath('data.total_input_weight', 300)
+            ->assertJsonPath('data.solvent_balance_after', 1120);
     }
 
     public function test_temperatures_and_required_fields_are_validated(): void
@@ -121,8 +121,8 @@ class BatchTest extends TestCase
 
     public function test_low_recovery_is_flagged_against_target(): void
     {
-        // 150 / 500 = 30% < target 35%
-        $this->storeAs($this->operator, ['recovery_weight' => 150])
+        // 90 / 300 = 30% < target 35%
+        $this->storeAs($this->operator, ['recovery_weight' => 90])
             ->assertCreated()
             ->assertJsonPath('data.recovery_rate_percent', 30)
             ->assertJsonPath('data.is_recovery_low', true);
@@ -146,7 +146,7 @@ class BatchTest extends TestCase
 
         $this->actingAs($this->operator, 'sanctum')->getJson('/api/batches/create')
             ->assertOk()
-            ->assertJsonPath('data.solvent_balance', 980)
+            ->assertJsonPath('data.solvent_balance', 1120)
             ->assertJsonPath('data.target_recovery_rate', 35)
             ->assertJsonPath('data.suggested_shift_id', Shift::where('code', 'SHIFT-1')->value('id'))
             ->assertJsonPath('data.machine.status', 'operating')

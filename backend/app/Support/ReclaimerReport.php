@@ -6,6 +6,7 @@ use App\Models\Parameter;
 use App\Models\ReclaimerBatch;
 use App\Models\Shift;
 use App\Models\SolventLedger;
+use App\Models\SolventUsage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
@@ -59,6 +60,7 @@ final class ReclaimerReport
                 'open_chain_count' => $chains->count() - $completed->count(),
             ],
             'solvent' => $this->solvent(),
+            'solvent_usages' => $this->solventUsages(),
             'by_shift' => Shift::where('is_active', true)->orderBy('id')->get()
                 ->map(fn (Shift $shift) => ['shift' => $shift->name]
                     + BatchChain::summarize($completed->filter(fn (BatchChain $c) => $c->root->shift_id === $shift->id)))
@@ -78,9 +80,19 @@ final class ReclaimerReport
     {
         return $chain->toArray() + [
             'regu' => $chain->root->regu,
-            'ink' => $chain->ink(),
-            'solvent_used' => $chain->solventUsed(),
         ];
+    }
+
+    /** Pengambilan solvent dari saldo di periode ini, terpisah dari batch. */
+    private function solventUsages(): array
+    {
+        return SolventUsage::with(['shift', 'user'])
+            ->whereDate('date', '>=', $this->start->toDateString())
+            ->whereDate('date', '<=', $this->end->toDateString())
+            ->orderBy('date')->orderBy('id')
+            ->get()
+            ->map(fn (SolventUsage $u) => $u->present())
+            ->all();
     }
 
     /** Saldo awal, mutasi, dan saldo akhir solvent di periode ini (FR-11). */

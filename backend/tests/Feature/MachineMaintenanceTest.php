@@ -39,7 +39,7 @@ class MachineMaintenanceTest extends TestCase
     {
         return $this->postJson('/api/batches', [
             'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
-            'process_status' => 'completed', 'ink_weight' => 300, 'solvent_used_weight' => 200,
+            'process_status' => 'completed', 'ink_weight' => 500,
             'recovery_weight' => 180, 'oil_temp' => 140, 'vapour_temp' => 50,
         ]);
     }

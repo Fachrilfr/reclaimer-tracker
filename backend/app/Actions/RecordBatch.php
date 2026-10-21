@@ -22,7 +22,7 @@ class RecordBatch
 {
     /**
      * @param  array{date: string, shift_id: int, regu: ?string, is_continuation: bool, parent_batch_id: ?int, process_status: string,
-     *               ink_weight: float, solvent_used_weight: float, recovery_weight: float,
+     *               ink_weight: float, recovery_weight: float,
      *               oil_temp: float, vapour_temp: float, notes: ?string}  $data
      */
     public function handle(Request $request, array $data): ReclaimerBatch
@@ -45,13 +45,12 @@ class RecordBatch
 
             $balance = new MaterialBalance(
                 ink: $data['ink_weight'],
-                solventUsed: $data['solvent_used_weight'],
                 recovery: $data['recovery_weight'],
                 priorInput: $priorInput,
                 priorRecovery: $priorRecovery,
             );
 
-            $this->ensureValid($balance, $balanceBefore, $root !== null);
+            $this->ensureValid($balance, $root !== null);
 
             $temperature = config('reclaimer.temperature');
             $isTempAbnormal = $data['oil_temp'] < $temperature['oil']['min'] || $data['oil_temp'] > $temperature['oil']['max']
@@ -72,7 +71,6 @@ class RecordBatch
                 'parent_batch_id' => $root?->id,
                 'process_status' => $data['process_status'],
                 'ink_weight' => $data['ink_weight'],
-                'solvent_used_weight' => $data['solvent_used_weight'],
                 'recovery_weight' => $data['recovery_weight'],
                 'oil_temp' => $data['oil_temp'],
                 'vapour_temp' => $data['vapour_temp'],
@@ -94,7 +92,7 @@ class RecordBatch
 
             AuditLog::record($request, 'create', $batch, $batch->only([
                 'batch_number', 'date', 'shift_id', 'is_continuation', 'parent_batch_id', 'process_status', 'ink_weight',
-                'solvent_used_weight', 'recovery_weight', 'oil_temp', 'vapour_temp', 'solvent_balance_after',
+                'recovery_weight', 'oil_temp', 'vapour_temp', 'solvent_balance_after',
             ]));
 
             if ($isCompleted) {
@@ -164,28 +162,17 @@ class RecordBatch
         return [$root, $chain->input(), $chain->recovery()];
     }
 
-    private function ensureValid(MaterialBalance $balance, float $balanceBefore, bool $isContinuation): void
+    private function ensureValid(MaterialBalance $balance, bool $isContinuation): void
     {
-        $errors = [];
-
         if ($balance->recoveryExceedsInput()) {
-            $errors['recovery_weight'] = $isContinuation
-                ? sprintf(
-                    'Hasil recovery melebihi bahan masuk rangkaian batch (%s kg). Periksa kembali angka recovery.',
-                    number_format($balance->chainInput(), 2, ',', '.'),
-                )
-                : 'Hasil recovery melebihi bahan masuk (Tinta X + solvent). Periksa kembali angka recovery.';
-        }
-
-        if ($balance->solventUsed > $balanceBefore) {
-            $errors['solvent_used_weight'] = sprintf(
-                'Solvent dipakai melebihi saldo penyimpanan (%s kg). Periksa kembali angka solvent.',
-                number_format($balanceBefore, 2, ',', '.'),
-            );
-        }
-
-        if ($errors) {
-            throw ValidationException::withMessages($errors);
+            throw ValidationException::withMessages([
+                'recovery_weight' => $isContinuation
+                    ? sprintf(
+                        'Hasil recovery melebihi Tinta X rangkaian batch (%s kg). Periksa kembali angka recovery.',
+                        number_format($balance->chainInput(), 2, ',', '.'),
+                    )
+                    : 'Hasil recovery melebihi Tinta X yang masuk. Periksa kembali angka recovery.',
+            ]);
         }
     }
 
@@ -199,29 +186,22 @@ class RecordBatch
         return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
-    /** Buku besar mutasi solvent (FR-10): keluar sebesar solvent dipakai, masuk sebesar hasil recovery. */
+    /** Buku besar mutasi solvent (FR-10): hasil recovery masuk ke saldo. Pemakaian dicatat di RecordSolventUsage. */
     private function writeLedger(ReclaimerBatch $batch, Request $request, float $balance, MaterialBalance $material): void
     {
-        $mutations = [
-            ['out', $material->solventUsed, -$material->solventUsed],
-            ['in', $material->recovery, $material->recovery],
-        ];
-
-        foreach ($mutations as [$type, $amount, $delta]) {
-            if ($amount <= 0) {
-                continue;
-            }
-
-            SolventLedger::create([
-                'mutation_date' => now(),
-                'type' => $type,
-                'amount' => $amount,
-                'previous_balance' => $balance,
-                'current_balance' => $balance = round($balance + $delta, 2),
-                'batch_id' => $batch->id,
-                'user_id' => $request->user()->id,
-                'created_at' => now(),
-            ]);
+        if ($material->recovery <= 0) {
+            return;
         }
+
+        SolventLedger::create([
+            'mutation_date' => now(),
+            'type' => 'in',
+            'amount' => $material->recovery,
+            'previous_balance' => $balance,
+            'current_balance' => round($balance + $material->recovery, 2),
+            'batch_id' => $batch->id,
+            'user_id' => $request->user()->id,
+            'created_at' => now(),
+        ]);
     }
 }

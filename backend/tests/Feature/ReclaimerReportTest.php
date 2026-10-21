@@ -24,14 +24,18 @@ class ReclaimerReportTest extends TestCase
         $operator = User::where('nik', 'OP-1001')->first();
         $shift = Shift::orderBy('id')->value('id');
 
-        // Saldo awal 1000 kg. Batch di 3 Okt dan 15 Okt, masing-masing disimpan pada harinya.
-        foreach ([['2026-10-03', 300, 200, 200], ['2026-10-15', 400, 100, 100]] as [$date, $ink, $solvent, $recovery]) {
+        // Saldo awal 1000 kg. Batch di 3 Okt dan 15 Okt, masing-masing disimpan pada harinya,
+        // lalu solvent diambil dari saldo di hari yang sama.
+        foreach ([['2026-10-03', 500, 200, 200], ['2026-10-15', 500, 100, 100]] as [$date, $ink, $recovery, $solvent]) {
             Carbon::setTestNow("{$date} 14:00:00");
             $this->app['auth']->forgetGuards();
             $this->actingAs($operator, 'sanctum')->postJson('/api/batches', [
                 'date' => $date, 'shift_id' => $shift, 'is_continuation' => false, 'process_status' => 'completed',
-                'ink_weight' => $ink, 'solvent_used_weight' => $solvent, 'recovery_weight' => $recovery,
+                'ink_weight' => $ink, 'recovery_weight' => $recovery,
                 'oil_temp' => $date === '2026-10-15' ? 170 : 140, 'vapour_temp' => 50,
+            ])->assertCreated();
+            $this->postJson('/api/solvent-usages', [
+                'date' => $date, 'shift_id' => $shift, 'weight' => $solvent, 'purpose' => 'Pencucian mesin cetak',
             ])->assertCreated();
         }
         Carbon::setTestNow('2026-10-20 10:00:00');
@@ -59,14 +63,16 @@ class ReclaimerReportTest extends TestCase
         foreach (['input', 'recovery', 'residue', 'recovery_rate', 'chain_count'] as $key) {
             $this->assertSame($dashboard['totals'][$key], $report['summary'][$key], $key);
         }
-        // (200 + 100) / (500 + 500) = 30%
+        // Bahan masuk = Tinta X saja: (200 + 100) / (500 + 500) = 30%
         $this->assertEquals(30, $report['summary']['recovery_rate']);
         $this->assertSame('week', $report['breakdown']['unit']);
         $this->assertCount(2, $report['chains']);
         $this->assertCount(1, $report['below_target']);      // 100/500 = 20%
         $this->assertCount(1, $report['temp_abnormal']);
 
-        // Saldo: 1000 - 200 + 200 - 100 + 100 = 1000
+        // Saldo: 1000 + 200 - 200 + 100 - 100 = 1000. Pemakaian solvent dari catatan terpisah.
+        $this->assertCount(2, $report['solvent_usages']);
+        $this->assertSame('Pencucian mesin cetak', $report['solvent_usages'][0]['purpose']);
         $this->assertEquals(1000, $report['solvent']['opening']);
         $this->assertEquals(300, $report['solvent']['used']);
         $this->assertEquals(300, $report['solvent']['recovered']);
@@ -96,11 +102,15 @@ class ReclaimerReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Di bawah target', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Pemakaian solvent', 'Di bawah target', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
         $summary = $book->getSheetByName('Ringkasan');
-        $this->assertSame('Bahan masuk (kg)', $summary->getCell('A11')->getValue());
-        $this->assertEquals(1000, $summary->getCell('B11')->getValue());
-        $this->assertEquals(30, $summary->getCell('B14')->getValue());
+        $this->assertSame('Tinta X masuk (kg)', $summary->getCell('A9')->getValue());
+        $this->assertEquals(1000, $summary->getCell('B9')->getValue());
+        $this->assertSame('Recovery rate', $summary->getCell('A12')->getValue());
+        $this->assertEquals(30, $summary->getCell('B12')->getValue());
+        $usages = $book->getSheetByName('Pemakaian solvent');
+        $this->assertEquals(200, $usages->getCell('C6')->getValue());
+        $this->assertEquals(300, $usages->getCell('C8')->getValue()); // baris total
         $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah target')->getCell('A6')->getValue());
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);

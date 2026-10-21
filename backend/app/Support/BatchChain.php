@@ -64,16 +64,6 @@ final class BatchChain
         return round($this->batches->sum('total_input_weight'), 2);
     }
 
-    public function ink(): float
-    {
-        return round($this->batches->sum('ink_weight'), 2);
-    }
-
-    public function solventUsed(): float
-    {
-        return round($this->batches->sum('solvent_used_weight'), 2);
-    }
-
     public function recovery(): float
     {
         return round($this->batches->sum('recovery_weight'), 2);
@@ -109,9 +99,8 @@ final class BatchChain
             'chain_count' => $chains->count(),
             'batch_count' => $chains->sum(fn (self $c) => $c->batches->count()),
             'below_target_count' => $chains->filter(fn (self $c) => $c->isBelowTarget())->count(),
+            // Bahan masuk = Tinta X (lihat MaterialBalance)
             'input' => $input,
-            'ink' => round($chains->sum(fn (self $c) => $c->ink()), 2),
-            'solvent_used' => round($chains->sum(fn (self $c) => $c->solventUsed()), 2),
             'recovery' => $recovery,
             'residue' => $residue,
             'recovery_rate' => MaterialBalance::rate($recovery, $input),
