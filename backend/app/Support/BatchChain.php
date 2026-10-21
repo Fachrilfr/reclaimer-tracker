@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\ReclaimerBatch;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -63,16 +64,6 @@ final class BatchChain
         return round($this->batches->sum('total_input_weight'), 2);
     }
 
-    public function ink(): float
-    {
-        return round($this->batches->sum('ink_weight'), 2);
-    }
-
-    public function solventUsed(): float
-    {
-        return round($this->batches->sum('solvent_used_weight'), 2);
-    }
-
     public function recovery(): float
     {
         return round($this->batches->sum('recovery_weight'), 2);
@@ -108,14 +99,37 @@ final class BatchChain
             'chain_count' => $chains->count(),
             'batch_count' => $chains->sum(fn (self $c) => $c->batches->count()),
             'below_target_count' => $chains->filter(fn (self $c) => $c->isBelowTarget())->count(),
+            // Bahan masuk = Tinta X (lihat MaterialBalance)
             'input' => $input,
-            'ink' => round($chains->sum(fn (self $c) => $c->ink()), 2),
-            'solvent_used' => round($chains->sum(fn (self $c) => $c->solventUsed()), 2),
             'recovery' => $recovery,
             'residue' => $residue,
             'recovery_rate' => MaterialBalance::rate($recovery, $input),
             'residue_rate' => MaterialBalance::rate($residue, $input),
         ];
+    }
+
+    /** Kelompokkan rangkaian selesai per hari, minggu (Senin s/d Minggu), atau bulan, sampai hari ini. */
+    public static function buckets(Collection $completed, Carbon $from, Carbon $to, string $unit): array
+    {
+        $buckets = [];
+        $cursor = $from->copy()->startOfDay();
+        $last = $to->isFuture() ? now()->endOfDay() : $to;
+
+        while ($cursor->lte($last)) {
+            $bucketEnd = match ($unit) {
+                'day' => $cursor->copy()->endOfDay(),
+                'week' => $cursor->copy()->endOfWeek(Carbon::SUNDAY)->min($to),
+                'month' => $cursor->copy()->endOfMonth(),
+            };
+
+            $inBucket = $completed->filter(fn (self $c) => $c->root->date->between($cursor, $bucketEnd));
+            $buckets[] = ['start' => $cursor->toDateString(), 'end' => $bucketEnd->toDateString()]
+                + self::summarize($inBucket);
+
+            $cursor = $bucketEnd->copy()->addDay()->startOfDay();
+        }
+
+        return $buckets;
     }
 
     public function toArray(): array

@@ -116,7 +116,7 @@ final class DashboardReport
 
         $unit = $this->period === 'month' ? 'week' : 'month';
 
-        return ['unit' => $unit, 'rows' => $this->buckets($completed, $this->start, $this->end, $unit)];
+        return ['unit' => $unit, 'rows' => BatchChain::buckets($completed, $this->start, $this->end, $unit)];
     }
 
     /**
@@ -137,32 +137,8 @@ final class DashboardReport
             'unit' => $unit,
             'target_recovery_rate' => $this->target,
             // Titik dengan chain_count 0 tidak punya recovery rate dan tidak digambar
-            'points' => $this->buckets($completed, $from, $to, $unit),
+            'points' => BatchChain::buckets($completed, $from, $to, $unit),
         ];
-    }
-
-    /** Kelompokkan rangkaian selesai per hari, minggu (Senin s/d Minggu), atau bulan, sampai hari ini. */
-    private function buckets(Collection $completed, Carbon $from, Carbon $to, string $unit): array
-    {
-        $buckets = [];
-        $cursor = $from->copy()->startOfDay();
-        $last = $to->isFuture() ? now()->endOfDay() : $to;
-
-        while ($cursor->lte($last)) {
-            $bucketEnd = match ($unit) {
-                'day' => $cursor->copy()->endOfDay(),
-                'week' => $cursor->copy()->endOfWeek(Carbon::SUNDAY)->min($to),
-                'month' => $cursor->copy()->endOfMonth(),
-            };
-
-            $inBucket = $completed->filter(fn (BatchChain $c) => $c->root->date->between($cursor, $bucketEnd));
-            $buckets[] = ['start' => $cursor->toDateString(), 'end' => $bucketEnd->toDateString()]
-                + BatchChain::summarize($inBucket);
-
-            $cursor = $bucketEnd->copy()->addDay()->startOfDay();
-        }
-
-        return $buckets;
     }
 
     /**

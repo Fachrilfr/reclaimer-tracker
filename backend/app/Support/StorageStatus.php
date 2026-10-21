@@ -47,16 +47,22 @@ final class StorageStatus
         $thresholds ??= self::thresholds();
         $days = (int) round($today->diffInDays($pallet->expiry_date->copy()->startOfDay(), false));
 
-        $level = match (true) {
+        $level = self::levelFor($days, $thresholds);
+
+        $elapsed = (int) round($pallet->start_date->copy()->startOfDay()->diffInDays($today, false));
+
+        return new self($level, $days, max(0, $elapsed), $pallet->max_storage_days);
+    }
+
+    /** Jenjang dari sisa hari, juga untuk posisi stok pada tanggal lampau (laporan). */
+    public static function levelFor(int $days, array $thresholds): string
+    {
+        return match (true) {
             $days <= $thresholds['critical'] => 'kritis',
             $days <= $thresholds['urgent'] => 'mendesak',
             $days <= $thresholds['early'] => 'perhatian',
             default => 'aman',
         };
-
-        $elapsed = (int) round($pallet->start_date->copy()->startOfDay()->diffInDays($today, false));
-
-        return new self($level, $days, max(0, $elapsed), $pallet->max_storage_days);
     }
 
     public function needsAction(): bool

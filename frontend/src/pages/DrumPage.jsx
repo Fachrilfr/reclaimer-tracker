@@ -8,42 +8,13 @@ import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import PalletNotes from '../components/PalletNotes.jsx';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
 // Halaman ini tahap operator: dari area reclaimer ke TPS. Pallet penuh dianggap
 // dikirim ke TPS dan diserahkan ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
-
-// Keterangan yang diisi saat mulai pallet dan saat mencatat drum, ditambah keterangan
-// otomatis dari sistem (misalnya terlambat karena mesin maintenance)
-function PalletNotes({ pallet }) {
-  const systemNote = tpsDelayText(pallet.tps);
-  if (!pallet.notes && !pallet.drum_notes.length && !systemNote) return <span className="text-gray-600">–</span>;
-
-  return (
-    <ul className="space-y-0.5">
-      {systemNote && (
-        <li>
-          <span className="text-gray-600">Sistem: </span>
-          {systemNote}
-        </li>
-      )}
-      {pallet.notes && (
-        <li>
-          <span className="text-gray-600">Pallet: </span>
-          {pallet.notes}
-        </li>
-      )}
-      {pallet.drum_notes.map((d) => (
-        <li key={d.sequence}>
-          <span className="text-gray-600">Drum ke-{d.sequence}: </span>
-          {d.notes}
-        </li>
-      ))}
-    </ul>
-  );
-}
 
 // Form satu tanggal + keterangan, dipakai untuk mulai pallet dan catat drum penuh
 function DateForm({ id, dateField, label, hint, submitLabel, today, onSubmit }) {

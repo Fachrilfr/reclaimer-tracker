@@ -7,7 +7,7 @@ use Illuminate\Validation\Validator;
 
 /**
  * Validasi bentuk data batch (FR-01 s/d FR-06). Aturan yang butuh saldo dan rangkaian
- * batch terkini (recovery vs bahan masuk, solvent vs saldo) dicek di RecordBatch,
+ * batch terkini (recovery vs Tinta X rangkaian) dicek di RecordBatch,
  * di dalam kunci saldo.
  */
 class StoreBatchRequest extends FormRequest
@@ -22,7 +22,6 @@ class StoreBatchRequest extends FormRequest
             'parent_batch_id' => ['nullable', 'required_if:is_continuation,true', 'integer', 'exists:reclaimer_batches,id'],
             'process_status' => ['required', 'in:in_progress,completed'],
             'ink_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
-            'solvent_used_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
             'recovery_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
             'oil_temp' => ['required', 'numeric', 'between:0,400'],
             'vapour_temp' => ['required', 'numeric', 'between:0,400'],
@@ -73,7 +72,6 @@ class StoreBatchRequest extends FormRequest
             'process_status.required' => 'Pilih status proses: selesai atau belum selesai.',
             'process_status.in' => 'Status proses tidak dikenal. Pilih selesai atau belum selesai.',
             'ink_weight.required' => 'Isi berat Tinta X dalam kg.',
-            'solvent_used_weight.required' => 'Isi berat solvent dipakai dalam kg. Isi 0 bila tidak memakai solvent.',
             'recovery_weight.required' => 'Isi berat hasil recovery dalam kg. Isi 0 bila belum ada hasil.',
             'oil_temp.required' => 'Isi suhu oli (Oil Temperature).',
             'vapour_temp.required' => 'Isi suhu uap (Vapour Temperature).',
@@ -100,7 +98,6 @@ class StoreBatchRequest extends FormRequest
             'parent_batch_id' => isset($data['parent_batch_id']) ? (int) $data['parent_batch_id'] : null,
             'process_status' => $data['process_status'],
             'ink_weight' => round((float) $data['ink_weight'], 2),
-            'solvent_used_weight' => round((float) $data['solvent_used_weight'], 2),
             'recovery_weight' => round((float) $data['recovery_weight'], 2),
             'oil_temp' => round((float) $data['oil_temp'], 2),
             'vapour_temp' => round((float) $data['vapour_temp'], 2),

@@ -26,7 +26,7 @@ class BatchHistoryTest extends TestCase
 
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [
             'shift_id' => $this->shifts[0], 'is_continuation' => false, 'process_status' => 'completed',
-            'oil_temp' => 140, 'vapour_temp' => 50, 'solvent_used_weight' => 0, 'notes' => null,
+            'oil_temp' => 140, 'vapour_temp' => 50, 'notes' => null,
         ])->assertCreated()->json('data.id');
 
         // 10 Okt: memenuhi target

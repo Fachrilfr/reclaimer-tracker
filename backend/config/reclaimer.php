@@ -12,4 +12,7 @@ return [
     // Penerima pemberitahuan di aplikasi saat mesin mulai dan selesai maintenance (FR-21)
     'maintenance_notify_roles' => ['hse', 'supervisor', 'management', 'admin'],
 
+    // Penerima pengingat masa simpan limbah B3 (PRD §5.1 catatan notifikasi)
+    'b3_reminder_roles' => ['hse'],
+
 ];

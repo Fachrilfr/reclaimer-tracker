@@ -38,7 +38,6 @@ function emptyForm(formData, keep = {}) {
     parent_batch_id: '',
     process_status: 'completed',
     ink_weight: '',
-    solvent_used_weight: '',
     recovery_weight: '',
     oil_temp: '',
     vapour_temp: '',
@@ -107,7 +106,7 @@ function BatchForm({ formData, onSaved }) {
   const [saved, setSaved] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const notesRef = useRef(null);
-  const solventRef = useRef(null);
+  const recoveryRef = useRef(null);
 
   const set = (field) => (e) => {
     setForm((f) => ({ ...f, [field]: e.target.value }));
@@ -131,15 +130,14 @@ function BatchForm({ formData, onSaved }) {
     setErrors({});
     setFormError('');
     setSaved(null);
-    requestAnimationFrame(() => solventRef.current?.focus());
+    requestAnimationFrame(() => recoveryRef.current?.focus());
   };
 
-  // Ringkasan material balance langsung saat angka diisi (FR-04), rumus PRD §8
+  // Ringkasan material balance langsung saat angka diisi (FR-04). Bahan masuk = Tinta X;
+  // solvent dipakai dicatat terpisah di halaman Pemakaian solvent.
   const summary = useMemo(() => {
-    const ink = form.is_continuation ? 0 : numberOrZero(form.ink_weight);
-    const solvent = numberOrZero(form.solvent_used_weight);
     const recovery = numberOrZero(form.recovery_weight);
-    const input = round2(ink + solvent);
+    const input = round2(form.is_continuation ? 0 : numberOrZero(form.ink_weight));
     const chainInput = round2((parent?.input ?? 0) + input);
     const chainRecovery = round2((parent?.recovery ?? 0) + recovery);
 
@@ -150,9 +148,8 @@ function BatchForm({ formData, onSaved }) {
       chainInput,
       chainRecovery,
       rate: chainInput > 0 ? round2((chainRecovery / chainInput) * 100) : null,
-      balanceAfter: round2(balance - solvent + recovery),
+      balanceAfter: round2(balance + recovery),
       recoveryExceeds: chainRecovery > chainInput,
-      solventExceeds: solvent > balance,
     };
   }, [form, parent, balance]);
 
@@ -175,7 +172,6 @@ function BatchForm({ formData, onSaved }) {
     if (!form.is_continuation) {
       numberField('ink_weight', 'Isi berat Tinta X yang masuk ke mesin.', { positive: true });
     }
-    numberField('solvent_used_weight', 'Isi berat solvent dipakai dalam kg. Isi 0 bila tidak memakai solvent.');
     numberField('recovery_weight', 'Isi berat hasil recovery dalam kg. Isi 0 bila belum ada hasil.');
     numberField('oil_temp', 'Isi suhu oli (Oil Temperature).');
     numberField('vapour_temp', 'Isi suhu uap (Vapour Temperature).');
@@ -183,11 +179,8 @@ function BatchForm({ formData, onSaved }) {
 
     if (!errs.recovery_weight && summary.recoveryExceeds) {
       errs.recovery_weight = form.is_continuation
-        ? `Hasil recovery melebihi bahan masuk rangkaian batch (${formatNumber(summary.chainInput)} kg). Periksa kembali angka recovery.`
-        : 'Hasil recovery melebihi bahan masuk (Tinta X + solvent). Periksa kembali angka recovery.';
-    }
-    if (!errs.solvent_used_weight && summary.solventExceeds) {
-      errs.solvent_used_weight = `Solvent dipakai melebihi saldo penyimpanan (${formatNumber(balance)} kg). Periksa kembali angka solvent.`;
+        ? `Hasil recovery melebihi Tinta X rangkaian batch (${formatNumber(summary.chainInput)} kg). Periksa kembali angka recovery.`
+        : 'Hasil recovery melebihi Tinta X yang masuk. Periksa kembali angka recovery.';
     }
     return errs;
   };
@@ -216,7 +209,6 @@ function BatchForm({ formData, onSaved }) {
           parent_batch_id: form.is_continuation ? Number(form.parent_batch_id) : null,
           process_status: form.process_status,
           ink_weight: form.is_continuation ? 0 : parseDecimal(form.ink_weight),
-          solvent_used_weight: parseDecimal(form.solvent_used_weight),
           recovery_weight: parseDecimal(form.recovery_weight),
           oil_temp: parseDecimal(form.oil_temp),
           vapour_temp: parseDecimal(form.vapour_temp),
@@ -277,7 +269,7 @@ function BatchForm({ formData, onSaved }) {
                     <p className="font-mono font-medium text-gray-900">{chainLabel(chain)}</p>
                     <p className="text-caption text-gray-600">
                       Mulai {formatDate(chain.date)} · {chain.shift}. Terakhir {chain.last_shift},{' '}
-                      {formatDate(chain.last_date)}. Bahan masuk {formatNumber(chain.input)} kg, recovery sejauh ini{' '}
+                      {formatDate(chain.last_date)}. Tinta X masuk {formatNumber(chain.input)} kg, recovery sejauh ini{' '}
                       {formatNumber(chain.recovery)} kg.
                     </p>
                   </div>
@@ -384,7 +376,7 @@ function BatchForm({ formData, onSaved }) {
             </div>
             <p id="continuation-hint" className="mt-1 text-caption text-gray-600">
               {openChains.length
-                ? 'Batch lanjutan tidak membawa Tinta X baru. Solvent dan hasil recovery boleh ditambah.'
+                ? 'Batch lanjutan tidak membawa Tinta X baru. Isi hasil recovery dari sisa prosesnya.'
                 : 'Tidak ada batch belum selesai yang bisa dilanjutkan.'}
             </p>
           </fieldset>
@@ -416,7 +408,7 @@ function BatchForm({ formData, onSaved }) {
                     </dd>
                   </div>
                   <div>
-                    <dt className="text-caption text-gray-600">Bahan masuk sejauh ini</dt>
+                    <dt className="text-caption text-gray-600">Tinta X masuk sejauh ini</dt>
                     <dd className="tabular-nums text-gray-900">{formatNumber(parent.input)} kg</dd>
                   </div>
                   <div>
@@ -433,9 +425,20 @@ function BatchForm({ formData, onSaved }) {
           <h2 id="weight-title" className="text-h2 font-semibold">
             Berat dan suhu
           </h2>
-          <p className="mt-1 text-body text-gray-600">Dalam kg, dari timbangan. Gunakan koma untuk desimal.</p>
+          <p className="mt-1 text-body text-gray-600">
+            Dalam kg, dari timbangan. Gunakan koma untuk desimal.
+            {can('solvent', 'isi') && (
+              <>
+                {' '}Solvent yang diambil dari saldo dicatat di{' '}
+                <Link to="/solvent" className="focus-ring rounded font-semibold text-brand-blue-700 hover:underline">
+                  Pemakaian solvent
+                </Link>
+                .
+              </>
+            )}
+          </p>
 
-          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {form.is_continuation ? (
               <div>
                 <p className="mb-1.5 text-label font-medium text-gray-800">Tinta X masuk</p>
@@ -449,25 +452,20 @@ function BatchForm({ formData, onSaved }) {
               </Field>
             )}
             <Field
-              id="solvent_used_weight"
-              label="Solvent dipakai"
+              id="recovery_weight"
+              label="Hasil recovery"
               required
-              hint={`Saldo saat ini ${formatNumber(balance)} kg.`}
-              error={errors.solvent_used_weight}
+              hint="Solvent yang dihasilkan dari Tinta X, masuk ke saldo."
+              error={errors.recovery_weight}
             >
               {(props) => (
                 <NumberInput
                   {...props}
-                  ref={solventRef}
+                  ref={recoveryRef}
                   suffix="kg"
-                  value={form.solvent_used_weight}
-                  onChange={set('solvent_used_weight')}
+                  value={form.recovery_weight}
+                  onChange={set('recovery_weight')}
                 />
-              )}
-            </Field>
-            <Field id="recovery_weight" label="Hasil recovery" required error={errors.recovery_weight}>
-              {(props) => (
-                <NumberInput {...props} suffix="kg" value={form.recovery_weight} onChange={set('recovery_weight')} />
               )}
             </Field>
           </div>
@@ -613,7 +611,7 @@ function BatchForm({ formData, onSaved }) {
 
           <dl className="mt-4 space-y-2 text-body tabular-nums" aria-live="polite">
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-600">Bahan masuk</dt>
+              <dt className="text-gray-600">Tinta X masuk</dt>
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.input)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
@@ -621,7 +619,7 @@ function BatchForm({ formData, onSaved }) {
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.recovery)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-600">Selisih bahan (residu estimasi)</dt>
+              <dt className="text-gray-600">Residu estimasi (Tinta X − recovery)</dt>
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.residue)} kg</dd>
             </div>
             {form.is_continuation && (
@@ -730,7 +728,7 @@ export default function BatchPage() {
         title="Input batch"
         description={
           canFill
-            ? 'Catat satu batch reclaimer. Selisih bahan, recovery rate, dan saldo solvent dihitung otomatis.'
+            ? 'Catat satu batch reclaimer. Residu, recovery rate, dan saldo solvent dihitung otomatis dari Tinta X dan hasil recovery.'
             : 'Batch reclaimer yang dicatat operator, dengan hasil material balance-nya.'
         }
       />

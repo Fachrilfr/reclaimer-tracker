@@ -4,7 +4,13 @@ namespace Database\Seeders;
 
 use App\Actions\RecordBatch;
 use App\Actions\RecordPallet;
+use App\Actions\RecordSolventUsage;
+use App\Actions\RecordSuratJalan;
+use App\Actions\SendStorageReminders;
 use App\Actions\SetMachineStatus;
+use App\Models\Vendor;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\UploadedFile;
 use App\Models\B3Pallet;
 use App\Models\ReclaimerBatch;
 use App\Models\Shift;
@@ -23,9 +29,10 @@ use RuntimeException;
  *   php artisan db:seed --class=DemoDataSeeder
  *
  * Isi: batch 45 hari terakhir (sebagian dilanjutkan lintas shift, sebagian di bawah
- * target, sebagian suhu di luar normal), satu batch hari ini yang belum selesai, dan
- * pallet B3 dengan berbagai sisa masa simpan. Semua dicatat lewat RecordBatch dan
- * RecordPallet, jadi saldo solvent, rangkaian, dan jejak audit sama seperti input asli.
+ * target, sebagian suhu di luar normal), satu batch hari ini yang belum selesai,
+ * pemakaian solvent dari saldo, dan pallet B3 dengan berbagai sisa masa simpan. Semua
+ * dicatat lewat RecordBatch, RecordSolventUsage, dan RecordPallet, jadi saldo solvent,
+ * rangkaian, dan jejak audit sama seperti input asli.
  * Angka acak memakai seed tetap, jadi hasilnya sama setiap kali dijalankan.
  */
 class DemoDataSeeder extends Seeder
@@ -62,7 +69,11 @@ class DemoDataSeeder extends Seeder
         try {
             $this->seedMaintenance($realNow);
             $this->seedPallets($realNow);
+            $this->seedSuratJalan($realNow);
             $this->seedBatches($realNow);
+            // Pengingat masa simpan hari ini, supaya log pengingat dan lonceng HSE terisi
+            Carbon::setTestNow($realNow);
+            app(SendStorageReminders::class)->handle($realNow);
         } finally {
             Carbon::setTestNow();
         }
@@ -78,6 +89,7 @@ class DemoDataSeeder extends Seeder
     {
         $shifts = Shift::orderBy('id')->get()->keyBy('code');
         $record = app(RecordBatch::class);
+        $usage = app(RecordSolventUsage::class);
         $pending = null; // rangkaian yang menunggu lanjutan di shift berikutnya
 
         for ($day = self::DAYS; $day >= 1; $day--) {
@@ -98,6 +110,12 @@ class DemoDataSeeder extends Seeder
                 }
                 $pending = $this->startChain($record, $date, $shiftId);
             }
+
+            // Solvent diambil dari saldo hampir tiap hari, dicatat setelah semua shift
+            if ($this->chance(80)) {
+                Carbon::setTestNow($date->copy()->setTime(23, 55));
+                $this->useSolvent($usage, $date, $shifts['SHIFT-3']->id);
+            }
         }
 
         // Rangkaian terakhir yang masih terbuka diselesaikan, lalu satu batch hari ini
@@ -115,17 +133,15 @@ class DemoDataSeeder extends Seeder
     private function startChain(RecordBatch $record, Carbon $date, int $shiftId, bool $forceOpen = false): ?array
     {
         $ink = $this->between(260, 340);
-        $solvent = $this->between(150, 200);
         // Target 35%; sekitar 12% rangkaian di bawah target
         $finalRate = $this->chance(12) ? $this->between(24, 33) : $this->between(35.5, 41.5);
-        $totalRecovery = round(($ink + $solvent) * $finalRate / 100, 2);
+        $totalRecovery = round($ink * $finalRate / 100, 2);
         $open = $forceOpen || $this->chance(20);
         $legs = $open ? ($this->chance(25) ? 3 : 2) : 1;
         $firstShare = $open ? $this->between(35, 55) / 100 : 1;
 
         $batch = $record->handle($this->request, $this->data($date, $shiftId, [
             'ink_weight' => $ink,
-            'solvent_used_weight' => $solvent,
             'recovery_weight' => round($totalRecovery * $firstShare, 2),
             'process_status' => $open ? 'in_progress' : 'completed',
             'notes' => 'Start Pkl ' . $this->clock(Carbon::now()->subHours(6)),
@@ -138,21 +154,35 @@ class DemoDataSeeder extends Seeder
     private function continueChain(RecordBatch $record, array $pending, Carbon $date, int $shiftId): ?array
     {
         $isLast = $pending['legs'] <= 1 || ! empty($pending['final']);
-        $extraSolvent = $this->chance(40) ? $this->between(10, 40) : 0;
-        // Solvent tambahan ikut menghasilkan recovery dengan rate yang sama
-        $recovery = $isLast ? $pending['remaining'] + round($extraSolvent * 0.37, 2) : round($pending['remaining'] * 0.5, 2);
+        $recovery = $isLast ? $pending['remaining'] : round($pending['remaining'] * 0.5, 2);
 
         $record->handle($this->request, $this->data($date, $shiftId, [
             'is_continuation' => true,
             'parent_batch_id' => $pending['root'],
             'ink_weight' => 0,
-            'solvent_used_weight' => $extraSolvent,
             'recovery_weight' => $recovery,
             'process_status' => $isLast ? 'completed' : 'in_progress',
             'notes' => 'Lanjutan Pkl ' . $this->clock(Carbon::now()->subHours(7)) . ($isLast ? ', Kuras residu' : ''),
         ]));
 
         return $isLast ? null : ['root' => $pending['root'], 'remaining' => round($pending['remaining'] - $recovery, 2), 'legs' => $pending['legs'] - 1];
+    }
+
+    /** Pengambilan solvent dari saldo, tidak terkait batch. Saldo minimal 50 kg tetap disisakan. */
+    private function useSolvent(RecordSolventUsage $usage, Carbon $date, int $shiftId): void
+    {
+        $weight = min($this->between(180, 300), round(SolventLedger::currentBalance() - 50, 2));
+        if ($weight <= 0) {
+            return;
+        }
+
+        $usage->handle($this->request, [
+            'date' => $date->toDateString(),
+            'shift_id' => $shiftId,
+            'weight' => $weight,
+            'purpose' => ['Pencucian mesin cetak', 'Pengenceran tinta', 'Pembersihan peralatan'][mt_rand(0, 2)],
+            'notes' => null,
+        ]);
     }
 
     private function data(Carbon $date, int $shiftId, array $values): array
@@ -180,6 +210,8 @@ class DemoDataSeeder extends Seeder
         // [mulai terisi (hari lalu), [drum penuh (hari lalu), ...]]
         // Pallet penuh = dikirim ke TPS. Masa simpan TPS (HSE) 90 hari dari mulai terisi.
         $plan = [
+            [130, [128, 126, 124]], // sudah diserahkan ke vendor lewat surat jalan (lihat seedSuratJalan)
+            [110, [108, 106, 104]], // idem, satu surat jalan dengan pallet di atas
             [85, [83, 81, 76]],   // dikirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
             [75, [73, 71, 69]],   // dikirim tepat waktu; di TPS sisa 15 hari: perhatian
             [66, [64, 62, 61]],   // di TPS sisa 24 hari: perhatian
@@ -195,6 +227,38 @@ class DemoDataSeeder extends Seeder
                 $pallets->addDrum($this->request, $pallet, Carbon::now()->toDateString(), null);
             }
         }
+    }
+
+    /**
+     * Dua pallet tertua diserahkan ke vendor lewat satu surat jalan, supaya arsip surat
+     * jalan terisi. Buktinya PDF berlabel data dummy, bukan surat jalan asli.
+     */
+    private function seedSuratJalan(Carbon $realNow): void
+    {
+        $hse = User::where('nik', 'HSE-3001')->firstOrFail();
+        $request = Request::create('/demo-seed', 'POST');
+        $request->setUserResolver(fn () => $hse);
+
+        $date = $realNow->copy()->subDays(100);
+        Carbon::setTestNow($date->copy()->setTime(10, 0));
+        $pallets = B3Pallet::where('status', 'full')->orderBy('start_date')->limit(2)->pluck('id')->all();
+        $number = 'SJ-DUMMY/' . $date->format('Y/m') . '/001';
+
+        $path = tempnam(sys_get_temp_dir(), 'sj') . '.pdf';
+        file_put_contents($path, Pdf::loadHTML(
+            '<h2>DATA DUMMY</h2><p>Contoh bukti surat jalan ' . e($number) . ' untuk mencoba aplikasi. Bukan dokumen asli.</p>'
+        )->output());
+
+        app(RecordSuratJalan::class)->handle($request, [
+            'surat_jalan_number' => $number,
+            'vendor_id' => Vendor::orderBy('id')->value('id'),
+            'handover_date' => $date->toDateString(),
+            'pallet_ids' => $pallets,
+            'weight_kg' => 598.4,
+            'vendor_officer_name' => 'Petugas vendor (dummy)',
+            'notes' => 'Data dummy',
+        ], new UploadedFile($path, 'bukti-surat-jalan-dummy.pdf', 'application/pdf', null, true));
+        @unlink($path);
     }
 
     /**

@@ -44,11 +44,11 @@ class AccessControlTest extends TestCase
     public function test_permissions_follow_prd_matrix(): void
     {
         $this->assertSame(
-            ['dashboard' => 'lihat', 'batch' => 'isi', 'mesin' => 'isi', 'drum_b3' => 'isi'],
+            ['dashboard' => 'lihat', 'batch' => 'isi', 'solvent' => 'isi', 'mesin' => 'isi', 'drum_b3' => 'isi'],
             User::factory()->role('operator')->make()->permissions(),
         );
         $this->assertSame(
-            ['mesin' => 'lihat', 'laporan' => 'lihat', 'audit' => 'lihat', 'data_master' => 'kelola', 'pengguna' => 'kelola'],
+            ['mesin' => 'lihat', 'laporan' => 'lihat', 'laporan_b3' => 'lihat', 'audit' => 'lihat', 'data_master' => 'kelola', 'pengguna' => 'kelola'],
             User::factory()->role('admin')->make()->permissions(),
         );
         $this->assertSame('tinjau', User::factory()->role('supervisor')->make()->accessLevel('dashboard'));
@@ -66,9 +66,11 @@ class AccessControlTest extends TestCase
     public function test_kelola_includes_isi_tinjau_and_lihat_but_lihat_does_not_include_isi(): void
     {
         $hse = User::factory()->role('hse')->make();
-        $this->assertTrue($hse->hasAccess('drum_b3', 'isi'));
-        $this->assertTrue($hse->hasAccess('drum_b3', 'tinjau'));
-        $this->assertTrue($hse->hasAccess('drum_b3', 'lihat'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'isi'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'tinjau'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'lihat'));
+        // Input drum dicatat operator, HSE memantau dari Limbah B3
+        $this->assertNull($hse->accessLevel('drum_b3'));
 
         $supervisor = User::factory()->role('supervisor')->make();
         $this->assertTrue($supervisor->hasAccess('batch', 'lihat'));

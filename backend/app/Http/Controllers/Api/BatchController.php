@@ -136,7 +136,6 @@ class BatchController extends Controller
             'target_recovery_rate' => $batch->target_recovery_rate,
             'review' => $root->reviewSummary(),
             'ink_weight' => $batch->ink_weight,
-            'solvent_used_weight' => $batch->solvent_used_weight,
             'recovery_weight' => $batch->recovery_weight,
             'total_input_weight' => $batch->total_input_weight,
             'residue_estimated_weight' => $batch->residue_estimated_weight,

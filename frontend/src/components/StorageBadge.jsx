@@ -65,7 +65,11 @@ export default function StorageBadge({ storage }) {
   return <Pill level={storage.level}>{storageText(storage)}</Pill>;
 }
 
-export function TpsBadge({ tps }) {
+/** compact: tanpa tanggal kirim, untuk tabel yang sudah punya kolom "Sampai di TPS". */
+export function TpsBadge({ tps, compact = false }) {
+  if (compact && tps.level === 'terkirim') {
+    return <Pill level="terkirim">{tps.late_days > 0 ? `Terlambat ${tps.late_days} hari` : 'Tepat waktu'}</Pill>;
+  }
   return <Pill level={tps.level}>{tpsText(tps)}</Pill>;
 }
 

@@ -105,6 +105,26 @@ export function AuthProvider({ children }) {
     [token, signOutLocally],
   );
 
+  // Unduh berkas (ekspor laporan). Server mengirim isi berkas dalam JSON (base64) dan
+  // berkas disimpan dari blob: pengelola unduhan seperti IDM mencegat respons PDF biasa
+  // dan membatalkannya, tetapi tidak mencegat JSON maupun unduhan blob.
+  const download = useCallback(
+    async (path) => {
+      const { data } = await request(path);
+      const bytes = Uint8Array.from(atob(data.content), (char) => char.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: data.content_type }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = data.filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      // Beri waktu browser mulai menyimpan sebelum blob dilepas
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    },
+    [request],
+  );
+
   const can = useCallback(
     (feature, level = 'lihat') => {
       const granted = session?.permissions?.[feature];
@@ -125,10 +145,11 @@ export function AuthProvider({ children }) {
       login,
       logout,
       request,
+      download,
       can,
       retry: () => loadSession(token),
     }),
-    [status, error, notice, signedOutManually, session, login, logout, request, can, loadSession, token],
+    [status, error, notice, signedOutManually, session, login, logout, request, download, can, loadSession, token],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

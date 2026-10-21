@@ -6,7 +6,11 @@ use App\Http\Controllers\Api\ChainReviewController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\MachineController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\PalletController;
+use App\Http\Controllers\Api\SolventUsageController;
+use App\Http\Controllers\Api\SuratJalanController;
+use App\Http\Controllers\Api\WasteController;
 use Illuminate\Support\Facades\Route;
 
 // Public Auth Routes (Rate limited: maks 10 request per menit untuk proteksi brute force)
@@ -28,6 +32,11 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'show'])->middleware('akses:dashboard');
     Route::post('/batch-chains/{batch}/review', [ChainReviewController::class, 'store'])->middleware('akses:dashboard,tinjau');
 
+    Route::get('/reports/reclaimer', [ReportController::class, 'reclaimer'])->middleware('akses:laporan');
+    Route::get('/reports/reclaimer/export', [ReportController::class, 'exportReclaimer'])->middleware('akses:laporan');
+    Route::get('/reports/b3', [ReportController::class, 'b3'])->middleware('akses:laporan_b3');
+    Route::get('/reports/b3/export', [ReportController::class, 'exportB3'])->middleware('akses:laporan_b3');
+
     Route::get('/machine', [MachineController::class, 'show'])->middleware('akses:mesin');
     Route::post('/machine/maintenance', [MachineController::class, 'startMaintenance'])->middleware('akses:mesin,isi');
     Route::post('/machine/operating', [MachineController::class, 'endMaintenance'])->middleware('akses:mesin,isi');
@@ -35,6 +44,19 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/batches', [BatchController::class, 'index'])->middleware('akses:batch');
     Route::get('/batches/create', [BatchController::class, 'create'])->middleware('akses:batch,isi');
     Route::post('/batches', [BatchController::class, 'store'])->middleware('akses:batch,isi');
+
+    Route::get('/solvent-usages', [SolventUsageController::class, 'index'])->middleware('akses:solvent');
+    Route::post('/solvent-usages', [SolventUsageController::class, 'store'])->middleware('akses:solvent,isi');
+
+    // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
+    Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');
+    Route::get('/b3/reminders', [WasteController::class, 'reminders'])->middleware('akses:limbah_b3');
+
+    // Surat jalan ke vendor (penutup dokumen) dan arsipnya
+    Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->middleware('akses:surat_jalan');
+    Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->middleware('akses:surat_jalan,isi');
+    Route::get('/surat-jalan', [SuratJalanController::class, 'index'])->middleware('akses:arsip');
+    Route::get('/surat-jalan/{suratJalan}/file', [SuratJalanController::class, 'file'])->middleware('akses:arsip');
 
     Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
