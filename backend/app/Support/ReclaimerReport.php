@@ -20,9 +20,9 @@ use Illuminate\Support\Collection;
  */
 final class ReclaimerReport
 {
-    public const PERIODS = ['day', 'week', 'month', 'year'];
+    public const PERIODS = ReportPeriod::PERIODS;
 
-    public const PERIOD_LABELS = ['day' => 'Harian', 'week' => 'Mingguan', 'month' => 'Bulanan', 'year' => 'Tahunan'];
+    public const PERIOD_LABELS = ReportPeriod::LABELS;
 
     public readonly Carbon $start;
 
@@ -30,12 +30,7 @@ final class ReclaimerReport
 
     public function __construct(public readonly string $period, Carbon $anchor)
     {
-        [$this->start, $this->end] = match ($period) {
-            'day' => [$anchor->copy()->startOfDay(), $anchor->copy()->endOfDay()],
-            'week' => [$anchor->copy()->startOfWeek(Carbon::MONDAY), $anchor->copy()->endOfWeek(Carbon::SUNDAY)],
-            'month' => [$anchor->copy()->startOfMonth(), $anchor->copy()->endOfMonth()],
-            'year' => [$anchor->copy()->startOfYear(), $anchor->copy()->endOfYear()],
-        };
+        [$this->start, $this->end] = ReportPeriod::range($period, $anchor);
     }
 
     public function toArray(): array
@@ -156,13 +151,6 @@ final class ReclaimerReport
     /** Nama berkas ekspor, contoh Laporan-Reclaimer-Bulanan-2026-10. */
     public function filename(string $extension): string
     {
-        $suffix = match ($this->period) {
-            'day' => $this->start->format('Y-m-d'),
-            'week' => $this->start->format('Y-m-d') . '_' . $this->end->format('Y-m-d'),
-            'month' => $this->start->format('Y-m'),
-            'year' => $this->start->format('Y'),
-        };
-
-        return 'Laporan-Reclaimer-' . self::PERIOD_LABELS[$this->period] . "-{$suffix}.{$extension}";
+        return ReportPeriod::filename('Laporan-Reclaimer', $this->period, $this->start, $this->end, $extension);
     }
 }

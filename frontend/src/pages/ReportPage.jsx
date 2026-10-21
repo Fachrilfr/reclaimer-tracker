@@ -1,89 +1,17 @@
-import { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileSpreadsheet, FileText, LoaderCircle, Recycle } from 'lucide-react';
-import { useAuth } from '../auth/AuthContext.jsx';
+import { Recycle } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
-import { formatDate, formatDateRange, formatDateTime, formatDuration, formatMonth, formatNumber, formatPercent } from '../lib/format.js';
+import { formatDate, formatDateTime, formatDuration, formatNumber, formatPercent } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
-import Alert from '../components/Alert.jsx';
+import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
+import ExportButtons from '../components/ExportButtons.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
-const PERIODS = ['day', 'week', 'month', 'year'];
-const BREAKDOWN_LABEL = { day: 'Hari', week: 'Minggu', month: 'Bulan' };
-
-function Kg({ value }) {
-  return (
-    <span className="whitespace-nowrap">
-      {formatNumber(value)} <span className="text-gray-600">kg</span>
-    </span>
-  );
-}
-
-function bucketLabel(row, unit) {
-  if (unit === 'month') return formatMonth(row.start);
-  return row.start === row.end ? formatDate(row.start) : formatDateRange(row.start, row.end);
-}
-
-function Section({ id, title, description, children, padded = false }) {
-  return (
-    <section aria-labelledby={id} className="card">
-      <div className="p-4 sm:p-5">
-        <h2 id={id} className="text-h2 font-semibold">
-          {title}
-        </h2>
-        {description && <p className="mt-1 text-body text-gray-600">{description}</p>}
-      </div>
-      <div className={padded ? 'px-4 pb-4 sm:px-5 sm:pb-5' : ''}>{children}</div>
-    </section>
-  );
-}
-
-function ExportButtons({ period, anchor }) {
-  const { download } = useAuth();
-  const [busy, setBusy] = useState(null);
-  const [error, setError] = useState('');
-  const [started, setStarted] = useState('');
-
-  const run = async (format) => {
-    setBusy(format);
-    setError('');
-    setStarted('');
-    try {
-      await download(`/reports/reclaimer/export?format=${format}&period=${period}&date=${anchor}`);
-      setStarted(`Laporan ${format === 'pdf' ? 'PDF' : 'Excel'} diunduh. Cek folder unduhan browser.`);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const button = (format, label, Icon, className) => (
-    <button type="button" onClick={() => run(format)} disabled={busy !== null} className={`${className} h-11 px-4 text-body`}>
-      {busy === format ? (
-        <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
-      ) : (
-        <Icon className="h-5 w-5" aria-hidden="true" />
-      )}
-      {busy === format ? 'Menyiapkan…' : label}
-    </button>
-  );
-
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap gap-3">
-        {button('xlsx', 'Unduh Excel', FileSpreadsheet, 'btn-primary')}
-        {button('pdf', 'Unduh PDF', FileText, 'btn-secondary')}
-      </div>
-      {error && <Alert tone="danger">{error}</Alert>}
-      {started && <p role="status" className="text-caption text-gray-600">{started}</p>}
-    </div>
-  );
-}
+const PERIODS = REPORT_PERIODS;
 
 // Pengambilan solvent dari saldo di periode ini, terpisah dari batch
 function SolventUsages({ usages }) {
@@ -421,7 +349,7 @@ export default function ReportPage() {
       <PageHeader
         title="Laporan Reclaimer"
         description={`Material balance, saldo solvent, dan catatan operasional, ${periodLabel(anchor, period)}. Ekspor ke Excel atau PDF untuk arsip dan audit.`}
-        actions={<ExportButtons period={period} anchor={anchor} />}
+        actions={<ExportButtons path="/reports/reclaimer/export" period={period} anchor={anchor} />}
       />
 
       <div className="mt-6">

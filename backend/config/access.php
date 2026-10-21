@@ -32,6 +32,9 @@ return [
         // Arsip surat jalan (pengganti arsip manifest): surat jalan adalah penutup dokumen
         'arsip' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
         'laporan' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
+        // Laporan limbah B3: berat yang diserahkan, surat jalan, masa simpan, dan stok.
+        // Keputusan pengguna: hanya HSE, Manajemen, dan Admin.
+        'laporan_b3' => ['hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'audit' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'parameter' => ['supervisor' => 'kelola', 'hse' => 'kelola'],
         'data_master' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'admin' => 'kelola'],

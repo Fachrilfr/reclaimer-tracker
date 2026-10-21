@@ -1,6 +1,7 @@
 import {
   Archive,
   Biohazard,
+  ClipboardCheck,
   Cylinder,
   Database,
   Droplets,
@@ -22,6 +23,7 @@ import SolventPage from './pages/SolventPage.jsx';
 import WastePage from './pages/WastePage.jsx';
 import SuratJalanPage from './pages/SuratJalanPage.jsx';
 import ArchivePage from './pages/ArchivePage.jsx';
+import B3ReportPage from './pages/B3ReportPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -109,11 +111,19 @@ export const MODULE_GROUPS = [
     modules: [
       {
         key: 'laporan',
-        label: 'Laporan',
+        label: 'Laporan reclaimer',
         path: '/laporan',
         icon: FileChartColumn,
-        summary: 'Laporan harian, mingguan, bulanan, dan tahunan, dengan ekspor Excel dan PDF.',
+        summary: 'Material balance, saldo solvent, dan catatan operasional per periode, dengan ekspor Excel dan PDF.',
         page: ReportPage,
+      },
+      {
+        key: 'laporan_b3',
+        label: 'Laporan limbah B3',
+        path: '/laporan-b3',
+        icon: ClipboardCheck,
+        summary: 'Berat yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, dan stok, dengan ekspor Excel dan PDF.',
+        page: B3ReportPage,
       },
       {
         key: 'audit',

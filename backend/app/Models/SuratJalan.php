@@ -49,7 +49,7 @@ class SuratJalan extends Model
             'number' => $this->surat_jalan_number,
             'handover_date' => $this->handover_date->toDateString(),
             'vendor' => $this->vendor?->name,
-            'pallets' => $this->pallets->map(fn (B3Pallet $p) => ['id' => $p->id, 'pallet_number' => $p->pallet_number, 'drum_count' => $p->drum_count])->values(),
+            'pallets' => $this->pallets->map(fn (B3Pallet $p) => ['id' => $p->id, 'pallet_number' => $p->pallet_number, 'drum_count' => $p->drum_count])->values()->all(),
             'total_pallets' => $this->total_pallets,
             'weight_kg' => $this->weight_kg,
             'vendor_officer_name' => $this->vendor_officer_name,

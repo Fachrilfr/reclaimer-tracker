@@ -34,6 +34,8 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/reports/reclaimer', [ReportController::class, 'reclaimer'])->middleware('akses:laporan');
     Route::get('/reports/reclaimer/export', [ReportController::class, 'exportReclaimer'])->middleware('akses:laporan');
+    Route::get('/reports/b3', [ReportController::class, 'b3'])->middleware('akses:laporan_b3');
+    Route::get('/reports/b3/export', [ReportController::class, 'exportB3'])->middleware('akses:laporan_b3');
 
     Route::get('/machine', [MachineController::class, 'show'])->middleware('akses:mesin');
     Route::post('/machine/maintenance', [MachineController::class, 'startMaintenance'])->middleware('akses:mesin,isi');
