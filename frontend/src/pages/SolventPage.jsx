@@ -172,7 +172,8 @@ function UsageForm({ meta, onSaved }) {
           </dl>
           <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil recovery setiap batch.</p>
 
-          {formError && (
+          {/* Pesan umum hilang setelah semua isian yang ditandai diperbaiki */}
+          {formError && (Object.values(errors).some(Boolean) || !Object.keys(errors).length) && (
             <Alert tone="danger" className="mt-4">
               {formError}
             </Alert>

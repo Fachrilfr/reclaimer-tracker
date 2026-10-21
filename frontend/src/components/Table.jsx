@@ -3,7 +3,8 @@
 
 export function Table({ caption, children }) {
   return (
-    <div className="overflow-x-auto">
+    // relative: label sr-only (position absolute) di dalam tabel ikut terpotong, tidak melebarkan halaman
+    <div className="relative overflow-x-auto">
       <table className="w-full border-collapse text-left text-body">
         {caption && <caption className="sr-only">{caption}</caption>}
         {children}

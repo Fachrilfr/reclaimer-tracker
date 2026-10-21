@@ -1,6 +1,5 @@
 import {
   Archive,
-  BellRing,
   Biohazard,
   Cylinder,
   Database,
@@ -20,6 +19,9 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import BatchPage from './pages/BatchPage.jsx';
 import DrumPage from './pages/DrumPage.jsx';
 import SolventPage from './pages/SolventPage.jsx';
+import WastePage from './pages/WastePage.jsx';
+import SuratJalanPage from './pages/SuratJalanPage.jsx';
+import ArchivePage from './pages/ArchivePage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -72,8 +74,9 @@ export const MODULE_GROUPS = [
         label: 'Limbah B3',
         path: '/limbah-b3',
         icon: Biohazard,
-        summary: 'Pallet limbah B3 yang masih tersimpan, dengan hitung mundur masa simpan.',
-        page: null,
+        summary:
+          'Inventaris pallet dari input drum operator: status kirim ke TPS, hitung mundur masa simpan, dan pengingat ke HSE.',
+        page: WastePage,
       },
       {
         key: 'drum_b3',
@@ -84,28 +87,20 @@ export const MODULE_GROUPS = [
         page: DrumPage,
       },
       {
-        key: 'pengingat',
-        label: 'Pengingat',
-        path: '/pengingat',
-        icon: BellRing,
-        summary: 'Pengingat pengangkutan bertingkat ke HSE, dikirim setiap hari pukul 07.00.',
-        page: null,
-      },
-      {
         key: 'surat_jalan',
         label: 'Surat jalan',
         path: '/surat-jalan',
         icon: Truck,
-        summary: 'Catat pengangkutan ke vendor: pallet, vendor, tanggal, nomor surat jalan, dan bukti.',
-        page: null,
+        summary: 'Serahkan pallet dari TPS ke vendor: pallet, vendor, tanggal, nomor surat jalan, berat, dan bukti.',
+        page: SuratJalanPage,
       },
       {
         key: 'arsip',
-        label: 'Arsip manifest',
+        label: 'Arsip surat jalan',
         path: '/arsip',
         icon: Archive,
-        summary: 'Lengkapi nomor manifest dan unggah dokumen penutup untuk menutup pengangkutan.',
-        page: null,
+        summary: 'Riwayat surat jalan sebagai penutup dokumen limbah B3, dengan pencarian dan unduhan bukti.',
+        page: ArchivePage,
       },
     ],
   },

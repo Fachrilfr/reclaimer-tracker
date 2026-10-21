@@ -610,9 +610,11 @@ export default function DashboardPage() {
               machine={data.machine}
               pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
               linkFor={(p) =>
-                b3View === B3_VIEWS.tps && can('drum_b3')
-                  ? `/drum-b3?sorot=pallet-${p.id}`
-                  : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
+                can('limbah_b3')
+                  ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
+                  : b3View === B3_VIEWS.tps && can('drum_b3')
+                    ? `/drum-b3?sorot=pallet-${p.id}`
+                    : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
               }
             />
             <RecoveryAlertCard

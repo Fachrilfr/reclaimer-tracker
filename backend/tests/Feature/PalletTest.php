@@ -202,8 +202,10 @@ class PalletTest extends TestCase
         $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertForbidden();
 
         $this->app['auth']->forgetGuards();
+        // HSE tidak mencatat drum lagi; pallet dipantau dari Limbah B3
         $this->actingAs(User::where('nik', 'HSE-3001')->first(), 'sanctum');
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertCreated();
+        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertForbidden();
+        $this->getJson('/api/b3/pallets')->assertOk();
 
         $this->app['auth']->forgetGuards();
         $this->actingAs(User::where('nik', 'MGT-4001')->first(), 'sanctum');

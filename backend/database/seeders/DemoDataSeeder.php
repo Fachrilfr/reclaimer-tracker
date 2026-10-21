@@ -5,7 +5,12 @@ namespace Database\Seeders;
 use App\Actions\RecordBatch;
 use App\Actions\RecordPallet;
 use App\Actions\RecordSolventUsage;
+use App\Actions\RecordSuratJalan;
+use App\Actions\SendStorageReminders;
 use App\Actions\SetMachineStatus;
+use App\Models\Vendor;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\UploadedFile;
 use App\Models\B3Pallet;
 use App\Models\ReclaimerBatch;
 use App\Models\Shift;
@@ -64,7 +69,11 @@ class DemoDataSeeder extends Seeder
         try {
             $this->seedMaintenance($realNow);
             $this->seedPallets($realNow);
+            $this->seedSuratJalan($realNow);
             $this->seedBatches($realNow);
+            // Pengingat masa simpan hari ini, supaya log pengingat dan lonceng HSE terisi
+            Carbon::setTestNow($realNow);
+            app(SendStorageReminders::class)->handle($realNow);
         } finally {
             Carbon::setTestNow();
         }
@@ -201,6 +210,8 @@ class DemoDataSeeder extends Seeder
         // [mulai terisi (hari lalu), [drum penuh (hari lalu), ...]]
         // Pallet penuh = dikirim ke TPS. Masa simpan TPS (HSE) 90 hari dari mulai terisi.
         $plan = [
+            [130, [128, 126, 124]], // sudah diserahkan ke vendor lewat surat jalan (lihat seedSuratJalan)
+            [110, [108, 106, 104]], // idem, satu surat jalan dengan pallet di atas
             [85, [83, 81, 76]],   // dikirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
             [75, [73, 71, 69]],   // dikirim tepat waktu; di TPS sisa 15 hari: perhatian
             [66, [64, 62, 61]],   // di TPS sisa 24 hari: perhatian
@@ -216,6 +227,38 @@ class DemoDataSeeder extends Seeder
                 $pallets->addDrum($this->request, $pallet, Carbon::now()->toDateString(), null);
             }
         }
+    }
+
+    /**
+     * Dua pallet tertua diserahkan ke vendor lewat satu surat jalan, supaya arsip surat
+     * jalan terisi. Buktinya PDF berlabel data dummy, bukan surat jalan asli.
+     */
+    private function seedSuratJalan(Carbon $realNow): void
+    {
+        $hse = User::where('nik', 'HSE-3001')->firstOrFail();
+        $request = Request::create('/demo-seed', 'POST');
+        $request->setUserResolver(fn () => $hse);
+
+        $date = $realNow->copy()->subDays(100);
+        Carbon::setTestNow($date->copy()->setTime(10, 0));
+        $pallets = B3Pallet::where('status', 'full')->orderBy('start_date')->limit(2)->pluck('id')->all();
+        $number = 'SJ-DUMMY/' . $date->format('Y/m') . '/001';
+
+        $path = tempnam(sys_get_temp_dir(), 'sj') . '.pdf';
+        file_put_contents($path, Pdf::loadHTML(
+            '<h2>DATA DUMMY</h2><p>Contoh bukti surat jalan ' . e($number) . ' untuk mencoba aplikasi. Bukan dokumen asli.</p>'
+        )->output());
+
+        app(RecordSuratJalan::class)->handle($request, [
+            'surat_jalan_number' => $number,
+            'vendor_id' => Vendor::orderBy('id')->value('id'),
+            'handover_date' => $date->toDateString(),
+            'pallet_ids' => $pallets,
+            'weight_kg' => 598.4,
+            'vendor_officer_name' => 'Petugas vendor (dummy)',
+            'notes' => 'Data dummy',
+        ], new UploadedFile($path, 'bukti-surat-jalan-dummy.pdf', 'application/pdf', null, true));
+        @unlink($path);
     }
 
     /**

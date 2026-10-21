@@ -9,6 +9,8 @@ use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\PalletController;
 use App\Http\Controllers\Api\SolventUsageController;
+use App\Http\Controllers\Api\SuratJalanController;
+use App\Http\Controllers\Api\WasteController;
 use Illuminate\Support\Facades\Route;
 
 // Public Auth Routes (Rate limited: maks 10 request per menit untuk proteksi brute force)
@@ -44,7 +46,17 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/solvent-usages', [SolventUsageController::class, 'index'])->middleware('akses:solvent');
     Route::post('/solvent-usages', [SolventUsageController::class, 'store'])->middleware('akses:solvent,isi');
 
-    Route::get('/pallets',[PalletController::class, 'index'])->middleware('akses:drum_b3');
+    // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
+    Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');
+    Route::get('/b3/reminders', [WasteController::class, 'reminders'])->middleware('akses:limbah_b3');
+
+    // Surat jalan ke vendor (penutup dokumen) dan arsipnya
+    Route::get('/surat-jalan/create', [SuratJalanController::class, 'create'])->middleware('akses:surat_jalan');
+    Route::post('/surat-jalan', [SuratJalanController::class, 'store'])->middleware('akses:surat_jalan,isi');
+    Route::get('/surat-jalan', [SuratJalanController::class, 'index'])->middleware('akses:arsip');
+    Route::get('/surat-jalan/{suratJalan}/file', [SuratJalanController::class, 'file'])->middleware('akses:arsip');
+
+    Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
     Route::post('/pallets/{pallet}/drums', [PalletController::class, 'storeDrum'])->middleware('akses:drum_b3,isi');
 });

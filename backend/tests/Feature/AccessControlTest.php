@@ -66,9 +66,11 @@ class AccessControlTest extends TestCase
     public function test_kelola_includes_isi_tinjau_and_lihat_but_lihat_does_not_include_isi(): void
     {
         $hse = User::factory()->role('hse')->make();
-        $this->assertTrue($hse->hasAccess('drum_b3', 'isi'));
-        $this->assertTrue($hse->hasAccess('drum_b3', 'tinjau'));
-        $this->assertTrue($hse->hasAccess('drum_b3', 'lihat'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'isi'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'tinjau'));
+        $this->assertTrue($hse->hasAccess('limbah_b3', 'lihat'));
+        // Input drum dicatat operator, HSE memantau dari Limbah B3
+        $this->assertNull($hse->accessLevel('drum_b3'));
 
         $supervisor = User::factory()->role('supervisor')->make();
         $this->assertTrue($supervisor->hasAccess('batch', 'lihat'));

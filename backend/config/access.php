@@ -23,10 +23,13 @@ return [
         // Status maintenance mesin (FR-20). Belum ada di matriks PRD §5.1: operator
         // melapor, supervisor mengelola, penerima pemberitahuan bisa melihat.
         'mesin' => ['operator' => 'isi', 'supervisor' => 'kelola', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
+        // Limbah B3 digabung dengan pengingat: inventaris masa simpan dan pengingatnya
+        // sama-sama berakhir di surat jalan.
         'limbah_b3' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
-        'drum_b3' => ['operator' => 'isi', 'supervisor' => 'lihat', 'hse' => 'kelola'],
-        'pengingat' => ['supervisor' => 'lihat', 'hse' => 'kelola'],
+        // Input drum dicatat operator; HSE memantaunya dari Limbah B3
+        'drum_b3' => ['operator' => 'isi', 'supervisor' => 'lihat'],
         'surat_jalan' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
+        // Arsip surat jalan (pengganti arsip manifest): surat jalan adalah penutup dokumen
         'arsip' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
         'laporan' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'audit' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],

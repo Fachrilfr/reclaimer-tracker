@@ -11,8 +11,10 @@ export class ApiError extends Error {
  * jadi dipakai apa adanya; pesan di sini hanya untuk kasus tanpa respons JSON.
  */
 export async function api(path, { method = 'GET', token, body } = {}) {
+  // FormData (unggah berkas) dikirim apa adanya; browser mengisi Content-Type multipart sendiri
+  const isForm = body instanceof FormData;
   const headers = { Accept: 'application/json' };
-  if (body !== undefined) headers['Content-Type'] = 'application/json';
+  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json';
   if (token) headers.Authorization = `Bearer ${token}`;
 
   let response;
@@ -20,7 +22,7 @@ export async function api(path, { method = 'GET', token, body } = {}) {
     response = await fetch(`/api${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || isForm ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError('Server tidak bisa dihubungi. Periksa koneksi jaringan, lalu coba lagi.', 0);
