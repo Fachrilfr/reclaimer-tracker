@@ -15,11 +15,6 @@ Route::prefix('auth')->group(function () {
     Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 });
 
-// Unduhan laporan lewat tautan bertanda tangan (dibuat oleh /reports/reclaimer/export-link)
-Route::get('/reports/reclaimer/download', [ReportController::class, 'downloadReclaimer'])
-    ->middleware('signed:relative')
-    ->name('reports.reclaimer.download');
-
 // Protected Routes. Route modul memakai middleware akses per fitur,
 // misalnya ->middleware('akses:batch,isi'). Lihat config/access.php.
 Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
@@ -36,7 +31,6 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/reports/reclaimer', [ReportController::class, 'reclaimer'])->middleware('akses:laporan');
     Route::get('/reports/reclaimer/export', [ReportController::class, 'exportReclaimer'])->middleware('akses:laporan');
-    Route::get('/reports/reclaimer/export-link', [ReportController::class, 'exportLink'])->middleware('akses:laporan');
 
     Route::get('/machine', [MachineController::class, 'show'])->middleware('akses:mesin');
     Route::post('/machine/maintenance', [MachineController::class, 'startMaintenance'])->middleware('akses:mesin,isi');

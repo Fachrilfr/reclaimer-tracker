@@ -53,8 +53,8 @@ function ExportButtons({ period, anchor }) {
     setError('');
     setStarted('');
     try {
-      await download(`/reports/reclaimer/export-link?format=${format}&period=${period}&date=${anchor}`);
-      setStarted(format === 'pdf' ? 'Unduhan PDF dimulai. Berkas besar bisa butuh beberapa detik.' : 'Unduhan Excel dimulai.');
+      await download(`/reports/reclaimer/export?format=${format}&period=${period}&date=${anchor}`);
+      setStarted(`Laporan ${format === 'pdf' ? 'PDF' : 'Excel'} diunduh. Cek folder unduhan browser.`);
     } catch (err) {
       setError(err.message);
     } finally {

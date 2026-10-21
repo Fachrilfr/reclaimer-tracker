@@ -33,6 +33,11 @@
     .two td.col { width: 50%; border: none; padding: 0 3mm 0 0; vertical-align: top; }
     .empty { color: #5B6673; padding: 2mm 0; }
     .page-break { page-break-before: always; }
+    /* Header tabel diulang tiap halaman; baris dan bagian pendek tidak terbelah */
+    thead { display: table-header-group; }
+    tr { page-break-inside: avoid; }
+    h2 { page-break-after: avoid; }
+    .keep { page-break-inside: avoid; }
 </style>
 </head>
 <body>
@@ -70,7 +75,7 @@
     <h2>Maintenance mesin</h2>
     @if ($report['maintenance']['count'])
         <table>
-            <tr><th>Mulai</th><th>Alasan</th><th class="num">Durasi</th></tr>
+            <thead><tr><th>Mulai</th><th>Alasan</th><th class="num">Durasi</th></tr></thead>
             @foreach ($report['maintenance']['rows'] as $m)
                 <tr><td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['reason'] }}</td><td class="num">{{ number_format($m['minutes_in_period'] / 60, 1, ',', '.') }} jam</td></tr>
             @endforeach
@@ -82,9 +87,10 @@
 </td>
 </tr></table>
 
+<div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
-    <tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Bahan masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr>
+    <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Bahan masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr></thead>
     @foreach ($report['by_shift'] as $row)
         <tr>
             <td>{{ $row['shift'] }}</td><td class="num">{{ $row['chain_count'] }}</td><td class="num">{{ $kg($row['input']) }}</td>
@@ -93,12 +99,14 @@
         </tr>
     @endforeach
 </table>
+</div>
 
 @if ($report['breakdown'])
     @php $unitLabel = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['breakdown']['unit']]; @endphp
+<div class="keep">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
-        <tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Bahan masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr>
+        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Bahan masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr></thead>
         @foreach ($report['breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
@@ -108,12 +116,13 @@
             </tr>
         @endforeach
     </table>
+</div>
 @endif
 
 <h2>Rangkaian di bawah target dan tinjauan supervisor</h2>
 @if (count($report['below_target']))
     <table>
-        <tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th class="num">Recovery</th><th class="num">Target</th><th>Tinjauan supervisor</th></tr>
+        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th class="num">Recovery</th><th class="num">Target</th><th>Tinjauan supervisor</th></tr></thead>
         @foreach ($report['below_target'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
@@ -130,7 +139,7 @@
 @if (count($report['temp_abnormal']))
     <h2>Batch dengan suhu di luar normal</h2>
     <table>
-        <tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Oil Temperature</th><th class="num">Vapour Temperature</th></tr>
+        <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Oil Temperature</th><th class="num">Vapour Temperature</th></tr></thead>
         @foreach ($report['temp_abnormal'] as $b)
             <tr><td>{{ $b['batch_number'] }}</td><td>{{ Fmt::date($b['date']) }}</td><td>{{ $b['shift'] }}</td><td class="num">{{ number_format($b['oil_temp'], 1, ',', '.') }} °C</td><td class="num">{{ number_format($b['vapour_temp'], 1, ',', '.') }} °C</td></tr>
         @endforeach
@@ -140,7 +149,7 @@
 <h2 class="page-break">Rincian rangkaian batch</h2>
 @if (count($report['chains']))
     <table>
-        <tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Recovery</th><th class="num">Residu est.</th><th class="num">Recovery rate</th></tr>
+        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Recovery</th><th class="num">Residu est.</th><th class="num">Recovery rate</th></tr></thead>
         @foreach ($report['chains'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>

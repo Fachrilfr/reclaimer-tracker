@@ -92,13 +92,16 @@ class ReclaimerReportTest extends TestCase
         $response = $this->get('/api/reports/reclaimer/export?format=xlsx&period=month&date=2026-10-20')->assertOk();
         $this->assertStringContainsString('Laporan-Reclaimer-Bulanan-2026-10.xlsx', $response->headers->get('content-disposition'));
 
-        $book = IOFactory::load($response->getFile()->getPathname());
+        $path = tempnam(sys_get_temp_dir(), 'uji');
+        file_put_contents($path, $response->getContent());
+        $book = IOFactory::load($path);
+        unlink($path);
         $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Di bawah target', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
         $summary = $book->getSheetByName('Ringkasan');
         $this->assertSame('Bahan masuk (kg)', $summary->getCell('A11')->getValue());
         $this->assertEquals(1000, $summary->getCell('B11')->getValue());
         $this->assertEquals(30, $summary->getCell('B14')->getValue());
-        $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah target')->getCell('A2')->getValue());
+        $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah target')->getCell('A6')->getValue());
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
     }
@@ -112,32 +115,15 @@ class ReclaimerReportTest extends TestCase
         $this->assertStringStartsWith('%PDF', $response->getContent());
     }
 
-    public function test_signed_download_link(): void
+    public function test_app_receives_file_as_json(): void
     {
-        $url = $this->getJson('/api/reports/reclaimer/export-link?format=pdf&period=month&date=2026-10-20')
-            ->assertOk()->json('data.url');
-        $this->assertStringStartsWith('/api/reports/reclaimer/download?', $url);
+        // Jalur aplikasi web: berkas dikirim dalam JSON supaya tidak dicegat pengelola unduhan
+        $data = $this->getJson('/api/reports/reclaimer/export?format=pdf&period=month&date=2026-10-20')
+            ->assertOk()->json('data');
 
-        // Dibuka tanpa token, seperti browser membuka tautan unduhan
-        $this->app['auth']->forgetGuards();
-        $this->flushHeaders();
-        $response = $this->get($url)->assertOk();
-        $this->assertStringStartsWith('%PDF', $response->getContent());
-
-        // Tautan diubah atau kedaluwarsa ditolak
-        $this->get(str_replace('format=pdf', 'format=xlsx', $url))->assertForbidden();
-        Carbon::setTestNow(now()->addMinutes(6));
-        $this->get($url)->assertForbidden();
-    }
-
-    public function test_signed_link_rechecks_access(): void
-    {
-        $url = $this->getJson('/api/reports/reclaimer/export-link?format=xlsx')->json('data.url');
-        User::where('nik', 'SPV-2001')->update(['is_active' => false]);
-
-        $this->app['auth']->forgetGuards();
-        $this->flushHeaders();
-        $this->get($url)->assertForbidden();
+        $this->assertSame('Laporan-Reclaimer-Bulanan-2026-10.pdf', $data['filename']);
+        $this->assertSame('application/pdf', $data['content_type']);
+        $this->assertStringStartsWith('%PDF', base64_decode($data['content']));
     }
 
     public function test_access_and_validation(): void

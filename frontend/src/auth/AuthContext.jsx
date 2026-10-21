@@ -105,18 +105,22 @@ export function AuthProvider({ children }) {
     [token, signOutLocally],
   );
 
-  // Unduh berkas (ekspor laporan): minta tautan bertanda tangan berumur pendek, lalu buka
-  // seperti tautan biasa supaya browser sendiri yang menangani unduhannya
+  // Unduh berkas (ekspor laporan). Server mengirim isi berkas dalam JSON (base64) dan
+  // berkas disimpan dari blob: pengelola unduhan seperti IDM mencegat respons PDF biasa
+  // dan membatalkannya, tetapi tidak mencegat JSON maupun unduhan blob.
   const download = useCallback(
-    async (linkPath) => {
-      const { data } = await request(linkPath);
+    async (path) => {
+      const { data } = await request(path);
+      const bytes = Uint8Array.from(atob(data.content), (char) => char.charCodeAt(0));
+      const url = URL.createObjectURL(new Blob([bytes], { type: data.content_type }));
       const link = document.createElement('a');
-      link.href = data.url;
-      // Paksa unduh (nama dari server), supaya PDF tidak dibuka di penampil browser
-      link.download = '';
+      link.href = url;
+      link.download = data.filename;
       document.body.appendChild(link);
       link.click();
       link.remove();
+      // Beri waktu browser mulai menyimpan sebelum blob dilepas
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
     },
     [request],
   );
