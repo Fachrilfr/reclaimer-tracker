@@ -14,6 +14,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import MachinePage from './pages/MachinePage.jsx';
+import ReportPage from './pages/ReportPage.jsx';
 import DashboardPage from './pages/DashboardPage.jsx';
 import BatchPage from './pages/BatchPage.jsx';
 import DrumPage from './pages/DrumPage.jsx';
@@ -107,7 +108,7 @@ export const MODULE_GROUPS = [
         path: '/laporan',
         icon: FileChartColumn,
         summary: 'Laporan harian, mingguan, bulanan, dan tahunan, dengan ekspor Excel dan PDF.',
-        page: null,
+        page: ReportPage,
       },
       {
         key: 'audit',

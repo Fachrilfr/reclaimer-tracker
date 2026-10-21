@@ -1,0 +1,152 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Models\Shift;
+use App\Models\User;
+use Database\Seeders\DatabaseSeeder;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use Tests\TestCase;
+
+class ReclaimerReportTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        // Saldo awal solvent tercatat 1 Sep, sebelum periode yang diuji
+        Carbon::setTestNow('2026-09-01 08:00:00');
+        $this->seed(DatabaseSeeder::class);
+        $operator = User::where('nik', 'OP-1001')->first();
+        $shift = Shift::orderBy('id')->value('id');
+
+        // Saldo awal 1000 kg. Batch di 3 Okt dan 15 Okt, masing-masing disimpan pada harinya.
+        foreach ([['2026-10-03', 300, 200, 200], ['2026-10-15', 400, 100, 100]] as [$date, $ink, $solvent, $recovery]) {
+            Carbon::setTestNow("{$date} 14:00:00");
+            $this->app['auth']->forgetGuards();
+            $this->actingAs($operator, 'sanctum')->postJson('/api/batches', [
+                'date' => $date, 'shift_id' => $shift, 'is_continuation' => false, 'process_status' => 'completed',
+                'ink_weight' => $ink, 'solvent_used_weight' => $solvent, 'recovery_weight' => $recovery,
+                'oil_temp' => $date === '2026-10-15' ? 170 : 140, 'vapour_temp' => 50,
+            ])->assertCreated();
+        }
+        Carbon::setTestNow('2026-10-20 10:00:00');
+        $this->as('SPV-2001');
+    }
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
+    private function as(string $nik): static
+    {
+        $this->app['auth']->forgetGuards();
+
+        return $this->actingAs(User::where('nik', $nik)->first(), 'sanctum');
+    }
+
+    public function test_monthly_report_matches_dashboard(): void
+    {
+        $report = $this->getJson('/api/reports/reclaimer?period=month&date=2026-10-20')->assertOk()->json('data');
+        $dashboard = $this->getJson('/api/dashboard?period=month&date=2026-10-20')->json('data');
+
+        foreach (['input', 'recovery', 'residue', 'recovery_rate', 'chain_count'] as $key) {
+            $this->assertSame($dashboard['totals'][$key], $report['summary'][$key], $key);
+        }
+        // (200 + 100) / (500 + 500) = 30%
+        $this->assertEquals(30, $report['summary']['recovery_rate']);
+        $this->assertSame('week', $report['breakdown']['unit']);
+        $this->assertCount(2, $report['chains']);
+        $this->assertCount(1, $report['below_target']);      // 100/500 = 20%
+        $this->assertCount(1, $report['temp_abnormal']);
+
+        // Saldo: 1000 - 200 + 200 - 100 + 100 = 1000
+        $this->assertEquals(1000, $report['solvent']['opening']);
+        $this->assertEquals(300, $report['solvent']['used']);
+        $this->assertEquals(300, $report['solvent']['recovered']);
+        $this->assertEquals(1000, $report['solvent']['closing']);
+    }
+
+    public function test_weekly_report_covers_monday_to_sunday(): void
+    {
+        $report = $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15')->assertOk()->json('data');
+
+        $this->assertSame('2026-10-12', $report['start']);
+        $this->assertSame('2026-10-18', $report['end']);
+        $this->assertSame('day', $report['breakdown']['unit']);
+        $this->assertCount(7, $report['breakdown']['rows']);
+        $this->assertSame(1, $report['summary']['chain_count']);
+        // Saldo awal minggu ini = saldo setelah batch 3 Okt
+        $this->assertEquals(1000, $report['solvent']['opening']);
+        $this->assertEquals(100, $report['solvent']['used']);
+    }
+
+    public function test_excel_export_contains_all_sheets_with_numbers(): void
+    {
+        $response = $this->get('/api/reports/reclaimer/export?format=xlsx&period=month&date=2026-10-20')->assertOk();
+        $this->assertStringContainsString('Laporan-Reclaimer-Bulanan-2026-10.xlsx', $response->headers->get('content-disposition'));
+
+        $book = IOFactory::load($response->getFile()->getPathname());
+        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Di bawah target', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
+        $summary = $book->getSheetByName('Ringkasan');
+        $this->assertSame('Bahan masuk (kg)', $summary->getCell('A11')->getValue());
+        $this->assertEquals(1000, $summary->getCell('B11')->getValue());
+        $this->assertEquals(30, $summary->getCell('B14')->getValue());
+        $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah target')->getCell('A2')->getValue());
+
+        $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
+    }
+
+    public function test_pdf_export_is_a_pdf(): void
+    {
+        $response = $this->get('/api/reports/reclaimer/export?format=pdf&period=year&date=2026-10-20')->assertOk();
+
+        $this->assertSame('application/pdf', $response->headers->get('content-type'));
+        $this->assertStringContainsString('Laporan-Reclaimer-Tahunan-2026.pdf', $response->headers->get('content-disposition'));
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+    }
+
+    public function test_signed_download_link(): void
+    {
+        $url = $this->getJson('/api/reports/reclaimer/export-link?format=pdf&period=month&date=2026-10-20')
+            ->assertOk()->json('data.url');
+        $this->assertStringStartsWith('/api/reports/reclaimer/download?', $url);
+
+        // Dibuka tanpa token, seperti browser membuka tautan unduhan
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+        $response = $this->get($url)->assertOk();
+        $this->assertStringStartsWith('%PDF', $response->getContent());
+
+        // Tautan diubah atau kedaluwarsa ditolak
+        $this->get(str_replace('format=pdf', 'format=xlsx', $url))->assertForbidden();
+        Carbon::setTestNow(now()->addMinutes(6));
+        $this->get($url)->assertForbidden();
+    }
+
+    public function test_signed_link_rechecks_access(): void
+    {
+        $url = $this->getJson('/api/reports/reclaimer/export-link?format=xlsx')->json('data.url');
+        User::where('nik', 'SPV-2001')->update(['is_active' => false]);
+
+        $this->app['auth']->forgetGuards();
+        $this->flushHeaders();
+        $this->get($url)->assertForbidden();
+    }
+
+    public function test_access_and_validation(): void
+    {
+        $this->as('OP-1001')->getJson('/api/reports/reclaimer')->assertForbidden();
+        foreach (['HSE-3001', 'MGT-4001', 'ADM-5001'] as $nik) {
+            $this->as($nik)->getJson('/api/reports/reclaimer')->assertOk();
+        }
+        $this->getJson('/api/reports/reclaimer?period=jam')->assertUnprocessable();
+        $this->get('/api/reports/reclaimer/export?format=docx', ['Accept' => 'application/json'])->assertUnprocessable();
+    }
+}

@@ -105,6 +105,22 @@ export function AuthProvider({ children }) {
     [token, signOutLocally],
   );
 
+  // Unduh berkas (ekspor laporan): minta tautan bertanda tangan berumur pendek, lalu buka
+  // seperti tautan biasa supaya browser sendiri yang menangani unduhannya
+  const download = useCallback(
+    async (linkPath) => {
+      const { data } = await request(linkPath);
+      const link = document.createElement('a');
+      link.href = data.url;
+      // Paksa unduh (nama dari server), supaya PDF tidak dibuka di penampil browser
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    },
+    [request],
+  );
+
   const can = useCallback(
     (feature, level = 'lihat') => {
       const granted = session?.permissions?.[feature];
@@ -125,10 +141,11 @@ export function AuthProvider({ children }) {
       login,
       logout,
       request,
+      download,
       can,
       retry: () => loadSession(token),
     }),
-    [status, error, notice, signedOutManually, session, login, logout, request, can, loadSession, token],
+    [status, error, notice, signedOutManually, session, login, logout, request, download, can, loadSession, token],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

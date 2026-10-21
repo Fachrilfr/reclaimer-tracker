@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\ReclaimerBatch;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
@@ -116,6 +117,30 @@ final class BatchChain
             'recovery_rate' => MaterialBalance::rate($recovery, $input),
             'residue_rate' => MaterialBalance::rate($residue, $input),
         ];
+    }
+
+    /** Kelompokkan rangkaian selesai per hari, minggu (Senin s/d Minggu), atau bulan, sampai hari ini. */
+    public static function buckets(Collection $completed, Carbon $from, Carbon $to, string $unit): array
+    {
+        $buckets = [];
+        $cursor = $from->copy()->startOfDay();
+        $last = $to->isFuture() ? now()->endOfDay() : $to;
+
+        while ($cursor->lte($last)) {
+            $bucketEnd = match ($unit) {
+                'day' => $cursor->copy()->endOfDay(),
+                'week' => $cursor->copy()->endOfWeek(Carbon::SUNDAY)->min($to),
+                'month' => $cursor->copy()->endOfMonth(),
+            };
+
+            $inBucket = $completed->filter(fn (self $c) => $c->root->date->between($cursor, $bucketEnd));
+            $buckets[] = ['start' => $cursor->toDateString(), 'end' => $bucketEnd->toDateString()]
+                + self::summarize($inBucket);
+
+            $cursor = $bucketEnd->copy()->addDay()->startOfDay();
+        }
+
+        return $buckets;
     }
 
     public function toArray(): array

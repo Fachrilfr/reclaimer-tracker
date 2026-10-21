@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Biohazard, ChevronLeft, ChevronRight, CircleCheck, Recycle, TriangleAlert, Wrench } from 'lucide-react';
+import { Biohazard, ChevronRight, CircleCheck, Recycle, TriangleAlert, Wrench } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import {
@@ -11,10 +11,10 @@ import {
   formatNumber,
   formatPercent,
   parseDate,
-  toIso,
 } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import StatCard from '../components/StatCard.jsx';
+import PeriodPicker, { localToday, periodLabel, periodStart } from '../components/PeriodPicker.jsx';
 import TrendChart, { FLAG_COLOR, FLAG_TRIANGLE } from '../components/TrendChart.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
@@ -25,134 +25,13 @@ import ReviewDialog from '../components/ReviewDialog.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
-const PERIODS = [
-  { value: 'day', label: 'Harian' },
-  { value: 'month', label: 'Bulanan' },
-  { value: 'year', label: 'Tahunan' },
-];
-
-function localToday() {
-  const now = new Date();
-  return toIso(now.getFullYear(), now.getMonth() + 1, now.getDate());
-}
-
-// Geser periode satu langkah (FR-47); tanggal di luar bulan dibetulkan oleh Date
-function shiftAnchor(iso, period, step) {
-  const { y, m, d } = parseDate(iso);
-  const date =
-    period === 'day' ? new Date(y, m - 1, d + step) : period === 'month' ? new Date(y, m - 1 + step, 1) : new Date(y + step, 0, 1);
-  return toIso(date.getFullYear(), date.getMonth() + 1, date.getDate());
-}
-
-function periodStart(iso, period) {
-  const { y, m } = parseDate(iso);
-  return period === 'day' ? iso : period === 'month' ? toIso(y, m, 1) : toIso(y, 1, 1);
-}
-
-function periodLabel(iso, period) {
-  if (period === 'day') return formatDate(iso);
-  if (period === 'month') return formatMonth(iso);
-  return String(parseDate(iso).y);
-}
+const PERIODS = ['day', 'month', 'year'];
 
 function Kg({ value }) {
   return (
     <span className="whitespace-nowrap">
       {formatNumber(value)} <span className="text-gray-600">kg</span>
     </span>
-  );
-}
-
-function PeriodPicker({ period, anchor, today, onChange }) {
-  const next = shiftAnchor(anchor, period, 1);
-  const canGoNext = periodStart(next, period) <= today;
-  const { y } = parseDate(today);
-
-  return (
-    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-      <div className="inline-flex rounded-lg border border-gray-200 bg-white p-1" role="group" aria-label="Jenis periode">
-        {PERIODS.map((p) => (
-          <button
-            key={p.value}
-            type="button"
-            aria-pressed={period === p.value}
-            onClick={() => onChange(p.value, anchor)}
-            className={`focus-ring h-11 flex-1 rounded-md px-4 text-body font-semibold transition-colors ${
-              period === p.value ? 'bg-brand-blue-600 text-white' : 'text-gray-800 hover:bg-gray-25'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
-        <button
-          type="button"
-          onClick={() => onChange(period, shiftAnchor(anchor, period, -1))}
-          aria-label="Periode sebelumnya"
-          className="btn-secondary h-11 w-11 shrink-0"
-        >
-          <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-        </button>
-
-        <label htmlFor="period-anchor" className="sr-only">
-          Pilih {PERIODS.find((p) => p.value === period).label.toLowerCase()}
-        </label>
-        {period === 'day' && (
-          <input
-            id="period-anchor"
-            type="date"
-            max={today}
-            value={anchor}
-            onChange={(e) => e.target.value && onChange(period, e.target.value)}
-            className="field min-w-0 flex-1 md:w-44 md:flex-none"
-          />
-        )}
-        {period === 'month' && (
-          <input
-            id="period-anchor"
-            type="month"
-            max={today.slice(0, 7)}
-            value={anchor.slice(0, 7)}
-            onChange={(e) => e.target.value && onChange(period, `${e.target.value}-01`)}
-            className="field min-w-0 flex-1 md:w-44 md:flex-none"
-          />
-        )}
-        {period === 'year' && (
-          <select
-            id="period-anchor"
-            value={parseDate(anchor).y}
-            onChange={(e) => onChange(period, toIso(Number(e.target.value), 1, 1))}
-            className="field min-w-0 flex-1 md:w-32 md:flex-none"
-          >
-            {Array.from({ length: 6 }, (_, i) => y - i).map((year) => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        )}
-
-        <button
-          type="button"
-          onClick={() => onChange(period, next)}
-          disabled={!canGoNext}
-          aria-label="Periode berikutnya"
-          className="btn-secondary h-11 w-11 shrink-0"
-        >
-          <ChevronRight className="h-5 w-5" aria-hidden="true" />
-        </button>
-        <button
-          type="button"
-          onClick={() => onChange(period, today)}
-          disabled={periodStart(anchor, period) === periodStart(today, period)}
-          className="btn-secondary h-11 w-full shrink-0 px-4 text-body sm:w-auto"
-        >
-          Sekarang
-        </button>
-      </div>
-    </div>
   );
 }
 
@@ -677,7 +556,7 @@ export default function DashboardPage() {
   const b3View = can('limbah_b3') ? B3_VIEWS.storage : B3_VIEWS.tps;
   const [params, setParams] = useSearchParams();
   const today = localToday();
-  const period = PERIODS.some((p) => p.value === params.get('period')) ? params.get('period') : 'day';
+  const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'day';
   const rawDate = params.get('date');
   const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
 
@@ -696,7 +575,7 @@ export default function DashboardPage() {
       <PageHeader title="Dashboard" description={`Material balance reclaimer dan limbah B3, ${periodLabel(anchor, period)}.`} />
 
       <div className="mt-6">
-        <PeriodPicker period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
       </div>
 
       {!data ? (
