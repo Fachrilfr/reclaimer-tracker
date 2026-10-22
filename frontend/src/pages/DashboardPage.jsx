@@ -41,7 +41,7 @@ function chainLabel(chain) {
 
 // Warna seri mengikuti design.md §2.5: output reclaim hijau, losses/limbah oranye
 const RECOVERY_COLOR = '#157F3D';
-const RESIDUE_COLOR = '#C2410C';
+const RESIDUE_COLOR = '#0F4A78'; // brand-blue-800
 
 function trendPoints(trend, valueOf, flagOf = () => false) {
   return trend.points.map((p) => ({

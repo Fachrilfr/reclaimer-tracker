@@ -40,7 +40,7 @@ class MachineController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => "Mesin {$machine->code} dilaporkan maintenance. HSE, supervisor, manajemen, dan admin sudah diberi tahu.",
+            'message' => "Mesin {$machine->code} dilaporkan maintenance. HSE, supervisor, manajemen, dan super admin sudah diberi tahu.",
             'data' => $machine->load('reporter')->summary(),
         ]);
     }

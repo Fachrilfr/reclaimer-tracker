@@ -42,7 +42,7 @@ export async function api(path, { method = 'GET', token, body } = {}) {
   }
 
   throw new ApiError(
-    data?.message ?? 'Server sedang bermasalah. Coba lagi beberapa saat, atau hubungi Admin bila berulang.',
+    data?.message ?? 'Server sedang bermasalah. Coba lagi beberapa saat, atau hubungi Super Admin bila berulang.',
     response.status,
     data,
   );

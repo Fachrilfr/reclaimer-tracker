@@ -79,8 +79,8 @@ function StatusForm({ maintenance, onDone }) {
       <h3 className="text-h3 font-semibold">{maintenance ? 'Mesin sudah beroperasi' : 'Laporkan maintenance'}</h3>
       <p className="-mt-3 text-body text-gray-600">
         {maintenance
-          ? 'HSE, supervisor, manajemen, dan admin akan diberi tahu bahwa mesin kembali beroperasi. Batch bisa dicatat lagi.'
-          : 'HSE, supervisor, manajemen, dan admin langsung diberi tahu. Batch tidak bisa dicatat selama maintenance.'}
+          ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Batch bisa dicatat lagi.'
+          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Batch tidak bisa dicatat selama maintenance.'}
       </p>
       {formError && <Alert tone="danger">{formError}</Alert>}
       <div className={`grid grid-cols-1 gap-4 ${maintenance ? '' : 'sm:grid-cols-3'}`}>

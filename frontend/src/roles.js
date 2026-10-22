@@ -3,7 +3,7 @@ export const ROLE_LABELS = {
   supervisor: 'Supervisor',
   hse: 'HSE',
   management: 'Manajemen',
-  admin: 'Admin',
+  admin: 'Super Admin',
 };
 
 export function roleLabel(role) {

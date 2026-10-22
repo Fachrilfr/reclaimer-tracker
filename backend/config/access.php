@@ -33,7 +33,7 @@ return [
         'arsip' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'management' => 'lihat'],
         'laporan' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         // Laporan limbah B3: berat yang diserahkan, surat jalan, masa simpan, dan stok.
-        // Keputusan pengguna: hanya HSE, Manajemen, dan Admin.
+        // Keputusan pengguna: hanya HSE, Manajemen, dan Super Admin.
         'laporan_b3' => ['hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'audit' => ['supervisor' => 'lihat', 'hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'parameter' => ['supervisor' => 'kelola', 'hse' => 'kelola'],
