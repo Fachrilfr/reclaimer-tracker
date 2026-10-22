@@ -17,7 +17,7 @@ export default function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Akun saya" description="Profil dan hak akses Anda. Perubahan data akun dilakukan oleh Admin." />
+      <PageHeader title="Akun saya" description="Profil dan hak akses Anda. Perubahan data akun dilakukan oleh Super Admin." />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <section aria-labelledby="profil-title" className="card p-4 sm:p-5 lg:col-span-4">

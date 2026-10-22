@@ -123,7 +123,7 @@ class AccessControlTest extends TestCase
 
         $this->asToken($token)->getJson('/api/auth/me')
             ->assertUnauthorized()
-            ->assertJsonPath('message', 'Akun dinonaktifkan. Silakan hubungi Administrator.');
+            ->assertJsonPath('message', 'Akun dinonaktifkan. Silakan hubungi Super Admin.');
         $this->assertDatabaseCount('personal_access_tokens', 0);
     }
 }

@@ -58,7 +58,7 @@ class AuthController extends Controller
         if (!$user->is_active) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akun dinonaktifkan. Silakan hubungi Administrator.',
+                'message' => 'Akun dinonaktifkan. Silakan hubungi Super Admin.',
             ], 403);
         }
 

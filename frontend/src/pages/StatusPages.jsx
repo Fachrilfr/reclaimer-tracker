@@ -25,7 +25,7 @@ export function ForbiddenPage({ module }) {
       <PageHeader title={module.label} />
       <section className="card mt-6">
         <EmptyState icon={Lock} title="Anda tidak punya akses ke halaman ini." action={<BackHomeLink />}>
-          {module.label} tidak termasuk hak akses peran {roleLabel(user.role)}. Hubungi Admin bila pekerjaan Anda
+          {module.label} tidak termasuk hak akses peran {roleLabel(user.role)}. Hubungi Super Admin bila pekerjaan Anda
           memerlukannya.
         </EmptyState>
       </section>

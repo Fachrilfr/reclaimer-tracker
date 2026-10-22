@@ -21,7 +21,7 @@ class EnsureUserIsActive
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'Akun dinonaktifkan. Silakan hubungi Administrator.',
+                'message' => 'Akun dinonaktifkan. Silakan hubungi Super Admin.',
             ], 401);
         }
 
