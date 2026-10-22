@@ -1,15 +1,21 @@
 import { useEffect, useId, useRef, useState } from 'react';
 
-// Grafik tren satu seri (FR-48). Mengikuti spesifikasi dataviz: garis 2px, titik r=4 dengan
-// cincin putih 2px, kolom maksimal 24px dengan ujung atas membulat 4px, gridline hairline
-// solid, satu sumbu. Satu seri, jadi tanpa kotak legenda: judul kartu yang menamainya.
+// Grafik tren satu seri (FR-48). Mengikuti spesifikasi dataviz: garis 2px, kolom maksimal
+// 24px dengan ujung atas membulat 4px, gridline hairline solid, satu sumbu. Satu seri, jadi
+// tanpa kotak legenda: judul kartu yang menamainya.
+//
+// Garis: kurva monoton (tidak pernah melampaui nilai sebenarnya, jadi tidak ada puncak
+// palsu), area bergradasi tipis di bawahnya, titik hanya untuk yang aktif atau terpisah
+// sendiri, garis putus-putus dari titik aktif ke sumbu, dan tooltip gelap di atas titik.
 // Hover dan panah keyboard menampilkan nilai; tabel di bawahnya memuat semua nilai.
 
-const HEIGHT = 220;
-const MARGIN = { top: 16, right: 72, bottom: 28, left: 52 };
+const HEIGHT = 240;
+const MARGIN = { top: 20, right: 72, bottom: 28, left: 52 };
 const GRID = '#EEF1F5'; // gray-100
 const AXIS_TEXT = '#5B6673'; // gray-600
 const REFERENCE = '#2B333D'; // gray-800
+const GUIDE = '#9AA5B1'; // gray-400
+const TOOLTIP_WIDTH = 168;
 
 // Titik yang ditandai (misalnya di bawah target): merah tua (cukup beda dari hijau recovery
 // untuk buta warna, ΔE 7,1 di validator dataviz) dan bentuk
@@ -34,6 +40,44 @@ function columnPath(x, y, w, h, r) {
 }
 
 /**
+ * Kurva kubik monoton (Fritsch–Carlson): halus seperti contoh desain, tetapi tidak
+ * pernah naik atau turun melewati titik data, jadi tidak menampilkan nilai yang tidak ada.
+ */
+function monotonePath(pts) {
+  if (pts.length === 1) return `M${pts[0].x},${pts[0].y}`;
+  const n = pts.length;
+  const d = [];
+  for (let i = 0; i < n - 1; i++) d.push((pts[i + 1].y - pts[i].y) / (pts[i + 1].x - pts[i].x));
+  const m = pts.map((_, i) => {
+    if (i === 0) return d[0];
+    if (i === n - 1) return d[n - 2];
+    return d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+  });
+  for (let i = 0; i < n - 1; i++) {
+    if (d[i] === 0) {
+      m[i] = 0;
+      m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const s = a * a + b * b;
+    if (s > 9) {
+      const t = 3 / Math.sqrt(s);
+      m[i] = t * a * d[i];
+      m[i + 1] = t * b * d[i];
+    }
+  }
+
+  let path = `M${pts[0].x},${pts[0].y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const h = (pts[i + 1].x - pts[i].x) / 3;
+    path += ` C${pts[i].x + h},${pts[i].y + m[i] * h} ${pts[i + 1].x - h},${pts[i + 1].y - m[i + 1] * h} ${pts[i + 1].x},${pts[i + 1].y}`;
+  }
+  return path;
+}
+
+/**
  * @param {{ key: string, label: string, longLabel: string, value: number|null, note?: string }[]} points
  * @param {'line'|'column'} kind
  */
@@ -42,6 +86,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
   const [width, setWidth] = useState(640);
   const [active, setActive] = useState(null);
   const tableId = useId();
+  const gradientId = `area-${useId().replace(/:/g, '')}`;
 
   useEffect(() => {
     const el = containerRef.current;
@@ -55,6 +100,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
   const n = points.length;
   const innerW = width - MARGIN.left - MARGIN.right;
   const innerH = HEIGHT - MARGIN.top - MARGIN.bottom;
+  const baseline = MARGIN.top + innerH;
   const band = innerW / Math.max(n, 1);
   const maxValue = Math.max(0, ...points.map((p) => p.value ?? 0), reference?.value ?? 0);
   const scale = niceScale(maxValue * 1.1);
@@ -66,10 +112,16 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
 
   // Garis menyambung antar titik yang punya data. Hari tanpa rangkaian selesai tidak
   // digambar sebagai 0, karena tidak ada produksi bukan berarti recovery 0%.
-  const segments = points
-    .map((p, i) => (p.value === null ? null : `${x(i)},${y(p.value)}`))
-    .filter(Boolean)
-    .map((xy, i) => `${i === 0 ? 'M' : 'L'}${xy}`);
+  const linePoints = points.flatMap((p, i) => (p.value === null ? [] : [{ x: x(i), y: y(p.value) }]));
+  const line = linePoints.length ? monotonePath(linePoints) : '';
+  const area =
+    linePoints.length > 1
+      ? `${line} L${linePoints[linePoints.length - 1].x},${baseline} L${linePoints[0].x},${baseline} Z`
+      : '';
+  // Titik tanpa tetangga berdata tidak membentuk garis, jadi tetap diberi penanda. Data
+  // jarang (misalnya per bulan) juga diberi titik supaya posisi datanya terbaca.
+  const showAllDots = linePoints.length <= 12;
+  const isolated = (i) => (i === 0 || points[i - 1].value === null) && (i === n - 1 || points[i + 1].value === null);
 
   const activePoint = active !== null ? points[active] : null;
 
@@ -100,7 +152,13 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
     return <p className="px-4 pb-6 text-body text-gray-600 sm:px-5">{emptyText}</p>;
   }
 
-  const tooltipLeft = activePoint ? Math.min(Math.max(x(active) - 80, 0), width - 160) : 0;
+  // Tooltip di atas titik aktif (atau ujung kolom). Boleh naik menutupi legenda di atas
+  // grafik selama hover; baru pindah ke bawah titik bila tetap tidak muat.
+  const anchorY = activePoint ? (activePoint.value === null ? baseline : y(activePoint.value)) : 0;
+  const tooltipHeight = activePoint ? 52 + (activePoint.flagged ? 18 : 0) + (activePoint.note ? 18 : 0) : 0;
+  const below = anchorY - 14 - tooltipHeight < -64;
+  const tooltipCenter = activePoint ? Math.min(Math.max(x(active), TOOLTIP_WIDTH / 2), width - TOOLTIP_WIDTH / 2) : 0;
+  const arrowOffset = activePoint ? x(active) - (tooltipCenter - TOOLTIP_WIDTH / 2) : 0;
 
   return (
     <div className="px-4 pb-4 sm:px-5 sm:pb-5">
@@ -124,6 +182,13 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
           onPointerDown={handlePointer}
           onPointerLeave={() => setActive(null)}
         >
+          <defs>
+            <linearGradient id={gradientId} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor={color} stopOpacity="0.18" />
+              <stop offset="100%" stopColor={color} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
           {ticks.map((t) => (
             <g key={t}>
               <line x1={MARGIN.left} x2={MARGIN.left + innerW} y1={y(t)} y2={y(t)} stroke={GRID} strokeWidth="1" />
@@ -142,8 +207,8 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
             ) : null,
           )}
 
-          {activePoint && (
-            <line x1={x(active)} x2={x(active)} y1={MARGIN.top} y2={MARGIN.top + innerH} stroke="#9AA5B1" strokeWidth="1" />
+          {kind === 'column' && activePoint && (
+            <line x1={x(active)} x2={x(active)} y1={MARGIN.top} y2={baseline} stroke={GUIDE} strokeWidth="1" />
           )}
 
           {kind === 'column' &&
@@ -153,7 +218,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
               return (
                 <path
                   key={p.key}
-                  d={columnPath(x(i) - w / 2, y(p.value), w, MARGIN.top + innerH - y(p.value), 4)}
+                  d={columnPath(x(i) - w / 2, y(p.value), w, baseline - y(p.value), 4)}
                   fill={color}
                   opacity={active === null || active === i ? 1 : 0.55}
                 />
@@ -162,23 +227,8 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
 
           {kind === 'line' && (
             <>
-              <path d={segments.join(' ')} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
-              {points.map((p, i) => {
-                if (p.value === null) return null;
-                const r = active === i ? 6 : 4;
-                return p.flagged ? (
-                  <path
-                    key={p.key}
-                    d={FLAG_TRIANGLE(x(i), y(p.value), r + 1.5)}
-                    fill={FLAG_COLOR}
-                    stroke="#FFFFFF"
-                    strokeWidth="2"
-                    strokeLinejoin="round"
-                  />
-                ) : (
-                  <circle key={p.key} cx={x(i)} cy={y(p.value)} r={r} fill={color} stroke="#FFFFFF" strokeWidth="2" />
-                );
-              })}
+              {area && <path d={area} fill={`url(#${gradientId})`} />}
+              <path d={line} fill="none" stroke={color} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
             </>
           )}
 
@@ -198,27 +248,64 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
               </text>
             </g>
           )}
+
+          {kind === 'line' && (
+            <>
+              {/* Garis putus-putus dari titik aktif ke sumbu */}
+              {activePoint && activePoint.value !== null && (
+                <line x1={x(active)} x2={x(active)} y1={y(activePoint.value)} y2={baseline} stroke={GUIDE} strokeWidth="1.5" strokeDasharray="4 4" />
+              )}
+              {points.map((p, i) => {
+                if (p.value === null) return null;
+                const isActive = active === i;
+                if (p.flagged) {
+                  return (
+                    <path
+                      key={p.key}
+                      d={FLAG_TRIANGLE(x(i), y(p.value), isActive ? 7.5 : 5.5)}
+                      fill={FLAG_COLOR}
+                      stroke="#FFFFFF"
+                      strokeWidth="2"
+                      strokeLinejoin="round"
+                    />
+                  );
+                }
+                if (!isActive && !showAllDots && !isolated(i)) return null;
+                return <circle key={p.key} cx={x(i)} cy={y(p.value)} r={isActive ? 6 : 4} fill={color} stroke="#FFFFFF" strokeWidth="2" />;
+              })}
+            </>
+          )}
         </svg>
 
         {activePoint && (
           <div
-            className="pointer-events-none absolute top-0 w-40 rounded-lg border border-gray-200 bg-white p-2 shadow-pop"
-            style={{ left: tooltipLeft }}
+            className="pointer-events-none absolute rounded-lg bg-brand-blue-900 px-3 py-2 text-center text-white shadow-pop"
+            style={{
+              width: TOOLTIP_WIDTH,
+              left: tooltipCenter - TOOLTIP_WIDTH / 2,
+              top: below ? anchorY + 14 : anchorY - 14,
+              transform: below ? 'none' : 'translateY(-100%)',
+            }}
           >
-            <p className="text-caption text-gray-600">{activePoint.longLabel}</p>
-            <p className="flex items-center gap-1.5 text-body font-semibold tabular-nums text-gray-900">
-              <span aria-hidden="true" className="inline-block h-0.5 w-3 rounded" style={{ backgroundColor: color }} />
+            <p className="text-body-lg font-bold tabular-nums">
               {activePoint.value === null ? 'Tidak ada data' : format(activePoint.value)}
             </p>
+            <p className="text-caption text-white/75">{activePoint.longLabel}</p>
             {activePoint.flagged && (
-              <p className="flex items-center gap-1 text-caption font-medium text-danger-fg">
+              <p className="mt-0.5 flex items-center justify-center gap-1 text-caption font-semibold text-[#FCA5A5]">
                 <svg width="10" height="10" aria-hidden="true">
-                  <path d={FLAG_TRIANGLE(5, 5, 4.5)} fill={FLAG_COLOR} />
+                  <path d={FLAG_TRIANGLE(5, 5, 4.5)} fill="#FCA5A5" />
                 </svg>
                 {flagLabel}
               </p>
             )}
-            {activePoint.note && <p className="text-caption text-gray-600">{activePoint.note}</p>}
+            {activePoint.note && <p className="text-caption text-white/75">{activePoint.note}</p>}
+            {/* Ekor tooltip menunjuk ke titik */}
+            <span
+              aria-hidden="true"
+              className="absolute h-2.5 w-2.5 rotate-45 bg-brand-blue-900"
+              style={{ left: arrowOffset - 5, ...(below ? { top: -5 } : { bottom: -5 }) }}
+            />
           </div>
         )}
         <p className="sr-only" aria-live="polite">
