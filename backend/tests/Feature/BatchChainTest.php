@@ -110,13 +110,13 @@ class BatchChainTest extends TestCase
             ->json('data.id');
 
         // Shift 3 menyelesaikan rangkaian; boleh menautkan ke batch lanjutan sebelumnya
-        $this->continuation($middle, ['shift_id' => $this->shift3, 'recovery_weight' => 60, 'notes' => 'Lanjutan 23:15, selesai'])
+        $this->continuation($middle, ['shift_id' => $this->shift3, 'recovery_weight' => 90, 'notes' => 'Lanjutan 23:15, selesai'])
             ->assertCreated()
             ->assertJsonPath('data.parent_batch_number', 'BR-20261020-001')
             ->assertJsonPath('data.chain_complete', true)
-            // (60 + 90 + 60) / 600 = 35%, sama dengan target, tidak di bawah
-            ->assertJsonPath('data.chain_recovery_rate', 35)
-            ->assertJsonPath('data.target_recovery_rate', 35)
+            // (60 + 90 + 90) / 600 = 40%, sama dengan toleransi, tidak di bawah
+            ->assertJsonPath('data.chain_recovery_rate', 40)
+            ->assertJsonPath('data.target_recovery_rate', 40)
             ->assertJsonPath('data.is_recovery_low', false);
 
         $this->assertSame(3, ReclaimerBatch::whereNotNull('target_recovery_rate')->count());
@@ -126,11 +126,11 @@ class BatchChainTest extends TestCase
         $day->assertJsonPath('data.totals.chain_count', 1)
             ->assertJsonPath('data.totals.batch_count', 3)
             ->assertJsonPath('data.totals.input', 600)
-            ->assertJsonPath('data.totals.recovery', 210)
-            ->assertJsonPath('data.totals.recovery_rate', 35)
+            ->assertJsonPath('data.totals.recovery', 240)
+            ->assertJsonPath('data.totals.recovery_rate', 40)
             ->assertJsonPath('data.totals.open_chain_count', 0)
             // Seluruh rangkaian dihitung di shift batch awalnya, tidak dipecah per shift
-            ->assertJsonPath('data.by_shift.0.recovery_rate', 35)
+            ->assertJsonPath('data.by_shift.0.recovery_rate', 40)
             ->assertJsonPath('data.by_shift.1.chain_count', 0)
             ->assertJsonPath('data.by_shift.2.chain_count', 0)
             ->assertJsonCount(1, 'data.breakdown.rows')
@@ -153,7 +153,7 @@ class BatchChainTest extends TestCase
             ->json('data.id');
         $this->getJson('/api/dashboard')->assertJsonCount(0, 'data.action_items.low_recovery_chains');
 
-        // (50 + 50) / 500 = 20% < 35%
+        // (50 + 50) / 500 = 20% < toleransi 40%
         $this->continuation($root, ['recovery_weight' => 50])
             ->assertCreated()
             ->assertJsonPath('data.chain_recovery_rate', 20)
@@ -166,7 +166,7 @@ class BatchChainTest extends TestCase
             ->assertJsonPath('data.action_items.low_recovery_chains.0.batch_number', 'BR-20261020-001')
             ->assertJsonPath('data.action_items.low_recovery_chains.0.batch_count', 2)
             ->assertJsonPath('data.tolerance.is_below', true)
-            ->assertJsonPath('data.tolerance.gap', -15)
+            ->assertJsonPath('data.tolerance.gap', -20)
             ->assertJsonPath('data.tolerance.below_target_count', 1);
     }
 

@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 class ChainReviewController extends Controller
 {
     /**
-     * Supervisor meninjau rangkaian di bawah target (hak Tinjau dashboard, PRD §5.1).
+     * Supervisor meninjau rangkaian di bawah toleransi (hak Tinjau dashboard, PRD §5.1).
      * Rangkaian yang sudah ditinjau hilang dari "Perlu ditindak"; yang tidak ditinjau
      * tetap hilang sendiri 14 hari setelah selesai.
      */
@@ -30,8 +30,8 @@ class ChainReviewController extends Controller
             $root = ReclaimerBatch::lockForUpdate()->findOrFail($batch->root()->id);
 
             $problem = match (true) {
-                $root->chain_completed_at === null => 'Rangkaian ini belum selesai, jadi belum dinilai terhadap target.',
-                ! $root->is_recovery_low => 'Rangkaian ini memenuhi target recovery, tidak perlu ditinjau.',
+                $root->chain_completed_at === null => 'Rangkaian ini belum selesai, jadi belum dinilai terhadap toleransi.',
+                ! $root->is_recovery_low => 'Rangkaian ini memenuhi toleransi solvent, tidak perlu ditinjau.',
                 (bool) $root->supervisor_reviewed => "Rangkaian {$root->batch_number} sudah ditinjau.",
                 default => null,
             };

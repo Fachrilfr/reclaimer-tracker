@@ -102,16 +102,16 @@ class ReclaimerReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Pemakaian solvent', 'Di bawah target', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Pemakaian solvent', 'Di bawah toleransi', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
         $summary = $book->getSheetByName('Ringkasan');
         $this->assertSame('Tinta X masuk (kg)', $summary->getCell('A9')->getValue());
         $this->assertEquals(1000, $summary->getCell('B9')->getValue());
-        $this->assertSame('Recovery rate', $summary->getCell('A12')->getValue());
+        $this->assertSame('Persentase solvent', $summary->getCell('A12')->getValue());
         $this->assertEquals(30, $summary->getCell('B12')->getValue());
         $usages = $book->getSheetByName('Pemakaian solvent');
         $this->assertEquals(200, $usages->getCell('C6')->getValue());
         $this->assertEquals(300, $usages->getCell('C8')->getValue()); // baris total
-        $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah target')->getCell('A6')->getValue());
+        $this->assertSame('BR-20261015-001', $book->getSheetByName('Di bawah toleransi')->getCell('A6')->getValue());
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
     }

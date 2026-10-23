@@ -1,11 +1,11 @@
 import { Link, useSearchParams } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
-import { formatDate, formatNumber } from '../lib/format.js';
+import { formatDate, formatDateTime, formatDuration, formatNumber } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
-import ExportButtons from '../components/ExportButtons.jsx';
+import DocumentPreview from '../components/DocumentPreview.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge from '../components/StorageBadge.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
@@ -229,7 +229,7 @@ function ReportBody({ report }) {
                       <span className="block text-caption text-gray-600">sejak {formatDate(p.sent_to_tps_at)}</span>
                     )}
                   </Td>
-                  <Td numeric>{p.drum_count}</Td>
+                  <Td numeric className="whitespace-nowrap">{p.drum_count ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
                   <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
                   <Td className="whitespace-nowrap">{formatDate(p.expiry_date)}</Td>
                   <Td>
@@ -241,6 +241,45 @@ function ReportBody({ report }) {
           </Table>
         ) : (
           <Empty>Tidak ada pallet yang tersimpan {stockLabel}.</Empty>
+        )}
+      </Section>
+
+      <Section
+        id="b3-maintenance"
+        title="Maintenance mesin"
+        description={
+          report.maintenance.count
+            ? `${report.maintenance.count} kali, total downtime ${formatDuration(report.maintenance.total_minutes)}. Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.`
+            : 'Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.'
+        }
+      >
+        {report.maintenance.count ? (
+          <Table caption="Maintenance di periode">
+            <thead>
+              <tr>
+                <Th>Mulai</Th>
+                <Th>Selesai</Th>
+                <Th>Alasan</Th>
+                <Th>Catatan perbaikan</Th>
+                <Th numeric>Durasi di periode</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.maintenance.rows.map((m) => (
+                <tr key={m.start}>
+                  <Td className="whitespace-nowrap">{formatDateTime(m.start)}</Td>
+                  <Td className="whitespace-nowrap">{m.end ? formatDateTime(m.end) : 'Masih berlangsung'}</Td>
+                  <Td>{m.reason}</Td>
+                  <Td>{m.end_note ?? <span className="text-gray-600">–</span>}</Td>
+                  <Td numeric className="whitespace-nowrap">
+                    {formatDuration(m.minutes_in_period)}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        ) : (
+          <Empty>Mesin tidak menjalani maintenance di periode ini.</Empty>
         )}
       </Section>
     </div>
@@ -262,8 +301,8 @@ export default function B3ReportPage() {
     <>
       <PageHeader
         title="Laporan Limbah B3"
-        description={`Berat limbah B3 yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, dan stok, ${periodLabel(anchor, period)}.`}
-        actions={<ExportButtons path="/reports/b3/export" period={period} anchor={anchor} />}
+        description={`Berat limbah B3 yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Limbah B3, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
       />
 
       <div className="mt-6">

@@ -31,58 +31,61 @@ class PalletTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_operator_fills_pallet_with_three_drums(): void
+    public function test_operator_starts_and_fills_pallet_in_real_time(): void
     {
-        $pallet = $this->postJson('/api/pallets', ['start_date' => '2026-10-01'])
+        // Tombol "mulai diisi" ditekan 1 Okt pukul 08.15: tanggal dan jam diambil saat itu
+        Carbon::setTestNow('2026-10-01 08:15:00');
+        $pallet = $this->postJson('/api/pallets', ['notes' => 'Pallet kayu baru'])
             ->assertCreated()
             ->assertJsonPath('data.pallet_number', 'PLT-202610-001')
+            ->assertJsonPath('data.start_date', '2026-10-01')
+            ->assertJsonPath('data.status', 'filling')
+            ->assertJsonPath('data.notes', 'Pallet kayu baru')
+            // 1 Okt + 90 hari = 30 Des
             ->assertJsonPath('data.expiry_date', '2026-12-30')
-            // 1 Okt + 90 hari = 30 Des; dari 20 Okt sisa 71 hari
-            ->assertJsonPath('data.storage.days_remaining', 71)
-            ->assertJsonPath('data.storage.level', 'aman')
             ->json('data');
+        $this->assertStringStartsWith('2026-10-01T08:15:00', $pallet['started_at']);
 
-        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-05'])
-            ->assertCreated()->assertJsonPath('data.drum_count', 1)->assertJsonPath('data.status', 'filling');
-        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-12'])
-            ->assertCreated()->assertJsonPath('data.drum_count', 2);
-        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-19'])
-            ->assertCreated()
+        // Tombol "pallet penuh" ditekan 5 Okt pukul 14.40: langsung terkirim ke TPS
+        Carbon::setTestNow('2026-10-05 14:40:00');
+        $full = $this->postJson("/api/pallets/{$pallet['id']}/full", ['notes' => 'Tutup drum diganti'])
+            ->assertOk()
+            ->assertJsonPath('message', 'Pallet PLT-202610-001 penuh dan terkirim ke TPS.')
             ->assertJsonPath('data.status', 'full')
-            ->assertJsonPath('data.full_date', '2026-10-19')
-            ->assertJsonPath('message', 'Drum ke-3 tercatat. Pallet PLT-202610-001 penuh dan dikirim ke TPS.');
+            ->assertJsonPath('data.full_date', '2026-10-05')
+            ->assertJsonPath('data.drum_count', 3)
+            ->assertJsonPath('data.tps.level', 'terkirim')
+            ->assertJsonPath('data.tps.sent_at', '2026-10-05')
+            ->assertJsonPath('data.tps.late_days', 0)
+            ->assertJsonPath('data.notes', "Pallet kayu baru\nTutup drum diganti")
+            ->json('data');
+        $this->assertStringStartsWith('2026-10-05T14:40:00', $full['full_at']);
 
-        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-20'])
-            ->assertUnprocessable()->assertJsonValidationErrors(['filled_date']);
-
-        $this->assertDatabaseCount('b3_drum_logs', 3);
+        // Tidak bisa ditandai penuh dua kali; drum tidak dicatat satu per satu lagi
+        $this->postJson("/api/pallets/{$pallet['id']}/full")->assertUnprocessable()->assertJsonValidationErrors(['pallet']);
+        $this->assertDatabaseCount('b3_drum_logs', 0);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'update', 'entity_type' => 'b3_pallets']);
         $this->getJson('/api/pallets')->assertOk()->assertJsonPath('data.filling', null);
     }
 
-    public function test_full_pallet_is_sent_to_tps(): void
+    public function test_filling_pallet_counts_down_to_tps_deadline(): void
     {
-        $pallet = $this->postJson('/api/pallets', ['start_date' => '2026-10-15'])
-            ->assertCreated()
-            // Batas kirim ke TPS 7 hari sejak mulai terisi: 22 Okt, sisa 2 hari per 20 Okt
-            ->assertJsonPath('data.tps_due_date', '2026-10-22')
-            ->assertJsonPath('data.tps.level', 'perhatian')
-            ->assertJsonPath('data.tps.days_remaining', 2)
-            ->assertJsonPath('data.tps.sent_at', null)
-            ->json('data');
+        Carbon::setTestNow('2026-10-15 09:00:00');
+        $pallet = $this->postJson('/api/pallets')->assertCreated()->json('data');
 
-        foreach (['2026-10-16', '2026-10-18'] as $date) {
-            $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => $date])
-                ->assertJsonPath('data.tps.sent_at', null);
-        }
+        // Batas kirim ke TPS 7 hari sejak mulai diisi: 22 Okt, sisa 2 hari per 20 Okt
+        Carbon::setTestNow('2026-10-20 10:00:00');
+        $this->getJson('/api/pallets')->assertOk()
+            ->assertJsonPath('data.filling.tps_due_date', '2026-10-22')
+            ->assertJsonPath('data.filling.tps.level', 'perhatian')
+            ->assertJsonPath('data.filling.tps.days_remaining', 2)
+            ->assertJsonPath('data.filling.tps.sent_at', null);
 
-        $this->postJson("/api/pallets/{$pallet['id']}/drums", ['filled_date' => '2026-10-20'])
-            ->assertCreated()
-            ->assertJsonPath('message', 'Drum ke-3 tercatat. Pallet PLT-202610-001 penuh dan dikirim ke TPS.')
-            ->assertJsonPath('data.tps.level', 'terkirim')
-            ->assertJsonPath('data.tps.sent_at', '2026-10-20')
-            ->assertJsonPath('data.tps.late_days', 0)
-            ->assertJsonPath('data.tps.needs_action', false)
-            // Masa simpan TPS ke vendor (HSE) tetap 90 hari dari mulai terisi
+        // Penuh setelah batas kirim: tercatat terlambat
+        Carbon::setTestNow('2026-10-24 11:00:00');
+        $this->postJson("/api/pallets/{$pallet['id']}/full")->assertOk()
+            ->assertJsonPath('data.tps.late_days', 2)
+            // Masa simpan TPS ke vendor (HSE) tetap 90 hari dari mulai diisi
             ->assertJsonPath('data.expiry_date', '2027-01-13');
     }
 
@@ -122,7 +125,9 @@ class PalletTest extends TestCase
 
     public function test_dashboard_lists_pallets_late_for_tps(): void
     {
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertCreated();
+        Carbon::setTestNow('2026-10-10 08:00:00');
+        $this->postJson('/api/pallets')->assertCreated();
+        Carbon::setTestNow('2026-10-20 10:00:00');
 
         $this->getJson('/api/dashboard')->assertOk()
             ->assertJsonCount(1, 'data.tps_pallets')
@@ -131,42 +136,13 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.action_items.tps_pallets.0.tps.days_remaining', -3);
     }
 
-    public function test_pallet_and_drum_notes_appear_in_history(): void
-    {
-        $id = $this->postJson('/api/pallets', ['start_date' => '2026-10-15', 'notes' => 'Pallet kayu baru'])
-            ->assertJsonPath('data.notes', 'Pallet kayu baru')
-            ->json('data.id');
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-16']);
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-18', 'notes' => 'Tutup drum diganti']);
-
-        $this->getJson('/api/pallets')->assertOk()
-            ->assertJsonPath('data.recent.0.notes', 'Pallet kayu baru')
-            ->assertJsonCount(1, 'data.recent.0.drum_notes')
-            ->assertJsonPath('data.recent.0.drum_notes.0.sequence', 2)
-            ->assertJsonPath('data.recent.0.drum_notes.0.notes', 'Tutup drum diganti')
-            ->assertJsonPath('data.filling.notes', 'Pallet kayu baru');
-    }
-
     public function test_only_one_pallet_can_be_filling(): void
     {
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertCreated();
+        $this->postJson('/api/pallets')->assertCreated();
 
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-11'])
+        $this->postJson('/api/pallets')
             ->assertUnprocessable()
-            ->assertJsonPath('errors.start_date.0', 'Pallet PLT-202610-001 masih diisi. Catat drum sampai pallet penuh sebelum memulai pallet baru.');
-    }
-
-    public function test_drum_date_cannot_be_before_pallet_start_or_previous_drum(): void
-    {
-        $id = $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->json('data.id');
-
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-09'])
-            ->assertUnprocessable()
-            ->assertJsonPath('errors.filled_date.0', 'Tanggal drum penuh tidak boleh sebelum 10 Okt 2026.');
-
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-15'])->assertCreated();
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-14'])->assertUnprocessable();
-        $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => '2026-10-21'])->assertUnprocessable();
+            ->assertJsonPath('errors.pallet.0', 'Pallet PLT-202610-001 masih diisi. Tandai pallet itu penuh sebelum memulai pallet baru.');
     }
 
     public function test_storage_level_follows_reminder_thresholds(): void
@@ -199,12 +175,12 @@ class PalletTest extends TestCase
         $this->app['auth']->forgetGuards();
         $this->actingAs(User::where('nik', 'SPV-2001')->first(), 'sanctum');
         $this->getJson('/api/pallets')->assertOk();
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertForbidden();
+        $this->postJson('/api/pallets')->assertForbidden();
 
         $this->app['auth']->forgetGuards();
         // HSE tidak mencatat drum lagi; pallet dipantau dari Limbah B3
         $this->actingAs(User::where('nik', 'HSE-3001')->first(), 'sanctum');
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-10'])->assertForbidden();
+        $this->postJson('/api/pallets')->assertForbidden();
         $this->getJson('/api/b3/pallets')->assertOk();
 
         $this->app['auth']->forgetGuards();

@@ -31,11 +31,11 @@ class B3ReportTest extends TestCase
 
         // A dan B diserahkan 5 Okt (A lewat batas: 1 Jul + 90 hari = 29 Sep), C 15 Okt,
         // D masih di TPS, E masih diisi di area reclaimer
-        $a = $this->pallet('2026-07-01', ['2026-07-03', '2026-07-05', '2026-07-07']);
-        $b = $this->pallet('2026-08-01', ['2026-08-03', '2026-08-05', '2026-08-07']);
-        $c = $this->pallet('2026-08-10', ['2026-08-12', '2026-08-14', '2026-08-16']);
-        $this->pallet('2026-09-01', ['2026-09-02', '2026-09-03', '2026-09-04']);
-        $this->pallet('2026-10-18', ['2026-10-19']);
+        $a = $this->pallet('2026-07-01', '2026-07-07');
+        $b = $this->pallet('2026-08-01', '2026-08-07');
+        $c = $this->pallet('2026-08-10', '2026-08-16');
+        $this->pallet('2026-09-01', '2026-09-04');
+        $this->pallet('2026-10-18', null);
 
         $this->as('HSE-3001');
         $this->suratJalan('SJ-001', $first, '2026-10-05', [$a, $b], 600);
@@ -55,13 +55,17 @@ class B3ReportTest extends TestCase
         return $this->actingAs(User::where('nik', $nik)->first(), 'sanctum');
     }
 
-    private function pallet(string $start, array $drums): int
+    /** Operator menekan "mulai diisi" pada $start dan "penuh" pada $full (terkirim ke TPS). */
+    private function pallet(string $start, ?string $full): int
     {
         $this->as('OP-1001');
-        $id = $this->postJson('/api/pallets', ['start_date' => $start])->assertCreated()->json('data.id');
-        foreach ($drums as $date) {
-            $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => $date])->assertCreated();
+        Carbon::setTestNow("{$start} 08:00:00");
+        $id = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
+        if ($full) {
+            Carbon::setTestNow("{$full} 15:00:00");
+            $this->postJson("/api/pallets/{$id}/full")->assertOk();
         }
+        Carbon::setTestNow('2026-10-20 10:00:00');
 
         return $id;
     }
@@ -98,7 +102,8 @@ class B3ReportTest extends TestCase
         // Stok hari ini: D di TPS, E di area reclaimer
         $this->assertTrue($report['stock']['is_current']);
         $this->assertSame(['tps', 'reclaimer'], array_column($report['stock']['rows'], 'location'));
-        $this->assertSame(1, $report['stock']['rows'][1]['drum_count']);
+        // Pallet yang masih diisi tidak dihitung per drum lagi
+        $this->assertNull($report['stock']['rows'][1]['drum_count']);
     }
 
     public function test_stock_is_taken_at_the_end_of_a_past_period(): void
@@ -123,7 +128,7 @@ class B3ReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Masa simpan', 'Stok akhir periode'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Masa simpan', 'Stok akhir periode', 'Maintenance'], $book->getSheetNames());
         $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
         $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B9')->getValue());
         $this->assertSame('Lewat batas 6 hari', $book->getSheetByName('Masa simpan')->getCell('H6')->getValue());
@@ -132,6 +137,23 @@ class B3ReportTest extends TestCase
         $this->assertSame('Laporan-Limbah-B3-Tahunan-2026.pdf', $pdf['filename']);
         $this->assertStringStartsWith('%PDF', base64_decode($pdf['content']));
         $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
+    }
+
+    public function test_document_preview_and_maintenance_section(): void
+    {
+        $report = $this->getJson('/api/reports/b3?period=month&date=2026-10-20')->assertOk()->json('data');
+        $this->assertSame(['count', 'total_minutes', 'rows'], array_keys($report['maintenance']));
+
+        // Pratinjau dokumen: isi sama dengan PDF, dibaca di aplikasi tanpa mengunduh
+        $html = $this->getJson('/api/reports/b3/document?period=month&date=2026-10-20')->assertOk()->json('data.html');
+        $this->assertStringContainsString('Laporan Limbah B3 Bulanan', $html);
+        $this->assertStringContainsString('Maintenance mesin', $html);
+        $this->assertStringContainsString('SJ-001', $html);
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
+
+        $this->as('SPV-2001')->getJson('/api/reports/b3/document')->assertForbidden();
+        $this->getJson('/api/reports/reclaimer/document?period=month&date=2026-10-20')->assertOk()
+            ->assertJsonPath('data.html', fn ($html) => str_contains($html, 'Laporan Reclaimer Bulanan'));
     }
 
     public function test_only_hse_management_and_admin(): void

@@ -15,10 +15,10 @@ import { Table, Td, Th } from '../components/Table.jsx';
 
 // Lokasi pallet: urutan tab mengikuti tugas HSE, yang di TPS paling dulu
 const LOCATIONS = [
-  { value: 'tps', label: 'Di TPS', empty: 'Belum ada pallet di TPS.', hint: 'Pallet masuk ke sini otomatis saat operator mencatat drum terakhirnya.' },
-  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Operator memulai pallet baru dari halaman Input drum B3.' },
+  { value: 'tps', label: 'Di TPS', empty: 'Belum ada pallet di TPS.', hint: 'Pallet masuk ke sini otomatis saat operator menandai pallet penuh.' },
+  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Operator memulai pallet baru dari halaman Input pallet B3.' },
   { value: 'diserahkan', label: 'Diserahkan', empty: 'Belum ada pallet yang diserahkan ke vendor.', hint: 'Pallet pindah ke sini setelah surat jalannya tersimpan.' },
-  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mencatat drum B3.' },
+  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mulai mengisi pallet B3.' },
 ];
 
 const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: 'Kritis' };
@@ -84,8 +84,9 @@ function PalletTable({ pallets, drumsPerPallet, selectable, selected, onToggle, 
               </Td>
             )}
             <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
-            <Td numeric>
-              {p.drum_count}/{drumsPerPallet}
+            <Td numeric className="whitespace-nowrap">
+              {/* Pallet yang masih diisi tidak dihitung per drum */}
+              {p.location === 'reclaimer' ? <span className="text-gray-600">Sedang diisi</span> : `${p.drum_count}/${drumsPerPallet}`}
             </Td>
             <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
             <Td className="min-w-[12rem]">

@@ -6,7 +6,7 @@ import PageHeader from '../components/PageHeader.jsx';
 import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
-import ExportButtons from '../components/ExportButtons.jsx';
+import DocumentPreview from '../components/DocumentPreview.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -66,11 +66,11 @@ function ReportBody({ report }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" note="Bahan masuk ke mesin reclaimer" />
-        <StatCard label="Hasil recovery" value={formatNumber(s.recovery)} unit="kg" note={`Residu estimasi ${formatNumber(s.residue)} kg`} />
+        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" note={`Residu estimasi ${formatNumber(s.residue)} kg`} />
         <StatCard
-          label="Recovery rate"
+          label="Persentase solvent"
           value={s.chain_count ? formatPercent(s.recovery_rate) : '–'}
-          note={`Target ${formatPercent(target)} · ${s.below_target_count} rangkaian di bawah target`}
+          note={`Toleransi ${formatPercent(target)} · ${s.below_target_count} rangkaian di bawah toleransi`}
           tone={!s.chain_count ? 'neutral' : s.recovery_rate >= target ? 'good' : 'bad'}
         />
         <StatCard
@@ -85,13 +85,13 @@ function ReportBody({ report }) {
         <Section
           id="lap-solvent"
           title="Saldo solvent"
-          description="Bertambah dari hasil recovery tiap batch, berkurang saat solvent diambil dari saldo."
+          description="Bertambah dari hasil solvent tiap batch, berkurang saat solvent diambil dari saldo."
           padded
         >
           <dl className="divide-y divide-gray-100 text-body tabular-nums">
             {[
               ['Saldo awal', report.solvent.opening],
-              ['Hasil recovery masuk', report.solvent.recovered],
+              ['Hasil solvent masuk', report.solvent.recovered],
               ['Solvent dipakai', -report.solvent.used],
               ...(report.solvent.adjustment ? [['Penyesuaian', report.solvent.adjustment]] : []),
             ].map(([label, value]) => (
@@ -157,9 +157,9 @@ function ReportBody({ report }) {
               <Th>Shift</Th>
               <Th numeric>Rangkaian</Th>
               <Th numeric>Tinta X masuk</Th>
-              <Th numeric>Recovery</Th>
+              <Th numeric>Hasil solvent</Th>
               <Th numeric>Residu estimasi</Th>
-              <Th numeric>Recovery rate</Th>
+              <Th numeric>Persentase solvent</Th>
             </tr>
           </thead>
           <tbody>
@@ -187,9 +187,9 @@ function ReportBody({ report }) {
                 <Th>{BREAKDOWN_LABEL[report.breakdown.unit]}</Th>
                 <Th numeric>Rangkaian</Th>
                 <Th numeric>Tinta X masuk</Th>
-                <Th numeric>Recovery</Th>
+                <Th numeric>Hasil solvent</Th>
                 <Th numeric>Residu estimasi</Th>
-                <Th numeric>Recovery rate</Th>
+                <Th numeric>Persentase solvent</Th>
               </tr>
             </thead>
             <tbody>
@@ -212,18 +212,18 @@ function ReportBody({ report }) {
 
       <Section
         id="lap-bawah-target"
-        title="Rangkaian di bawah target"
+        title="Rangkaian di bawah toleransi"
         description="Beserta tinjauan supervisor."
         padded={!report.below_target.length}
       >
         {report.below_target.length ? (
-          <Table caption="Rangkaian di bawah target">
+          <Table caption="Rangkaian di bawah toleransi">
             <thead>
               <tr>
                 <Th>Rangkaian</Th>
                 <Th>Tanggal dan shift</Th>
-                <Th numeric>Recovery</Th>
-                <Th numeric>Target</Th>
+                <Th numeric>Hasil solvent</Th>
+                <Th numeric>Toleransi</Th>
                 <Th>Tinjauan supervisor</Th>
               </tr>
             </thead>
@@ -252,7 +252,7 @@ function ReportBody({ report }) {
             </tbody>
           </Table>
         ) : (
-          <p className="text-body text-gray-600">Tidak ada rangkaian di bawah target di periode ini.</p>
+          <p className="text-body text-gray-600">Tidak ada rangkaian di bawah toleransi di periode ini.</p>
         )}
       </Section>
 
@@ -263,8 +263,8 @@ function ReportBody({ report }) {
               <tr>
                 <Th>No. batch</Th>
                 <Th>Tanggal dan shift</Th>
-                <Th numeric>Oil Temperature</Th>
-                <Th numeric>Vapour Temperature</Th>
+                <Th numeric>Suhu oli</Th>
+                <Th numeric>Suhu uap</Th>
               </tr>
             </thead>
             <tbody>
@@ -297,8 +297,8 @@ function ReportBody({ report }) {
                   <Th>Tanggal dan shift</Th>
                   <Th>Operator</Th>
                   <Th numeric>Tinta X</Th>
-                  <Th numeric>Recovery</Th>
-                  <Th numeric>Recovery rate</Th>
+                  <Th numeric>Hasil solvent</Th>
+                  <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>
               <tbody>
@@ -348,8 +348,8 @@ export default function ReportPage() {
     <>
       <PageHeader
         title="Laporan Reclaimer"
-        description={`Material balance, saldo solvent, dan catatan operasional, ${periodLabel(anchor, period)}. Ekspor ke Excel atau PDF untuk arsip dan audit.`}
-        actions={<ExportButtons path="/reports/reclaimer/export" period={period} anchor={anchor} />}
+        description={`Material balance, saldo solvent, dan catatan operasional, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
       />
 
       <div className="mt-6">

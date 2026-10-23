@@ -20,6 +20,7 @@ import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { DASHBOARD_ALERTS } from '../roles.js';
 import Alert from '../components/Alert.jsx';
 import ReviewDialog from '../components/ReviewDialog.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
@@ -39,22 +40,30 @@ function chainLabel(chain) {
   return chain.batch_count > 1 ? `${chain.batch_number} + ${chain.batch_count - 1} lanjutan` : chain.batch_number;
 }
 
-// Warna seri mengikuti design.md §2.5: output reclaim hijau, losses/limbah oranye
-const RECOVERY_COLOR = '#157F3D';
-const RESIDUE_COLOR = '#0F4A78'; // brand-blue-800
+// Warna seri: solvent hijau (hasil olahan), limbah B3 biru tua (brand-blue-800)
+const SOLVENT_COLOR = '#157F3D';
+const WASTE_COLOR = '#0F4A78';
 
-function trendPoints(trend, valueOf, flagOf = () => false) {
+function trendPoints(trend, valueOf, detailOf, flagOf = () => false) {
   return trend.points.map((p) => ({
     key: p.start,
     label: trend.unit === 'month' ? formatMonthShort(p.start) : String(parseDate(p.start).d),
     longLabel: trend.unit === 'month' ? formatMonth(p.start) : formatDate(p.start),
     value: p.chain_count ? valueOf(p) : null,
     flagged: Boolean(p.chain_count) && flagOf(p),
-    note: p.chain_count ? `${p.chain_count} rangkaian selesai` : 'Belum ada rangkaian selesai',
+    note: p.chain_count ? `${detailOf(p)} · ${p.chain_count} rangkaian` : 'Belum ada rangkaian selesai',
   }));
 }
 
+// Dua tren dalam satu kartu, dipilih lewat tombol. Keduanya persen dari Tinta X masuk;
+// tooltip menampilkan persen dan beratnya dalam kg.
+const TREND_SERIES = {
+  solvent: { label: 'Solvent', title: 'Tren solvent', color: SOLVENT_COLOR },
+  waste: { label: 'Limbah B3', title: 'Tren limbah B3', color: WASTE_COLOR },
+};
+
 function TrendCharts({ trend, period, anchor }) {
+  const [series, setSeries] = useState('solvent');
   const range =
     period === 'day'
       ? `14 hari sampai ${formatDate(anchor)}`
@@ -62,66 +71,87 @@ function TrendCharts({ trend, period, anchor }) {
         ? `per hari, ${formatMonth(anchor)}`
         : `per bulan, ${parseDate(anchor).y}`;
   const target = trend.target_recovery_rate;
+  const current = TREND_SERIES[series];
+  const isSolvent = series === 'solvent';
 
   return (
-    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-      <section aria-labelledby="trend-recovery-title" className="card">
-        <div className="p-4 sm:p-5">
-          <h2 id="trend-recovery-title" className="text-h2 font-semibold">
-            Tren recovery rate
+    <section aria-labelledby="trend-title" className="card">
+      <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
+        <div>
+          <h2 id="trend-title" className="text-h2 font-semibold">
+            {current.title}
           </h2>
-          <p className="mt-1 text-body text-gray-600">{range}.</p>
-          <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
-            <li className="flex items-center gap-1.5">
-              <svg width="12" height="12" aria-hidden="true">
-                <circle cx="6" cy="6" r="4.5" fill={RECOVERY_COLOR} />
-              </svg>
-              Memenuhi target
-            </li>
-            <li className="flex items-center gap-1.5">
-              <svg width="12" height="12" aria-hidden="true">
-                <path d={FLAG_TRIANGLE(6, 6, 5.5)} fill={FLAG_COLOR} />
-              </svg>
-              Di bawah target
-            </li>
-            <li className="flex items-center gap-1.5">
-              <svg width="18" height="12" aria-hidden="true">
-                <line x1="0" x2="18" y1="6" y2="6" stroke="#2B333D" strokeWidth="1.5" strokeDasharray="4 3" />
-              </svg>
-              Target {formatPercent(target)}
-            </li>
-          </ul>
+          <p className="mt-1 text-body text-gray-600">
+            {isSolvent
+              ? `Hasil solvent dibanding Tinta X masuk, ${range}.`
+              : `Residu yang menjadi limbah B3 dibanding Tinta X masuk, ${range}.`}
+          </p>
+          {isSolvent && (
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
+              <li className="flex items-center gap-1.5">
+                <svg width="18" height="12" aria-hidden="true">
+                  <line x1="0" x2="18" y1="6" y2="6" stroke={SOLVENT_COLOR} strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="9" cy="6" r="3.5" fill={SOLVENT_COLOR} stroke="#FFFFFF" strokeWidth="1.5" />
+                </svg>
+                Memenuhi toleransi
+              </li>
+              <li className="flex items-center gap-1.5">
+                <svg width="12" height="12" aria-hidden="true">
+                  <path d={FLAG_TRIANGLE(6, 6, 5.5)} fill={FLAG_COLOR} />
+                </svg>
+                Di bawah toleransi
+              </li>
+              <li className="flex items-center gap-1.5">
+                <svg width="18" height="12" aria-hidden="true">
+                  <line x1="0" x2="18" y1="6" y2="6" stroke="#2B333D" strokeWidth="1.5" strokeDasharray="4 3" />
+                </svg>
+                Toleransi {formatPercent(target)}
+              </li>
+            </ul>
+          )}
         </div>
-        <TrendChart
-          title={`Tren recovery rate, ${range}`}
-          kind="line"
-          color={RECOVERY_COLOR}
-          points={trendPoints(trend, (p) => p.recovery_rate, (p) => p.recovery_rate < target)}
-          flagLabel="di bawah target"
-          format={formatPercent}
-          axisFormat={(v) => `${formatNumber(v, 0)}%`}
-          reference={{ value: target, label: `Target ${formatNumber(target, 0)}%` }}
-          emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
-        />
-      </section>
-      <section aria-labelledby="trend-residue-title" className="card">
-        <div className="p-4 sm:p-5">
-          <h2 id="trend-residue-title" className="text-h2 font-semibold">
-            Tren residu (estimasi)
-          </h2>
-          <p className="mt-1 text-body text-gray-600">{range}, dalam kg.</p>
+        <div role="group" aria-label="Pilih tren" className="inline-flex shrink-0 self-start rounded-lg border border-gray-200 bg-white p-1">
+          {Object.entries(TREND_SERIES).map(([key, s]) => (
+            <button
+              key={key}
+              type="button"
+              aria-pressed={series === key}
+              onClick={() => setSeries(key)}
+              className={`focus-ring h-9 rounded-md px-3 text-body font-medium ${
+                series === key ? 'bg-brand-blue-600 text-white' : 'text-gray-800 hover:bg-gray-25'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
-        <TrendChart
-          title={`Tren residu estimasi, ${range}`}
-          kind="column"
-          color={RESIDUE_COLOR}
-          points={trendPoints(trend, (p) => p.residue)}
-          format={(v) => `${formatNumber(v)} kg`}
-          axisFormat={(v) => formatNumber(v, 0)}
-          emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
-        />
-      </section>
-    </div>
+      </div>
+      <TrendChart
+        key={series}
+        title={`${current.title}, ${range}`}
+        kind="line"
+        color={current.color}
+        points={
+          isSolvent
+            ? trendPoints(
+                trend,
+                (p) => p.recovery_rate,
+                (p) => `Hasil solvent ${formatNumber(p.recovery)} kg dari Tinta X ${formatNumber(p.input)} kg`,
+                (p) => p.recovery_rate < target,
+              )
+            : trendPoints(
+                trend,
+                (p) => p.residue_rate,
+                (p) => `Limbah B3 ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
+              )
+        }
+        flagLabel={isSolvent ? 'di bawah toleransi' : undefined}
+        format={formatPercent}
+        axisFormat={(v) => `${formatNumber(v, 0)}%`}
+        reference={isSolvent ? { value: target, label: `Toleransi ${formatNumber(target, 0)}%` } : undefined}
+        emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
+      />
+    </section>
   );
 }
 
@@ -171,8 +201,8 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
 }
 
 // FR-45 bagian limbah B3: pallet mendesak dan kritis
-// Dua tahap limbah B3. Operator: dari area reclaimer ke TPS (batas kirim). HSE dan role
-// dengan akses Limbah B3: masa simpan di TPS sampai diserahkan ke vendor.
+// Dua tahap limbah B3. Bagian reclaimer: dari area reclaimer ke TPS (batas kirim). HSE dan
+// manajemen: masa simpan di TPS sampai diserahkan ke vendor. Pilihan per role di DASHBOARD_ALERTS.
 const B3_VIEWS = {
   tps: {
     title: 'Kirim ke TPS',
@@ -256,8 +286,8 @@ function B3AlertCard({ pallets, view, linkFor, machine }) {
   );
 }
 
-// Alert toleransi recovery: recovery gabungan periode dibanding target, dan rangkaian
-// di bawah target dalam 14 hari terakhir (FR-45)
+// Alert toleransi recovery: persentase solvent gabungan periode dibanding target, dan rangkaian
+// di bawah toleransi dalam 14 hari terakhir (FR-45)
 function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onReviewed }) {
   const { can } = useAuth();
   const canReview = can('dashboard', 'tinjau');
@@ -269,14 +299,14 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
     <AlertCard
       id="alert-recovery-title"
       icon={Recycle}
-      title="Target recovery"
+      title="Toleransi solvent"
       status={
         below
-          ? 'Di bawah target'
+          ? 'Di bawah toleransi'
           : chains.length
             ? `${chains.length} rangkaian perlu ditinjau`
             : tolerance.has_data
-              ? 'Memenuhi target'
+              ? 'Memenuhi toleransi'
               : 'Belum ada data'
       }
       tone={below ? 'bad' : chains.length ? 'warn' : tolerance.has_data ? 'ok' : 'neutral'}
@@ -287,11 +317,11 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
       <p className="text-body text-gray-800">
         {tolerance.has_data ? (
           <>
-            Recovery {label}{' '}
+            Persentase solvent {label}{' '}
             <span className={`font-semibold tabular-nums ${below ? 'text-danger-fg' : 'text-gray-900'}`}>
               {formatPercent(tolerance.recovery_rate)}
             </span>
-            , target {formatPercent(target)}
+            , toleransi {formatPercent(target)}
             {below && <> (kurang {formatNumber(Math.abs(tolerance.gap), 1)} poin)</>}.
           </>
         ) : (
@@ -304,7 +334,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
         )}
       </p>
 
-      <h3 className="mt-3 text-label font-medium text-gray-600">Rangkaian di bawah target, 14 hari terakhir</h3>
+      <h3 className="mt-3 text-label font-medium text-gray-600">Rangkaian di bawah toleransi, 14 hari terakhir</h3>
       {chains.length ? (
         <ul className="mt-1 divide-y divide-gray-100">
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (
@@ -321,7 +351,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
                     <span className="font-mono text-gray-900">{chainLabel(c)}</span>
                     <span className="block text-caption text-gray-600">
                       Mulai {formatDate(c.date)} · {c.shift}
-                      {c.target_recovery_rate !== target && ` · target saat itu ${formatPercent(c.target_recovery_rate)}`}
+                      {c.target_recovery_rate !== target && ` · toleransi saat itu ${formatPercent(c.target_recovery_rate)}`}
                       {!canReview && ' · menunggu tinjauan supervisor'}
                     </span>
                   </span>
@@ -394,9 +424,9 @@ function Breakdown({ breakdown, target, sorot }) {
             <Th>Rangkaian batch</Th>
             <Th>Shift awal</Th>
             <Th numeric>Tinta X masuk</Th>
-            <Th numeric>Recovery</Th>
+            <Th numeric>Hasil solvent</Th>
             <Th numeric>Residu estimasi</Th>
-            <Th numeric>Recovery rate</Th>
+            <Th numeric>Persentase solvent</Th>
           </tr>
         </thead>
         <tbody>
@@ -458,9 +488,9 @@ function Breakdown({ breakdown, target, sorot }) {
           <Th>{unit === 'week' ? 'Minggu' : 'Bulan'}</Th>
           <Th numeric>Rangkaian</Th>
           <Th numeric>Tinta X masuk</Th>
-          <Th numeric>Recovery</Th>
+          <Th numeric>Hasil solvent</Th>
           <Th numeric>Residu estimasi</Th>
-          <Th numeric>Recovery rate</Th>
+          <Th numeric>Persentase solvent</Th>
         </tr>
       </thead>
       <tbody>
@@ -552,8 +582,9 @@ function ActivePallets({ pallets, view, sorot }) {
 }
 
 export default function DashboardPage() {
-  const { can } = useAuth();
-  const b3View = can('limbah_b3') ? B3_VIEWS.storage : B3_VIEWS.tps;
+  const { can, user } = useAuth();
+  const alerts = DASHBOARD_ALERTS[user.role] ?? { b3: 'tps', recovery: true };
+  const b3View = B3_VIEWS[alerts.b3];
   const [params, setParams] = useSearchParams();
   const today = localToday();
   const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'day';
@@ -604,30 +635,32 @@ export default function DashboardPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-6 ${alerts.recovery ? 'lg:grid-cols-2' : ''}`}>
             <B3AlertCard
               view={b3View}
               machine={data.machine}
               pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
               linkFor={(p) =>
-                can('limbah_b3')
-                  ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
-                  : b3View === B3_VIEWS.tps && can('drum_b3')
-                    ? `/drum-b3?sorot=pallet-${p.id}`
+                b3View === B3_VIEWS.tps && can('drum_b3')
+                  ? `/drum-b3?sorot=pallet-${p.id}`
+                  : b3View === B3_VIEWS.storage && can('limbah_b3')
+                    ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
                     : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
               }
             />
-            <RecoveryAlertCard
-              tolerance={data.tolerance}
-              target={data.target_recovery_rate}
-              chains={data.action_items.low_recovery_chains}
-              openCount={data.totals.open_chain_count}
-              label={periodLabel(anchor, period)}
-              onReviewed={(message) => {
-                setReviewMessage(message);
-                reload();
-              }}
-            />
+            {alerts.recovery && (
+              <RecoveryAlertCard
+                tolerance={data.tolerance}
+                target={data.target_recovery_rate}
+                chains={data.action_items.low_recovery_chains}
+                openCount={data.totals.open_chain_count}
+                label={periodLabel(anchor, period)}
+                onReviewed={(message) => {
+                  setReviewMessage(message);
+                  reload();
+                }}
+              />
+            )}
           </div>
 
           <section aria-labelledby="totals-title">
@@ -652,12 +685,12 @@ export default function DashboardPage() {
                 note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
               />
               <StatCard
-                label="Recovery rate"
+                label="Persentase solvent"
                 value={data.totals.chain_count ? formatPercent(data.totals.recovery_rate) : '–'}
                 note={
                   data.totals.chain_count
-                    ? `${data.totals.recovery_rate >= data.target_recovery_rate ? 'Memenuhi' : 'Di bawah'} target ${formatPercent(data.target_recovery_rate)}`
-                    : `Target ${formatPercent(data.target_recovery_rate)}`
+                    ? `${data.totals.recovery_rate >= data.target_recovery_rate ? 'Memenuhi' : 'Di bawah'} toleransi ${formatPercent(data.target_recovery_rate)}`
+                    : `Toleransi ${formatPercent(data.target_recovery_rate)}`
                 }
                 tone={
                   !data.totals.chain_count ? 'neutral' : data.totals.recovery_rate >= data.target_recovery_rate ? 'good' : 'bad'
@@ -689,8 +722,8 @@ export default function DashboardPage() {
                   <Th>Shift</Th>
                   <Th numeric>Rangkaian</Th>
                   <Th numeric>Tinta X masuk</Th>
-                  <Th numeric>Recovery</Th>
-                  <Th numeric>Recovery rate</Th>
+                  <Th numeric>Hasil solvent</Th>
+                  <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>
               <tbody>
@@ -727,8 +760,8 @@ export default function DashboardPage() {
               </h2>
               <p className="mt-1 text-body text-gray-600">
                 {data.breakdown.unit === 'chain'
-                  ? 'Rangkaian dicatat pada tanggal batch awalnya. Recovery rate gabungan muncul setelah rangkaian selesai.'
-                  : 'Hanya rangkaian selesai. Recovery rate dari total recovery dibagi total Tinta X masuk, bukan rata-rata persentase.'}
+                  ? 'Rangkaian dicatat pada tanggal batch awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.'
+                  : 'Hanya rangkaian selesai. Persentase solvent dari total hasil solvent dibagi total Tinta X masuk, bukan rata-rata persentase.'}
               </p>
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />

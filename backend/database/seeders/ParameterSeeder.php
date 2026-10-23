@@ -17,7 +17,7 @@ class ParameterSeeder extends Seeder
     public function run(): void
     {
         $parameters = [
-            ['param_key' => 'target_recovery_rate', 'param_value' => '35.0', 'unit' => '%', 'description' => 'Target minimum recovery rate solvent'],
+            ['param_key' => 'target_recovery_rate', 'param_value' => '40.0', 'unit' => '%', 'description' => 'Toleransi minimum persentase solvent'],
             ['param_key' => 'b3_max_storage_days', 'param_value' => '90', 'unit' => 'hari', 'description' => 'Batas masa simpan limbah B3 sejak pallet mulai terisi'],
             ['param_key' => 'b3_reminder_early_days', 'param_value' => '30', 'unit' => 'hari', 'description' => 'Pengingat awal, sisa masa simpan'],
             ['param_key' => 'b3_reminder_urgent_days', 'param_value' => '14', 'unit' => 'hari', 'description' => 'Pengingat mendesak, sisa masa simpan'],

@@ -170,7 +170,7 @@ function UsageForm({ meta, onSaved }) {
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil recovery setiap batch.</p>
+          <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil solvent setiap batch.</p>
 
           {/* Pesan umum hilang setelah semua isian yang ditandai diperbaiki */}
           {formError && (Object.values(errors).some(Boolean) || !Object.keys(errors).length) && (
@@ -298,8 +298,8 @@ export default function SolventPage() {
         title="Pemakaian solvent"
         description={
           canFill
-            ? 'Catat solvent yang diambil dari saldo hasil recovery. Tidak terkait batch dan tidak dihitung sebagai bahan masuk.'
-            : 'Solvent yang diambil operator dari saldo hasil recovery.'
+            ? 'Catat solvent yang diambil dari saldo hasil solvent. Tidak terkait batch dan tidak dihitung sebagai bahan masuk.'
+            : 'Solvent yang diambil operator dari saldo hasil solvent.'
         }
       />
 

@@ -29,3 +29,13 @@
     h2 { page-break-after: avoid; }
     .keep { page-break-inside: avoid; }
 </style>
+@if (! empty($screen))
+{{-- Mode layar untuk pratinjau dokumen di aplikasi: satu halaman panjang seperti kertas --}}
+<style>
+    html { background: #EEF1F5; }
+    body { display: flex; flex-direction: column; width: 269mm; min-width: 860px; margin: 6mm auto; padding: 10mm 12mm; background: #FFFFFF; box-sizing: border-box; box-shadow: 0 1px 3px rgba(20, 26, 33, 0.12); }
+    header { position: relative; top: auto; margin-bottom: 6mm; }
+    footer { position: static; order: 99; margin-top: 8mm; padding-top: 2mm; border-top: 1px solid #DDE3EA; }
+    .page-break { page-break-before: auto; margin-top: 8mm; }
+</style>
+@endif

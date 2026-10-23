@@ -58,6 +58,8 @@ final class B3Report
             'surat_jalan' => $suratJalan->map(fn (SuratJalan $s) => $s->present())->all(),
             'compliance' => $compliance,
             'stock' => $stock,
+            // Maintenance menghentikan pengiriman residu ke TPS (batas kirim tetap berjalan)
+            'maintenance' => MaintenanceHistory::forPeriod($this->start, $this->end),
         ];
     }
 
@@ -118,11 +120,14 @@ final class B3Report
             'rows' => $pallets->map(function (B3Pallet $p) use ($at, $thresholds) {
                 $days = (int) round($at->diffInDays($p->expiry_date->copy()->startOfDay(), false));
                 $atTps = $p->sent_to_tps_at !== null && $p->sent_to_tps_at->copy()->startOfDay()->lte($at);
+                // Pallet penuh berisi drum_count drum. Yang masih diisi tidak dihitung per drum
+                // lagi (null); hanya data lama yang punya catatan drum.
+                $drums = $atTps ? $p->drum_count : $p->drums->filter(fn ($d) => $d->filled_date->copy()->startOfDay()->lte($at))->count();
 
                 return [
                     'pallet_number' => $p->pallet_number,
                     'location' => $atTps ? 'tps' : 'reclaimer',
-                    'drum_count' => $p->drums->filter(fn ($d) => $d->filled_date->copy()->startOfDay()->lte($at))->count(),
+                    'drum_count' => $drums ?: null,
                     'start_date' => $p->start_date->toDateString(),
                     'sent_to_tps_at' => $atTps ? $p->sent_to_tps_at->toDateString() : null,
                     'expiry_date' => $p->expiry_date->toDateString(),

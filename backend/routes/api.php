@@ -34,8 +34,10 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/reports/reclaimer', [ReportController::class, 'reclaimer'])->middleware('akses:laporan');
     Route::get('/reports/reclaimer/export', [ReportController::class, 'exportReclaimer'])->middleware('akses:laporan');
+    Route::get('/reports/reclaimer/document', [ReportController::class, 'reclaimerDocument'])->middleware('akses:laporan');
     Route::get('/reports/b3', [ReportController::class, 'b3'])->middleware('akses:laporan_b3');
     Route::get('/reports/b3/export', [ReportController::class, 'exportB3'])->middleware('akses:laporan_b3');
+    Route::get('/reports/b3/document', [ReportController::class, 'b3Document'])->middleware('akses:laporan_b3');
 
     Route::get('/machine', [MachineController::class, 'show'])->middleware('akses:mesin');
     Route::post('/machine/maintenance', [MachineController::class, 'startMaintenance'])->middleware('akses:mesin,isi');
@@ -60,5 +62,5 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
-    Route::post('/pallets/{pallet}/drums', [PalletController::class, 'storeDrum'])->middleware('akses:drum_b3,isi');
+    Route::post('/pallets/{pallet}/full', [PalletController::class, 'markFull'])->middleware('akses:drum_b3,isi');
 });

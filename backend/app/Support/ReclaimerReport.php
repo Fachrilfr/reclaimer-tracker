@@ -128,24 +128,7 @@ final class ReclaimerReport
     /** Downtime maintenance yang beririsan dengan periode, durasinya dipotong ke periode. */
     private function maintenance(): array
     {
-        $windows = MaintenanceHistory::windows()
-            ->filter(fn (array $w) => $w['start']->lte($this->end) && ($w['end'] === null || $w['end']->gte($this->start)))
-            ->values();
-
-        $rows = $windows->map(function (array $w) {
-            $from = $w['start']->max($this->start);
-            $to = ($w['end'] ?? now())->min($this->end)->min(now());
-
-            return MaintenanceHistory::present($w) + [
-                'minutes_in_period' => max(0, (int) round($from->diffInMinutes($to))),
-            ];
-        });
-
-        return [
-            'count' => $rows->count(),
-            'total_minutes' => (int) $rows->sum('minutes_in_period'),
-            'rows' => $rows->all(),
-        ];
+        return MaintenanceHistory::forPeriod($this->start, $this->end);
     }
 
     /** Nama berkas ekspor, contoh Laporan-Reclaimer-Bulanan-2026-10. */

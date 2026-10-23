@@ -43,11 +43,11 @@ export const MODULE_GROUPS = [
       },
       {
         key: 'batch',
-        label: 'Input batch',
+        label: 'Input reclaimer',
         path: '/batch',
         icon: Recycle,
         summary:
-          'Catat Tinta X, hasil recovery, dan suhu per batch. Residu, recovery rate, dan saldo solvent dihitung langsung.',
+          'Catat Tinta X, hasil solvent, dan suhu per batch. Residu, persentase solvent, dan saldo solvent dihitung langsung.',
         page: BatchPage,
       },
       {
@@ -55,7 +55,7 @@ export const MODULE_GROUPS = [
         label: 'Pemakaian solvent',
         path: '/solvent',
         icon: Droplets,
-        summary: 'Catat solvent yang diambil dari saldo hasil recovery. Saldo langsung berkurang.',
+        summary: 'Catat solvent yang diambil dari saldo hasil solvent. Saldo langsung berkurang.',
         page: SolventPage,
       },
       {
@@ -82,10 +82,10 @@ export const MODULE_GROUPS = [
       },
       {
         key: 'drum_b3',
-        label: 'Input drum B3',
+        label: 'Input pallet B3',
         path: '/drum-b3',
         icon: Cylinder,
-        summary: 'Catat drum residu yang sudah penuh. Tiga drum penuh dicatat sebagai satu pallet.',
+        summary: 'Tekan mulai isi saat pallet mulai diisi residu, dan pallet penuh saat sudah penuh. Pallet penuh langsung terkirim ke TPS.',
         page: DrumPage,
       },
       {
@@ -143,7 +143,7 @@ export const MODULE_GROUPS = [
         label: 'Parameter',
         path: '/parameter',
         icon: SlidersHorizontal,
-        summary: 'Target recovery, isi pallet, batas masa simpan, jenjang pengingat, dan penerimanya.',
+        summary: 'Toleransi solvent, isi pallet, batas masa simpan, jenjang pengingat, dan penerimanya.',
         page: null,
       },
       {

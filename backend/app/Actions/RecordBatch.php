@@ -168,10 +168,10 @@ class RecordBatch
             throw ValidationException::withMessages([
                 'recovery_weight' => $isContinuation
                     ? sprintf(
-                        'Hasil recovery melebihi Tinta X rangkaian batch (%s kg). Periksa kembali angka recovery.',
+                        'Hasil solvent melebihi Tinta X rangkaian batch (%s kg). Periksa kembali angka hasil solvent.',
                         number_format($balance->chainInput(), 2, ',', '.'),
                     )
-                    : 'Hasil recovery melebihi Tinta X yang masuk. Periksa kembali angka recovery.',
+                    : 'Hasil solvent melebihi Tinta X yang masuk. Periksa kembali angka hasil solvent.',
             ]);
         }
     }

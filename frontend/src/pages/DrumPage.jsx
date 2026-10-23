@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { Cylinder, LoaderCircle } from 'lucide-react';
+import { Cylinder, LoaderCircle, PackageCheck, PackagePlus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
-import { formatDate } from '../lib/format.js';
+import { formatDate, formatDateTime } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
+import Modal from '../components/Modal.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
@@ -13,94 +14,104 @@ import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
-// Halaman ini tahap operator: dari area reclaimer ke TPS. Pallet penuh dianggap
-// dikirim ke TPS dan diserahkan ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
+// Tahap operator: dari area reclaimer ke TPS. Dua tombol mengambil waktu saat ditekan:
+// mulai diisi, lalu penuh. Pallet penuh langsung tercatat terkirim ke TPS dan diserahkan
+// ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
 
-// Form satu tanggal + keterangan, dipakai untuk mulai pallet dan catat drum penuh
-function DateForm({ id, dateField, label, hint, submitLabel, today, onSubmit }) {
-  const [date, setDate] = useState(today);
+/** Waktu tombol ditekan; data lama tanpa jam memakai tanggalnya saja. */
+const startedText = (p) => (p.started_at ? formatDateTime(p.started_at) : formatDate(p.start_date));
+const fullText = (p) => (p.full_at ? formatDateTime(p.full_at) : p.full_date ? formatDate(p.full_date) : null);
+
+function NotesField({ id, value, onChange, error }) {
+  return (
+    <Field id={id} label="Keterangan" hint="Opsional." error={error}>
+      {(props) => (
+        <input {...props} type="text" maxLength={500} value={value} onChange={(e) => onChange(e.target.value)} className="field" />
+      )}
+    </Field>
+  );
+}
+
+function SubmitButton({ busy, icon: Icon, children, ...props }) {
+  return (
+    <button type="button" disabled={busy} className="btn-primary h-12 w-full px-5 text-body-lg sm:w-auto" {...props}>
+      {busy ? <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}
+      {busy ? 'Menyimpan…' : children}
+    </button>
+  );
+}
+
+function StartPallet({ deliveryDays, onSubmit }) {
   const [notes, setNotes] = useState('');
-  const [errors, setErrors] = useState({});
-  const [formError, setFormError] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setFormError('');
-    if (!date) {
-      setErrors({ [dateField]: `Isi ${label.toLowerCase()}.` });
-      return;
-    }
-    setIsSaving(true);
+  const start = async () => {
+    setBusy(true);
+    setError('');
     try {
-      await onSubmit({ [dateField]: date, notes: notes.trim() || null });
-      setNotes('');
-      setErrors({});
+      await onSubmit('/pallets', { notes: notes.trim() || null });
     } catch (err) {
-      const serverErrors = fieldErrorsFrom(err);
-      setErrors(serverErrors);
-      if (!Object.keys(serverErrors).length) setFormError(err.message);
+      setError(fieldErrorsFrom(err).pallet ?? fieldErrorsFrom(err).notes ?? err.message);
     } finally {
-      setIsSaving(false);
+      setBusy(false);
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-4">
-      {formError && <Alert tone="danger">{formError}</Alert>}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-        <Field id={`${id}-date`} label={label} required hint={hint} error={errors[dateField]}>
-          {(props) => (
-            <input
-              {...props}
-              type="date"
-              max={today}
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="field"
-            />
-          )}
-        </Field>
-        <Field id={`${id}-notes`} label="Keterangan" hint="Opsional." error={errors.notes}>
-          {(props) => (
-            <input
-              {...props}
-              type="text"
-              maxLength={500}
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              className="field"
-            />
-          )}
-        </Field>
+    <section aria-labelledby="start-title" className="card p-4 sm:p-5">
+      <h2 id="start-title" className="text-h2 font-semibold">
+        Mulai isi pallet baru
+      </h2>
+      <p className="mt-1 text-body text-gray-600">
+        Tekan saat pallet mulai diisi residu. Tanggal dan jam dicatat otomatis. Batas kirim ke TPS {deliveryDays} hari sejak
+        saat itu.
+      </p>
+      <div className="mt-4 max-w-md">
+        <NotesField id="start-notes" value={notes} onChange={setNotes} />
       </div>
-      <button type="submit" disabled={isSaving} className="btn-primary h-12 w-full px-5 text-body-lg sm:w-auto">
-        {isSaving ? (
-          <>
-            <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
-            Menyimpan…
-          </>
-        ) : (
-          submitLabel
-        )}
-      </button>
-    </form>
+      {error && (
+        <Alert tone="danger" className="mt-4">
+          {error}
+        </Alert>
+      )}
+      <div className="mt-4">
+        <SubmitButton busy={busy} icon={PackagePlus} onClick={start}>
+          Mulai isi pallet
+        </SubmitButton>
+      </div>
+    </section>
   );
 }
 
-function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
-  const nextDrum = pallet.drum_count + 1;
-  const slots = Array.from({ length: capacity }, (_, i) => pallet.drums.find((d) => d.sequence === i + 1));
+function FillingPallet({ pallet, canFill, onSubmit }) {
+  const [notes, setNotes] = useState('');
+  const [confirming, setConfirming] = useState(false);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const markFull = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await onSubmit(`/pallets/${pallet.id}/full`, { notes: notes.trim() || null });
+    } catch (err) {
+      setError(fieldErrorsFrom(err).pallet ?? fieldErrorsFrom(err).notes ?? err.message);
+      setConfirming(false);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <section aria-labelledby="filling-title" className="card p-4 sm:p-5">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 id="filling-title" className="text-h2 font-semibold">
-            Pallet <span className="font-mono">{pallet.pallet_number}</span>
+            Pallet <span className="font-mono">{pallet.pallet_number}</span> sedang diisi
           </h2>
           <p className="mt-1 text-body text-gray-600">
-            Mulai terisi {formatDate(pallet.start_date)}. Batas kirim ke TPS {formatDate(pallet.tps_due_date)}.
+            Mulai diisi {startedText(pallet)}. Batas kirim ke TPS {formatDate(pallet.tps_due_date)}.
           </p>
           {pallet.notes && <p className="mt-1 text-body text-gray-800">Keterangan: {pallet.notes}</p>}
         </div>
@@ -114,55 +125,50 @@ function FillingPallet({ pallet, capacity, today, canFill, onDrum }) {
         </p>
         {pallet.tps.level === 'kritis' && (
           <Alert tone="danger" className="mt-3">
-            Pallet ini sudah lewat batas kirim ke TPS. Selesaikan drum terakhir dan serahkan ke HSE secepatnya.
+            Pallet ini sudah lewat batas kirim ke TPS. Tandai penuh dan serahkan ke HSE secepatnya.
             {tpsDelayText(pallet.tps) && <span className="mt-1 block">{tpsDelayText(pallet.tps)}</span>}
           </Alert>
         )}
       </div>
 
-      <ol className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-3" aria-label="Drum di pallet ini">
-        {slots.map((drum, i) => (
-          <li
-            key={i}
-            className={`rounded-lg border p-3 ${drum ? 'border-gray-200 bg-white' : 'border-dashed border-gray-400 bg-gray-25'}`}
-          >
-            <p className="flex items-center gap-2 text-label font-semibold text-gray-900">
-              <Cylinder className="h-5 w-5 text-gray-600" aria-hidden="true" />
-              Drum ke-{i + 1}
-            </p>
-            {drum ? (
-              <p className="mt-1 text-body text-gray-800">
-                Penuh {formatDate(drum.filled_date)}
-                <span className="block text-caption text-gray-600">
-                  {drum.operator}
-                  {drum.notes && ` · ${drum.notes}`}
-                </span>
-              </p>
-            ) : (
-              <p className="mt-1 text-body text-gray-600">Belum penuh</p>
-            )}
-          </li>
-        ))}
-      </ol>
-
       {canFill && (
         <div className="mt-5 border-t border-gray-100 pt-5">
-          <h3 className="text-h3 font-semibold">Catat drum ke-{nextDrum} penuh</h3>
-          <p className="mb-4 mt-1 text-body text-gray-600">
-            {nextDrum === capacity
-              ? `Ini drum terakhir. Setelah dicatat, pallet ${pallet.pallet_number} penuh dan tercatat sudah dikirim ke TPS.`
-              : 'Catat saat drum residu sudah penuh. Berat tidak perlu diisi.'}
+          <h3 className="text-h3 font-semibold">Pallet sudah penuh?</h3>
+          <p className="mt-1 text-body text-gray-600">
+            Tekan saat pallet penuh. Tanggal dan jam dicatat otomatis, dan pallet langsung tercatat terkirim ke TPS.
           </p>
-          <DateForm
-            key={pallet.drum_count}
-            id="drum"
-            dateField="filled_date"
-            label="Tanggal drum penuh"
-            submitLabel={`Catat drum ke-${nextDrum}`}
-            today={today}
-            onSubmit={onDrum}
-          />
+          <div className="mt-4 max-w-md">
+            <NotesField id="full-notes" value={notes} onChange={setNotes} />
+          </div>
+          {error && (
+            <Alert tone="danger" className="mt-4">
+              {error}
+            </Alert>
+          )}
+          <div className="mt-4">
+            <SubmitButton busy={busy} icon={PackageCheck} onClick={() => setConfirming(true)}>
+              Pallet penuh
+            </SubmitButton>
+          </div>
         </div>
+      )}
+
+      {confirming && (
+        <Modal title={`Tandai pallet ${pallet.pallet_number} penuh?`} onClose={() => !busy && setConfirming(false)}>
+          <p className="text-body text-gray-800">
+            Waktu sekarang dicatat sebagai waktu penuh, dan pallet langsung tercatat terkirim ke TPS. Setelah itu pallet
+            menjadi tanggung jawab HSE dan tidak bisa dibatalkan.
+          </p>
+          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+            <button type="button" onClick={() => setConfirming(false)} disabled={busy} className="btn-secondary h-11 px-4 text-body">
+              Batal
+            </button>
+            <button type="button" onClick={markFull} disabled={busy} className="btn-primary h-11 px-4 text-body">
+              {busy ? <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" /> : null}
+              {busy ? 'Menyimpan…' : 'Ya, pallet penuh'}
+            </button>
+          </div>
+        </Modal>
       )}
     </section>
   );
@@ -187,11 +193,11 @@ export default function DrumPage() {
   return (
     <>
       <PageHeader
-        title="Input drum B3"
+        title="Input pallet B3"
         description={
           data
-            ? `Catat drum residu di area reclaimer. Pallet yang sudah penuh (${data.drums_per_pallet} drum) dikirim ke TPS dan diserahkan ke HSE, paling lambat ${data.tps_delivery_days} hari sejak pallet mulai terisi.`
-            : 'Catat drum residu di area reclaimer sampai dikirim ke TPS.'
+            ? `Catat pallet residu di area reclaimer dengan dua tombol: mulai diisi dan penuh. Pallet penuh langsung tercatat terkirim ke TPS, paling lambat ${data.tps_delivery_days} hari sejak mulai diisi.`
+            : 'Catat pallet residu di area reclaimer sampai terkirim ke TPS.'
         }
       />
 
@@ -208,35 +214,13 @@ export default function DrumPage() {
           {message && <Alert tone="success">{message}</Alert>}
 
           {data.filling ? (
-            <FillingPallet
-              pallet={data.filling}
-              capacity={data.drums_per_pallet}
-              today={data.today}
-              canFill={canFill}
-              onDrum={(body) => submit(`/pallets/${data.filling.id}/drums`, body)}
-            />
+            <FillingPallet key={data.filling.id} pallet={data.filling} canFill={canFill} onSubmit={submit} />
           ) : canFill ? (
-            <section aria-labelledby="start-title" className="card p-4 sm:p-5">
-              <h2 id="start-title" className="text-h2 font-semibold">
-                Mulai pallet baru
-              </h2>
-              <p className="mb-4 mt-1 text-body text-gray-600">
-                Tidak ada pallet yang sedang diisi. Batas kirim ke TPS {data.tps_delivery_days} hari dihitung sejak
-                tanggal pallet mulai terisi.
-              </p>
-              <DateForm
-                id="pallet"
-                dateField="start_date"
-                label="Tanggal mulai terisi"
-                submitLabel="Mulai pallet"
-                today={data.today}
-                onSubmit={(body) => submit('/pallets', body)}
-              />
-            </section>
+            <StartPallet deliveryDays={data.tps_delivery_days} onSubmit={submit} />
           ) : (
             <div className="card">
               <EmptyState icon={Cylinder} title="Tidak ada pallet yang sedang diisi.">
-                Operator memulai pallet baru saat drum pertama mulai terisi.
+                Operator menekan Mulai isi pallet saat pallet baru mulai diisi residu.
               </EmptyState>
             </div>
           )}
@@ -255,8 +239,8 @@ export default function DrumPage() {
                 <thead>
                   <tr>
                     <Th>No. pallet</Th>
-                    <Th numeric>Drum</Th>
-                    <Th>Mulai terisi</Th>
+                    <Th>Mulai diisi</Th>
+                    <Th>Penuh dan terkirim ke TPS</Th>
                     <Th>Batas kirim ke TPS</Th>
                     <Th>Status kirim ke TPS</Th>
                     <Th>Keterangan</Th>
@@ -271,13 +255,11 @@ export default function DrumPage() {
                       className={sorot === `pallet-${p.id}` ? SOROT_CLASS : undefined}
                     >
                       <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
-                      <Td numeric>
-                        {p.drum_count}/{data.drums_per_pallet}
-                      </Td>
-                      <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
+                      <Td className="whitespace-nowrap">{startedText(p)}</Td>
+                      <Td className="whitespace-nowrap">{fullText(p) ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
                       <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
-                      <Td className="min-w-[14rem]">
-                        <TpsBadge tps={p.tps} />
+                      <Td>
+                        <TpsBadge tps={p.tps} compact />
                       </Td>
                       <Td className="min-w-[12rem] text-body">
                         <PalletNotes pallet={p} />
