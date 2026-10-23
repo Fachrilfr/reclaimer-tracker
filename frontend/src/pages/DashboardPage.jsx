@@ -91,6 +91,7 @@ function TrendCharts({ trend, period, anchor }) {
               <li className="flex items-center gap-1.5">
                 <svg width="18" height="12" aria-hidden="true">
                   <line x1="0" x2="18" y1="6" y2="6" stroke={SOLVENT_COLOR} strokeWidth="2.5" strokeLinecap="round" />
+                  <circle cx="9" cy="6" r="3.5" fill={SOLVENT_COLOR} stroke="#FFFFFF" strokeWidth="1.5" />
                 </svg>
                 Memenuhi toleransi
               </li>

@@ -5,8 +5,8 @@ import { useEffect, useId, useRef, useState } from 'react';
 // tanpa kotak legenda: judul kartu yang menamainya.
 //
 // Garis: kurva monoton (tidak pernah melampaui nilai sebenarnya, jadi tidak ada puncak
-// palsu), area bergradasi tipis di bawahnya, titik hanya untuk yang aktif atau terpisah
-// sendiri, garis putus-putus dari titik aktif ke sumbu, dan tooltip gelap di atas titik.
+// palsu), area bergradasi tipis di bawahnya, titik penanda di setiap data, garis
+// putus-putus dari titik aktif ke sumbu, dan tooltip gelap di atas titik.
 // Hover dan panah keyboard menampilkan nilai; tabel di bawahnya memuat semua nilai.
 
 const HEIGHT = 240;
@@ -118,10 +118,9 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
     linePoints.length > 1
       ? `${line} L${linePoints[linePoints.length - 1].x},${baseline} L${linePoints[0].x},${baseline} Z`
       : '';
-  // Titik tanpa tetangga berdata tidak membentuk garis, jadi tetap diberi penanda. Data
-  // jarang (misalnya per bulan) juga diberi titik supaya posisi datanya terbaca.
-  const showAllDots = linePoints.length <= 12;
-  const isolated = (i) => (i === 0 || points[i - 1].value === null) && (i === n - 1 || points[i + 1].value === null);
+  // Setiap titik data (per hari atau per bulan) diberi penanda. Ukurannya mengikuti jarak
+  // antar titik supaya tidak saling menumpuk di layar sempit.
+  const dotRadius = Math.max(2.5, Math.min(4, band / 4));
 
   const activePoint = active !== null ? points[active] : null;
 
@@ -270,8 +269,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
                     />
                   );
                 }
-                if (!isActive && !showAllDots && !isolated(i)) return null;
-                return <circle key={p.key} cx={x(i)} cy={y(p.value)} r={isActive ? 6 : 4} fill={color} stroke="#FFFFFF" strokeWidth="2" />;
+                return <circle key={p.key} cx={x(i)} cy={y(p.value)} r={isActive ? 6 : dotRadius} fill={color} stroke="#FFFFFF" strokeWidth="2" />;
               })}
             </>
           )}
