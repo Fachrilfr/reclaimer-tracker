@@ -112,7 +112,7 @@
         <thead><tr><th>Pallet</th><th>Lokasi</th><th class="num">Drum</th><th>Mulai terisi</th><th>Sampai di TPS</th><th>Batas simpan</th><th class="num">Sisa masa simpan</th><th>Status</th></tr></thead>
         @foreach ($stock['rows'] as $p)
             <tr>
-                <td>{{ $p['pallet_number'] }}</td><td>{{ Fmt::LOCATION[$p['location']] }}</td><td class="num">{{ $p['drum_count'] }}</td>
+                <td>{{ $p['pallet_number'] }}</td><td>{{ Fmt::LOCATION[$p['location']] }}</td><td class="num">{{ $p['drum_count'] ?? 'Sedang diisi' }}</td>
                 <td>{{ Fmt::date($p['start_date']) }}</td><td>{{ $p['sent_to_tps_at'] ? Fmt::date($p['sent_to_tps_at']) : '–' }}</td><td>{{ Fmt::date($p['expiry_date']) }}</td>
                 <td class="num">{{ $p['days_remaining'] < 0 ? 'lewat ' . -$p['days_remaining'] . ' hari' : $p['days_remaining'] . ' hari' }}</td>
                 <td class="{{ $levelClass[$p['level']] }}">{{ Fmt::LEVEL[$p['level']] }}</td>
@@ -121,6 +121,26 @@
     </table>
 @else
     <div class="empty">Tidak ada pallet yang tersimpan.</div>
+@endif
+</div>
+
+<div class="keep">
+<h2>Maintenance mesin</h2>
+<div class="muted">Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.</div>
+@if ($report['maintenance']['count'])
+    <table>
+        <thead><tr><th>Mulai</th><th>Selesai</th><th>Alasan</th><th>Catatan perbaikan</th><th class="num">Durasi di periode</th></tr></thead>
+        @foreach ($report['maintenance']['rows'] as $m)
+            <tr>
+                <td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['end'] ? Fmt::dateTime($m['end']) : 'Masih berlangsung' }}</td>
+                <td>{{ $m['reason'] }}</td><td>{{ $m['end_note'] ?? '–' }}</td>
+                <td class="num">{{ number_format($m['minutes_in_period'] / 60, 1, ',', '.') }} jam</td>
+            </tr>
+        @endforeach
+    </table>
+    <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'] / 60, 1, ',', '.') }} jam.</div>
+@else
+    <div class="empty">Mesin tidak menjalani maintenance di periode ini.</div>
 @endif
 </div>
 

@@ -54,6 +54,29 @@ final class MaintenanceHistory
             ->last();
     }
 
+    /**
+     * Maintenance yang beririsan dengan periode laporan, durasinya dipotong ke periode.
+     * Dipakai Laporan Reclaimer dan Laporan Limbah B3.
+     */
+    public static function forPeriod(CarbonInterface $start, CarbonInterface $end): array
+    {
+        $rows = self::windows()
+            ->filter(fn (array $w) => $w['start']->lte($end) && ($w['end'] === null || $w['end']->gte($start)))
+            ->values()
+            ->map(function (array $w) use ($start, $end) {
+                $from = $w['start']->max($start);
+                $to = ($w['end'] ?? now())->min($end)->min(now());
+
+                return self::present($w) + ['minutes_in_period' => max(0, (int) round($from->diffInMinutes($to)))];
+            });
+
+        return [
+            'count' => $rows->count(),
+            'total_minutes' => (int) $rows->sum('minutes_in_period'),
+            'rows' => $rows->all(),
+        ];
+    }
+
     public static function present(array $window): array
     {
         return [

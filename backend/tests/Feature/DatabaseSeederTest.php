@@ -21,7 +21,7 @@ class DatabaseSeederTest extends TestCase
         $this->assertDatabaseCount('materials', 2);
         $this->assertDatabaseCount('vendors', 2);
         $this->assertDatabaseCount('parameters', 12);
-        $this->assertDatabaseHas('parameters', ['param_key' => 'target_recovery_rate', 'param_value' => '35.0']);
+        $this->assertDatabaseHas('parameters', ['param_key' => 'target_recovery_rate', 'param_value' => '40.0']);
         $this->assertDatabaseHas('solvent_ledger', ['type' => 'adjustment', 'current_balance' => 1000]);
     }
 

@@ -48,6 +48,37 @@ class ReportController extends Controller
         return response()->json(['status' => 'success', 'data' => (new B3Report($period, $anchor))->toArray()]);
     }
 
+    /** Pratinjau dokumen Laporan Reclaimer (isi sama dengan PDF), dilihat tanpa mengunduh. */
+    public function reclaimerDocument(Request $request): JsonResponse
+    {
+        [$period, $anchor] = $this->period($request);
+
+        return $this->document('reports.reclaimer', (new ReclaimerReport($period, $anchor))->toArray(), $request->user()->name);
+    }
+
+    public function b3Document(Request $request): JsonResponse
+    {
+        [$period, $anchor] = $this->period($request);
+
+        return $this->document('reports.b3', (new B3Report($period, $anchor))->toArray(), $request->user()->name);
+    }
+
+    /**
+     * Template PDF yang sama, dirender sebagai halaman web (mode layar): bisa dibaca di
+     * browser mana pun, termasuk ponsel yang tidak bisa menampilkan PDF di dalam halaman.
+     */
+    private function document(string $view, array $data, string $generatedBy): JsonResponse
+    {
+        return response()->json(['status' => 'success', 'data' => [
+            'html' => view($view, ['report' => $data, 'logo' => $this->logo(), 'generatedBy' => $generatedBy, 'screen' => true])->render(),
+        ]]);
+    }
+
+    private function logo(): string
+    {
+        return 'data:image/png;base64,' . base64_encode(file_get_contents(resource_path('images/logo-indofood-cbp.png')));
+    }
+
     public function exportB3(Request $request): Response
     {
         [$period, $anchor] = $this->period($request);
@@ -114,11 +145,9 @@ class ReportController extends Controller
 
     private function pdf(string $view, array $data, string $generatedBy): string
     {
-        $logo = 'data:image/png;base64,' . base64_encode(file_get_contents(resource_path('images/logo-indofood-cbp.png')));
-
         $pdf = Pdf::loadView($view, [
             'report' => $data,
-            'logo' => $logo,
+            'logo' => $this->logo(),
             'generatedBy' => $generatedBy,
         ])->setPaper('a4', 'landscape')
             // Hanya huruf yang dipakai yang disematkan: berkas turun dari ~1 MB

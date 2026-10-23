@@ -7,7 +7,7 @@ import Modal from './Modal.jsx';
 import Field from './Field.jsx';
 import Alert from './Alert.jsx';
 
-// Supervisor meninjau rangkaian di bawah target dan mencatat tindak lanjutnya
+// Supervisor meninjau rangkaian di bawah toleransi dan mencatat tindak lanjutnya
 export default function ReviewDialog({ chain, label, onClose, onReviewed }) {
   const { request } = useAuth();
   const [notes, setNotes] = useState('');
@@ -38,7 +38,7 @@ export default function ReviewDialog({ chain, label, onClose, onReviewed }) {
   };
 
   return (
-    <Modal title="Tinjau rangkaian di bawah target" onClose={onClose}>
+    <Modal title="Tinjau rangkaian di bawah toleransi" onClose={onClose}>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-gray-25 p-3 text-body">
         <div className="col-span-2">
           <dt className="text-caption text-gray-600">Rangkaian</dt>
@@ -51,7 +51,7 @@ export default function ReviewDialog({ chain, label, onClose, onReviewed }) {
           </dd>
         </div>
         <div>
-          <dt className="text-caption text-gray-600">Recovery / target</dt>
+          <dt className="text-caption text-gray-600">Solvent / toleransi</dt>
           <dd className="tabular-nums">
             <span className="font-semibold text-danger-fg">{formatPercent(chain.recovery_rate)}</span>
             <span className="text-gray-600"> / {formatPercent(chain.target_recovery_rate)}</span>

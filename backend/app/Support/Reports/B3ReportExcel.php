@@ -69,11 +69,20 @@ final class B3ReportExcel extends ReportWorkbook
         $this->table($book->createSheet(), 'Stok akhir periode', 'Pallet yang masih tersimpan per ' . self::date($stock['as_of']),
             ['No. pallet', 'Lokasi', 'Drum', 'Mulai terisi', 'Sampai di TPS', 'Batas simpan', 'Sisa masa simpan (hari)', 'Status'],
             array_map(fn ($p) => [
-                $p['pallet_number'], self::LOCATION[$p['location']], $p['drum_count'], self::date($p['start_date']),
+                $p['pallet_number'], self::LOCATION[$p['location']], $p['drum_count'] ?? 'Sedang diisi', self::date($p['start_date']),
                 $p['sent_to_tps_at'] ? self::date($p['sent_to_tps_at']) : null, self::date($p['expiry_date']), $p['days_remaining'], self::LEVEL[$p['level']],
             ], $stock['rows']),
             tones: [8 => fn ($row) => self::LEVEL_TONE[array_search($row[7], self::LEVEL, true)] ?? null, 7 => fn ($row) => $row[6] < 0 ? 'danger' : null],
             empty: 'Tidak ada pallet yang tersimpan pada akhir periode ini.');
+
+        $this->table($book->createSheet(), 'Maintenance', 'Maintenance mesin di periode ini; pengiriman residu ke TPS ikut terhenti',
+            ['Mulai', 'Selesai', 'Durasi di periode (jam)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
+            array_map(fn ($m) => [self::dateTime($m['start']), $m['end'] ? self::dateTime($m['end']) : 'Masih berlangsung', round($m['minutes_in_period'] / 60, 2), $m['reason'], $m['end_note'], $m['started_by']], $r['maintenance']['rows']),
+            formats: [3 => self::HOURS],
+            tones: [2 => fn ($row) => $row[1] === 'Masih berlangsung' ? 'urgent' : null],
+            wrap: [4 => 36, 5 => 36],
+            total: $r['maintenance']['rows'] ? ['Total', null, round($r['maintenance']['total_minutes'] / 60, 2), null, null, null] : null,
+            empty: 'Mesin tidak menjalani maintenance di periode ini.');
     }
 
     private function summarySheet(Worksheet $sheet): void
@@ -102,6 +111,10 @@ final class B3ReportExcel extends ReportWorkbook
                 ['tps', 'Di TPS', $atTps, 'Menunggu diserahkan ke vendor', null],
                 ['reclaimer', 'Di area reclaimer', $rows->count() - $atTps, 'Masih diisi', null],
                 ['action', 'Mendesak atau kritis', $needsAction, $needsAction ? 'Sisa masa simpan 14 hari atau kurang' : null, null],
+            ]],
+            ['Maintenance mesin', [
+                ['maintenance', 'Jumlah maintenance', $r['maintenance']['count'], $r['maintenance']['count'] ? 'Pengiriman residu ke TPS terhenti selama maintenance' : null, null],
+                ['downtime', 'Total downtime di periode (jam)', round($r['maintenance']['total_minutes'] / 60, 2), null, self::HOURS],
             ]],
         ]);
 

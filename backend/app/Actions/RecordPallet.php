@@ -3,25 +3,26 @@
 namespace App\Actions;
 
 use App\Models\AuditLog;
-use App\Models\B3DrumLog;
 use App\Models\B3Pallet;
 use App\Models\Machine;
 use App\Models\Parameter;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Pencatatan pallet limbah B3 oleh operator (FR-25). Residu tidak ditimbang per batch;
- * operator mencatat drum yang penuh, dan pallet penuh setelah berisi `drums_per_pallet` drum.
- * Masa simpan dihitung sejak pallet mulai terisi (PRD §8, menunggu konfirmasi HSE).
+ * Pencatatan pallet limbah B3 oleh operator (FR-25), dengan dua tombol yang mengambil
+ * waktu saat ditekan: mulai diisi, lalu penuh. Pallet penuh langsung tercatat terkirim
+ * ke TPS dan menjadi tanggung jawab HSE. Drum tidak dicatat satu per satu; pallet penuh
+ * dianggap berisi `drums_per_pallet` drum.
+ *
+ * Masa simpan dihitung sejak pallet mulai diisi (PRD §8, menunggu konfirmasi HSE).
  */
 class RecordPallet
 {
-    public function start(Request $request, string $startDate, ?string $notes): B3Pallet
+    public function start(Request $request, ?string $notes): B3Pallet
     {
-        return DB::transaction(function () use ($request, $startDate, $notes) {
+        return DB::transaction(function () use ($request, $notes) {
             // Satu mesin, satu pallet yang sedang diisi. Baris mesin jadi kunci agar dua
             // operator tidak membuka pallet baru bersamaan.
             Machine::orderBy('id')->lockForUpdate()->first();
@@ -29,15 +30,15 @@ class RecordPallet
             $filling = B3Pallet::where('status', 'filling')->first();
             if ($filling) {
                 throw ValidationException::withMessages([
-                    'start_date' => "Pallet {$filling->pallet_number} masih diisi. Catat drum sampai pallet penuh sebelum memulai pallet baru.",
+                    'pallet' => "Pallet {$filling->pallet_number} masih diisi. Tandai pallet itu penuh sebelum memulai pallet baru.",
                 ]);
             }
 
             $maxDays = (int) Parameter::number('b3_max_storage_days');
-            $start = Carbon::parse($startDate);
+            $start = now()->startOfDay();
 
             $pallet = B3Pallet::create([
-                'pallet_number' => $this->nextPalletNumber($start),
+                'pallet_number' => $this->nextPalletNumber(),
                 'drum_count' => 0,
                 'start_date' => $start,
                 'max_storage_days' => $maxDays,
@@ -50,66 +51,48 @@ class RecordPallet
 
             AuditLog::record($request, 'create', $pallet, $pallet->only([
                 'pallet_number', 'start_date', 'max_storage_days', 'expiry_date', 'tps_due_date',
-            ]));
+            ]) + ['started_at' => $pallet->created_at->toDateTimeString()]);
 
             return $pallet;
         });
     }
 
-    public function addDrum(Request $request, B3Pallet $pallet, string $filledDate, ?string $notes): B3DrumLog
+    /** Pallet penuh pada saat tombol ditekan, dan langsung tercatat terkirim ke TPS. */
+    public function markFull(Request $request, B3Pallet $pallet, ?string $notes): B3Pallet
     {
-        return DB::transaction(function () use ($request, $pallet, $filledDate, $notes) {
+        return DB::transaction(function () use ($request, $pallet, $notes) {
             $pallet = B3Pallet::lockForUpdate()->findOrFail($pallet->id);
-            $capacity = (int) Parameter::number('drums_per_pallet');
-            $filled = Carbon::parse($filledDate)->startOfDay();
-
-            if ($pallet->status !== 'filling' || $pallet->drum_count >= $capacity) {
+            if ($pallet->status !== 'filling') {
                 throw ValidationException::withMessages([
-                    'filled_date' => "Pallet {$pallet->pallet_number} sudah penuh. Mulai pallet baru untuk drum berikutnya.",
+                    'pallet' => "Pallet {$pallet->pallet_number} sudah penuh dan terkirim ke TPS.",
                 ]);
             }
 
-            $lastDrumDate = $pallet->drums()->max('filled_date');
-            $earliest = $lastDrumDate ? Carbon::parse($lastDrumDate) : $pallet->start_date;
-            if ($filled->lt($earliest)) {
-                throw ValidationException::withMessages([
-                    'filled_date' => 'Tanggal drum penuh tidak boleh sebelum ' . $earliest->locale('id')->translatedFormat('j M Y') . '.',
-                ]);
-            }
-
-            $drum = B3DrumLog::create([
-                'pallet_id' => $pallet->id,
-                'drum_sequence' => $pallet->drum_count + 1,
-                'filled_date' => $filled,
-                'operator_id' => $request->user()->id,
-                'notes' => $notes,
-                'created_at' => now(),
-            ]);
-
-            $isFull = $drum->drum_sequence >= $capacity;
+            $now = now();
             $pallet->update([
-                'drum_count' => $drum->drum_sequence,
-                'status' => $isFull ? 'full' : 'filling',
-                'full_date' => $isFull ? $filled : null,
+                'drum_count' => (int) Parameter::number('drums_per_pallet'),
+                'status' => 'full',
+                'full_date' => $now->copy()->startOfDay(),
+                'full_at' => $now,
                 // Pallet penuh dikirim ke TPS dan diserahkan ke HSE
-                'sent_to_tps_at' => $isFull ? $filled : null,
+                'sent_to_tps_at' => $now->copy()->startOfDay(),
+                'notes' => filled($notes) ? trim(implode("\n", array_filter([$pallet->notes, $notes]))) : $pallet->notes,
             ]);
 
-            AuditLog::record($request, 'create', $drum, [
+            AuditLog::record($request, 'update', $pallet, [
                 'pallet_number' => $pallet->pallet_number,
-                'drum_sequence' => $drum->drum_sequence,
-                'filled_date' => $filled->toDateString(),
-                'pallet_full' => $isFull,
-                'sent_to_tps' => $isFull,
+                'status' => 'full',
+                'full_at' => $now->toDateTimeString(),
+                'sent_to_tps' => true,
             ]);
 
-            return $drum;
+            return $pallet;
         });
     }
 
-    private function nextPalletNumber(Carbon $start): string
+    private function nextPalletNumber(): string
     {
-        $prefix = 'PLT-' . $start->format('Ym') . '-';
+        $prefix = 'PLT-' . now()->format('Ym') . '-';
         $last = B3Pallet::withTrashed()->where('pallet_number', 'like', $prefix . '%')->max('pallet_number');
         $sequence = $last ? (int) substr($last, -3) + 1 : 1;
 

@@ -312,7 +312,7 @@ export default function SuratJalanPage() {
               </Link>
             }
           >
-            Pallet masuk ke TPS saat operator mencatat drum terakhirnya.
+            Pallet masuk ke TPS saat operator menandai pallet penuh.
           </EmptyState>
         </div>
       ) : canFill ? (

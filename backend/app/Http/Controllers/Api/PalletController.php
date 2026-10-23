@@ -37,49 +37,38 @@ class PalletController extends Controller
         ]);
     }
 
+    /** Mulai mengisi pallet baru; waktu mulai diambil saat tombol ditekan. */
     public function store(Request $request, RecordPallet $recordPallet): JsonResponse
     {
-        $data = $request->validate([
-            'start_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ], [
-            'start_date.required' => 'Isi tanggal pallet mulai terisi.',
-            'start_date.date_format' => 'Tanggal tidak valid.',
-            'start_date.before_or_equal' => 'Tanggal mulai terisi tidak boleh setelah hari ini.',
-            'notes.max' => 'Keterangan paling panjang 500 karakter.',
-        ]);
-
-        $pallet = $recordPallet->start($request, $data['start_date'], $data['notes'] ?? null);
+        $pallet = $recordPallet->start($request, $this->notes($request));
 
         return response()->json([
             'status' => 'success',
-            'message' => "Pallet {$pallet->pallet_number} dimulai.",
+            'message' => "Pallet {$pallet->pallet_number} mulai diisi.",
             'data' => self::present($pallet, self::thresholds()),
         ], 201);
     }
 
-    public function storeDrum(Request $request, B3Pallet $pallet, RecordPallet $recordPallet): JsonResponse
+    /** Pallet penuh saat tombol ditekan, langsung tercatat terkirim ke TPS. */
+    public function markFull(Request $request, B3Pallet $pallet, RecordPallet $recordPallet): JsonResponse
     {
-        $data = $request->validate([
-            'filled_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'notes' => ['nullable', 'string', 'max:500'],
-        ], [
-            'filled_date.required' => 'Isi tanggal drum penuh.',
-            'filled_date.date_format' => 'Tanggal tidak valid.',
-            'filled_date.before_or_equal' => 'Tanggal drum penuh tidak boleh setelah hari ini.',
-            'notes.max' => 'Keterangan paling panjang 500 karakter.',
-        ]);
-
-        $drum = $recordPallet->addDrum($request, $pallet, $data['filled_date'], $data['notes'] ?? null);
-        $pallet->refresh();
+        $pallet = $recordPallet->markFull($request, $pallet, $this->notes($request));
 
         return response()->json([
             'status' => 'success',
-            'message' => $pallet->status === 'full'
-                ? "Drum ke-{$drum->drum_sequence} tercatat. Pallet {$pallet->pallet_number} penuh dan dikirim ke TPS."
-                : "Drum ke-{$drum->drum_sequence} tercatat di pallet {$pallet->pallet_number}.",
-            'data' => self::present($pallet->load('drums.operator'), self::thresholds(), withDrums: true),
-        ], 201);
+            'message' => "Pallet {$pallet->pallet_number} penuh dan terkirim ke TPS.",
+            'data' => self::present($pallet->load('drums'), self::thresholds()),
+        ]);
+    }
+
+    private function notes(Request $request): ?string
+    {
+        $notes = $request->validate(
+            ['notes' => ['nullable', 'string', 'max:500']],
+            ['notes.max' => 'Keterangan paling panjang 500 karakter.'],
+        )['notes'] ?? null;
+
+        return filled($notes) ? trim($notes) : null;
     }
 
     /** Ambang kedua status dan periode maintenance, diambil sekali per request. */
@@ -101,6 +90,9 @@ class PalletController extends Controller
             'drum_count' => $pallet->drum_count,
             'start_date' => $pallet->start_date->toDateString(),
             'full_date' => $pallet->full_date?->toDateString(),
+            // Waktu tombol ditekan: mulai diisi dan penuh (null untuk data lama tanpa jam)
+            'started_at' => $pallet->created_at?->toIso8601String(),
+            'full_at' => $pallet->full_at?->toIso8601String(),
             'expiry_date' => $pallet->expiry_date->toDateString(),
             'tps_due_date' => $pallet->tps_due_date?->toDateString(),
             // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.

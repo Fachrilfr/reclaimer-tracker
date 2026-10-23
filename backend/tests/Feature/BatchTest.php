@@ -121,7 +121,7 @@ class BatchTest extends TestCase
 
     public function test_low_recovery_is_flagged_against_target(): void
     {
-        // 90 / 300 = 30% < target 35%
+        // 90 / 300 = 30% < toleransi 40%
         $this->storeAs($this->operator, ['recovery_weight' => 90])
             ->assertCreated()
             ->assertJsonPath('data.recovery_rate_percent', 30)
@@ -147,7 +147,7 @@ class BatchTest extends TestCase
         $this->actingAs($this->operator, 'sanctum')->getJson('/api/batches/create')
             ->assertOk()
             ->assertJsonPath('data.solvent_balance', 1120)
-            ->assertJsonPath('data.target_recovery_rate', 35)
+            ->assertJsonPath('data.target_recovery_rate', 40)
             ->assertJsonPath('data.suggested_shift_id', Shift::where('code', 'SHIFT-1')->value('id'))
             ->assertJsonPath('data.machine.status', 'operating')
             ->assertJsonCount(0, 'data.open_chains');

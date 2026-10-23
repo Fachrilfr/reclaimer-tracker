@@ -23,6 +23,7 @@ class B3Pallet extends Model
         return [
             'start_date' => 'date',
             'full_date' => 'date',
+            'full_at' => 'datetime',
             'expiry_date' => 'date',
             'tps_due_date' => 'date',
             'sent_to_tps_at' => 'date',

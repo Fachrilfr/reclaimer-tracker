@@ -127,7 +127,7 @@ export default function ArchivePage() {
               </button>
               {hasFilter && (
                 <button type="button" onClick={reset} className="btn-secondary h-11 px-4 text-body">
-                  Reset
+                  Hapus filter
                 </button>
               )}
             </div>
@@ -244,7 +244,7 @@ export default function ArchivePage() {
               title="Tidak ada surat jalan yang cocok dengan filter."
               action={
                 <button type="button" onClick={reset} className="btn-secondary h-11 px-4 text-body">
-                  Reset filter
+                  Hapus filter
                 </button>
               }
             />

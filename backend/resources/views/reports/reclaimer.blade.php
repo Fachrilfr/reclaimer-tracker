@@ -24,18 +24,18 @@
 
 <table class="kpi"><tr>
     <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div><div class="muted">Bahan masuk ke mesin reclaimer</div></div></td>
-    <td><div class="box"><div class="label">Hasil recovery</div><div class="value">{{ $kg($s['recovery']) }} kg</div><div class="muted">Residu estimasi {{ $kg($s['residue']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Recovery rate</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div><div class="muted">Target {{ $pct($report['target_recovery_rate']) }} · {{ $s['below_target_count'] }} rangkaian di bawah target</div></div></td>
+    <td><div class="box"><div class="label">Hasil solvent</div><div class="value">{{ $kg($s['recovery']) }} kg</div><div class="muted">Residu estimasi {{ $kg($s['residue']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div><div class="muted">Toleransi {{ $pct($report['target_recovery_rate']) }} · {{ $s['below_target_count'] }} rangkaian di bawah toleransi</div></div></td>
     <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div><div class="muted">Saldo awal {{ $kg($report['solvent']['opening']) }} kg</div></div></td>
 </tr></table>
 
 <table class="two"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
-    <div class="muted">Bertambah dari hasil recovery tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
+    <div class="muted">Bertambah dari hasil solvent tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
     <table>
         <tr><td>Saldo awal</td><td class="num">{{ $kg($report['solvent']['opening']) }} kg</td></tr>
-        <tr><td>Hasil recovery masuk</td><td class="num">+{{ $kg($report['solvent']['recovered']) }} kg</td></tr>
+        <tr><td>Hasil solvent masuk</td><td class="num">+{{ $kg($report['solvent']['recovered']) }} kg</td></tr>
         <tr><td>Solvent dipakai</td><td class="num">−{{ $kg($report['solvent']['used']) }} kg</td></tr>
         @if ($report['solvent']['adjustment'])
             <tr><td>Penyesuaian</td><td class="num">{{ $kg($report['solvent']['adjustment']) }} kg</td></tr>
@@ -62,7 +62,7 @@
 <div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
-    <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr></thead>
+    <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
     @foreach ($report['by_shift'] as $row)
         <tr>
             <td>{{ $row['shift'] }}</td><td class="num">{{ $row['chain_count'] }}</td><td class="num">{{ $kg($row['input']) }}</td>
@@ -78,7 +78,7 @@
 <div class="keep">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
-        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Recovery (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Recovery rate</th></tr></thead>
+        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
@@ -91,10 +91,10 @@
 </div>
 @endif
 
-<h2>Rangkaian di bawah target dan tinjauan supervisor</h2>
+<h2>Rangkaian di bawah toleransi dan tinjauan supervisor</h2>
 @if (count($report['below_target']))
     <table>
-        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th class="num">Recovery</th><th class="num">Target</th><th>Tinjauan supervisor</th></tr></thead>
+        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th class="num">Solvent</th><th class="num">Toleransi</th><th>Tinjauan supervisor</th></tr></thead>
         @foreach ($report['below_target'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
@@ -105,13 +105,13 @@
         @endforeach
     </table>
 @else
-    <div class="empty">Tidak ada rangkaian di bawah target di periode ini.</div>
+    <div class="empty">Tidak ada rangkaian di bawah toleransi di periode ini.</div>
 @endif
 
 @if (count($report['temp_abnormal']))
     <h2>Batch dengan suhu di luar normal</h2>
     <table>
-        <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Oil Temperature</th><th class="num">Vapour Temperature</th></tr></thead>
+        <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
         @foreach ($report['temp_abnormal'] as $b)
             <tr><td>{{ $b['batch_number'] }}</td><td>{{ Fmt::date($b['date']) }}</td><td>{{ $b['shift'] }}</td><td class="num">{{ number_format($b['oil_temp'], 1, ',', '.') }} °C</td><td class="num">{{ number_format($b['vapour_temp'], 1, ',', '.') }} °C</td></tr>
         @endforeach
@@ -121,7 +121,7 @@
 @if (count($report['solvent_usages']))
 <div class="keep">
     <h2>Pemakaian solvent</h2>
-    <div class="muted">Solvent yang diambil dari saldo hasil recovery. Tidak masuk ke mesin dan tidak ikut dihitung sebagai bahan masuk.</div>
+    <div class="muted">Solvent yang diambil dari saldo hasil solvent. Tidak masuk ke mesin dan tidak ikut dihitung sebagai bahan masuk.</div>
     <table>
         <thead><tr><th>Tanggal</th><th>Shift</th><th class="num">Berat diambil</th><th>Keperluan</th><th>Dicatat oleh</th><th class="num">Saldo sesudah</th></tr></thead>
         @foreach ($report['solvent_usages'] as $u)
@@ -134,7 +134,7 @@
 <h2 class="page-break">Rincian rangkaian batch</h2>
 @if (count($report['chains']))
     <table>
-        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Recovery</th><th class="num">Residu est.</th><th class="num">Recovery rate</th></tr></thead>
+        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Residu est.</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['chains'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>

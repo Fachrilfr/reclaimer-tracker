@@ -21,7 +21,7 @@ const RANGES = [
 
 const STATUSES = [
   { value: '', api: '', label: 'Semua status' },
-  { value: 'di-bawah-target', api: 'below_target', label: 'Di bawah target' },
+  { value: 'di-bawah-target', api: 'below_target', label: 'Di bawah toleransi' },
   { value: 'belum-selesai', api: 'in_progress', label: 'Belum selesai' },
   { value: 'suhu-tidak-normal', api: 'temp_abnormal', label: 'Suhu tidak normal' },
   { value: 'sudah-ditinjau', api: 'reviewed', label: 'Sudah ditinjau' },
@@ -63,8 +63,8 @@ function BatchRows({ batches, sorot }) {
           <Th>No. batch</Th>
           <Th>Tanggal dan shift</Th>
           <Th numeric>Tinta X masuk</Th>
-          <Th numeric>Recovery</Th>
-          <Th numeric>Recovery rate</Th>
+          <Th numeric>Hasil solvent</Th>
+          <Th numeric>Persentase solvent</Th>
           <Th numeric>Saldo solvent</Th>
           <Th>Catatan</Th>
         </tr>
@@ -121,7 +121,7 @@ function BatchRows({ batches, sorot }) {
               <Td className="min-w-[10rem] text-caption">
                 {b.is_recovery_low && (
                   <span className="flex items-center gap-1 text-danger-fg">
-                    <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Di bawah target
+                    <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Di bawah toleransi
                   </span>
                 )}
                 {b.is_temp_abnormal && (
@@ -222,7 +222,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
           Riwayat batch
         </h2>
         <p className="mt-1 text-body text-gray-600">
-          Terbaru di atas. Batch awal dan lanjutannya selalu tampil bersama; recovery rate tampil setelah rangkaian selesai.
+          Terbaru di atas. Batch awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah rangkaian selesai.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat batch">
@@ -347,7 +347,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
                 onClick={reset}
                 className="focus-ring min-h-11 rounded px-1 font-semibold text-brand-blue-700 hover:underline"
               >
-                Reset filter
+                Hapus filter
               </button>
             )}
           </div>
@@ -407,7 +407,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
           title="Tidak ada batch yang cocok dengan filter."
           action={
             <button type="button" onClick={reset} className="btn-secondary h-11 px-4 text-body">
-              Reset filter
+              Hapus filter
             </button>
           }
         >

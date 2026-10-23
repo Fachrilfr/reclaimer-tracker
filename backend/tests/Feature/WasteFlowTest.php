@@ -43,14 +43,17 @@ class WasteFlowTest extends TestCase
         return $this->actingAs(User::where('nik', $nik)->first(), 'sanctum');
     }
 
-    /** Pallet penuh oleh operator: 3 drum, terkirim ke TPS pada drum terakhir. */
-    private function fullPallet(string $start, array $drums): int
+    /** Operator menekan "mulai diisi" pada $start dan "penuh" pada $full (terkirim ke TPS). */
+    private function fullPallet(string $start, ?string $full): int
     {
         $this->as('OP-1001');
-        $id = $this->postJson('/api/pallets', ['start_date' => $start])->assertCreated()->json('data.id');
-        foreach ($drums as $date) {
-            $this->postJson("/api/pallets/{$id}/drums", ['filled_date' => $date])->assertCreated();
+        Carbon::setTestNow("{$start} 08:00:00");
+        $id = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
+        if ($full) {
+            Carbon::setTestNow("{$full} 15:00:00");
+            $this->postJson("/api/pallets/{$id}/full")->assertOk();
         }
+        Carbon::setTestNow('2026-10-20 10:00:00');
 
         return $id;
     }
@@ -70,8 +73,8 @@ class WasteFlowTest extends TestCase
 
     public function test_hse_sees_operator_pallets_by_location(): void
     {
-        $atTps = $this->fullPallet('2026-08-01', ['2026-08-03', '2026-08-05', '2026-08-07']);
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-18'])->assertCreated();
+        $atTps = $this->fullPallet('2026-08-01', '2026-08-07');
+        $this->fullPallet('2026-10-18', null);
 
         $response = $this->as('HSE-3001')->getJson('/api/b3/pallets')->assertOk();
         $response->assertJsonPath('meta.counts.tps', 1)
@@ -93,7 +96,7 @@ class WasteFlowTest extends TestCase
 
     public function test_reminders_follow_levels_and_critical_repeats_daily(): void
     {
-        $id = $this->fullPallet('2026-08-01', ['2026-08-03', '2026-08-05', '2026-08-07']);
+        $id = $this->fullPallet('2026-08-01', '2026-08-07');
         $reminders = app(SendStorageReminders::class);
 
         // Sisa 10 hari: mendesak, sekali saja
@@ -122,8 +125,8 @@ class WasteFlowTest extends TestCase
 
     public function test_surat_jalan_hands_over_tps_pallets_and_closes_them(): void
     {
-        $first = $this->fullPallet('2026-08-01', ['2026-08-03', '2026-08-05', '2026-08-07']);
-        $second = $this->fullPallet('2026-08-10', ['2026-08-12', '2026-08-14', '2026-08-16']);
+        $first = $this->fullPallet('2026-08-01', '2026-08-07');
+        $second = $this->fullPallet('2026-08-10', '2026-08-16');
 
         $this->as('HSE-3001')->getJson('/api/surat-jalan/create')->assertOk()
             ->assertJsonCount(2, 'data.pallets')
@@ -163,8 +166,8 @@ class WasteFlowTest extends TestCase
 
     public function test_surat_jalan_rules(): void
     {
-        $atTps = $this->fullPallet('2026-08-01', ['2026-08-03', '2026-08-05', '2026-08-07']);
-        $this->postJson('/api/pallets', ['start_date' => '2026-10-18'])->assertCreated();
+        $atTps = $this->fullPallet('2026-08-01', '2026-08-07');
+        $this->fullPallet('2026-10-18', null);
         $filling = B3Pallet::where('status', 'filling')->value('id');
 
         $this->as('HSE-3001');

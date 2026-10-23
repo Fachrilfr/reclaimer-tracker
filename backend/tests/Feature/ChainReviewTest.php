@@ -24,7 +24,7 @@ class ChainReviewTest extends TestCase
         Carbon::setTestNow('2026-10-20 10:00:00');
         $this->as('OP-1001');
 
-        // Rangkaian dua batch, gabungan (50 + 50) / 500 = 20%, di bawah target 35%
+        // Rangkaian dua batch, gabungan (50 + 50) / 500 = 20%, di bawah toleransi 40%
         $base = [
             'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'oil_temp' => 140,
             'vapour_temp' => 50,
@@ -108,9 +108,9 @@ class ChainReviewTest extends TestCase
 
         $this->as('SPV-2001');
         $this->postJson("/api/batch-chains/{$good}/review", ['notes' => 'x'])->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Rangkaian ini memenuhi target recovery, tidak perlu ditinjau.');
+            ->assertJsonPath('errors.notes.0', 'Rangkaian ini memenuhi toleransi solvent, tidak perlu ditinjau.');
         $this->postJson("/api/batch-chains/{$open}/review", ['notes' => 'x'])->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Rangkaian ini belum selesai, jadi belum dinilai terhadap target.');
+            ->assertJsonPath('errors.notes.0', 'Rangkaian ini belum selesai, jadi belum dinilai terhadap toleransi.');
     }
 
     public function test_unreviewed_chain_disappears_after_14_days(): void

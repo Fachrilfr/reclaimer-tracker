@@ -10,14 +10,14 @@ import { useEffect, useId, useRef, useState } from 'react';
 // Hover dan panah keyboard menampilkan nilai; tabel di bawahnya memuat semua nilai.
 
 const HEIGHT = 240;
-const MARGIN = { top: 20, right: 72, bottom: 28, left: 52 };
+const MARGIN = { top: 20, right: 96, bottom: 28, left: 52 };
 const GRID = '#EEF1F5'; // gray-100
 const AXIS_TEXT = '#5B6673'; // gray-600
 const REFERENCE = '#2B333D'; // gray-800
 const GUIDE = '#9AA5B1'; // gray-400
-const TOOLTIP_WIDTH = 168;
+const TOOLTIP_WIDTH = 224;
 
-// Titik yang ditandai (misalnya di bawah target): merah tua (cukup beda dari hijau recovery
+// Titik yang ditandai (misalnya di bawah toleransi): merah tua (cukup beda dari hijau recovery
 // untuk buta warna, ΔE 7,1 di validator dataviz) dan bentuk
 // segitiga ke bawah, supaya bedanya terbaca tanpa mengandalkan warna saja
 export const FLAG_COLOR = '#9A1C1C';
@@ -155,7 +155,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
   // Tooltip di atas titik aktif (atau ujung kolom). Boleh naik menutupi legenda di atas
   // grafik selama hover; baru pindah ke bawah titik bila tetap tidak muat.
   const anchorY = activePoint ? (activePoint.value === null ? baseline : y(activePoint.value)) : 0;
-  const tooltipHeight = activePoint ? 52 + (activePoint.flagged ? 18 : 0) + (activePoint.note ? 18 : 0) : 0;
+  const tooltipHeight = activePoint ? 52 + (activePoint.flagged ? 18 : 0) + (activePoint.note ? 36 : 0) : 0;
   const below = anchorY - 14 - tooltipHeight < -64;
   const tooltipCenter = activePoint ? Math.min(Math.max(x(active), TOOLTIP_WIDTH / 2), width - TOOLTIP_WIDTH / 2) : 0;
   const arrowOffset = activePoint ? x(active) - (tooltipCenter - TOOLTIP_WIDTH / 2) : 0;
@@ -333,6 +333,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
                   <td className={`px-3 py-2 text-right tabular-nums ${p.flagged ? 'font-semibold text-danger-fg' : 'text-gray-900'}`}>
                     {p.value === null ? '–' : format(p.value)}
                     {p.flagged && <span className="block text-caption font-normal">{flagLabel}</span>}
+                    {p.value !== null && p.note && <span className="block text-caption font-normal text-gray-600">{p.note}</span>}
                   </td>
                 </tr>
               ))}

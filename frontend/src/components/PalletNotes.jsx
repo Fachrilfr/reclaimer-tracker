@@ -1,6 +1,6 @@
 import { tpsDelayText } from './StorageBadge.jsx';
 
-// Keterangan yang diisi saat mulai pallet dan saat mencatat drum, ditambah keterangan
+// Keterangan yang diisi saat mulai dan saat pallet penuh (dan catatan drum data lama), ditambah keterangan
 // otomatis dari sistem (misalnya terlambat karena mesin maintenance)
 export default function PalletNotes({ pallet }) {
   const systemNote = tpsDelayText(pallet.tps);

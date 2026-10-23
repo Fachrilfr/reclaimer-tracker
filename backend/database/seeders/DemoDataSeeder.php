@@ -133,8 +133,8 @@ class DemoDataSeeder extends Seeder
     private function startChain(RecordBatch $record, Carbon $date, int $shiftId, bool $forceOpen = false): ?array
     {
         $ink = $this->between(260, 340);
-        // Target 35%; sekitar 12% rangkaian di bawah target
-        $finalRate = $this->chance(12) ? $this->between(24, 33) : $this->between(35.5, 41.5);
+        // Toleransi 40%; sekitar 12% rangkaian di bawah toleransi
+        $finalRate = $this->chance(12) ? $this->between(30, 38.5) : $this->between(40.5, 46.5);
         $totalRecovery = round($ink * $finalRate / 100, 2);
         $open = $forceOpen || $this->chance(20);
         $legs = $open ? ($this->chance(25) ? 3 : 2) : 1;
@@ -207,24 +207,24 @@ class DemoDataSeeder extends Seeder
     private function seedPallets(Carbon $realNow): void
     {
         $pallets = app(RecordPallet::class);
-        // [mulai terisi (hari lalu), [drum penuh (hari lalu), ...]]
-        // Pallet penuh = dikirim ke TPS. Masa simpan TPS (HSE) 90 hari dari mulai terisi.
+        // [tombol "mulai diisi" (hari lalu), tombol "penuh" (hari lalu) atau null bila masih diisi]
+        // Pallet penuh = terkirim ke TPS. Masa simpan TPS (HSE) 90 hari dari mulai diisi.
         $plan = [
-            [130, [128, 126, 124]], // sudah diserahkan ke vendor lewat surat jalan (lihat seedSuratJalan)
-            [110, [108, 106, 104]], // idem, satu surat jalan dengan pallet di atas
-            [85, [83, 81, 76]],   // dikirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
-            [75, [73, 71, 69]],   // dikirim tepat waktu; di TPS sisa 15 hari: perhatian
-            [66, [64, 62, 61]],   // di TPS sisa 24 hari: perhatian
-            [6, [4, 2]],          // sedang diisi (2 dari 3 drum), batas kirim ke TPS besok: mendesak
+            [130, 124], // sudah diserahkan ke vendor lewat surat jalan (lihat seedSuratJalan)
+            [110, 104], // idem, satu surat jalan dengan pallet di atas
+            [85, 76],   // terkirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
+            [75, 69],   // terkirim tepat waktu; di TPS sisa 15 hari: perhatian
+            [66, 61],   // di TPS sisa 24 hari: perhatian
+            [6, null],  // sedang diisi, batas kirim ke TPS besok: mendesak
         ];
 
-        foreach ($plan as [$startAgo, $drumsAgo]) {
-            Carbon::setTestNow($realNow->copy()->subDays($startAgo)->setTime(8, 0));
-            $pallet = $pallets->start($this->request, Carbon::now()->toDateString(), null);
+        foreach ($plan as [$startAgo, $fullAgo]) {
+            Carbon::setTestNow($realNow->copy()->subDays($startAgo)->setTime(7, 40));
+            $pallet = $pallets->start($this->request, null);
 
-            foreach ($drumsAgo as $ago) {
-                Carbon::setTestNow($realNow->copy()->subDays($ago)->setTime(15, 0));
-                $pallets->addDrum($this->request, $pallet, Carbon::now()->toDateString(), null);
+            if ($fullAgo !== null) {
+                Carbon::setTestNow($realNow->copy()->subDays($fullAgo)->setTime(15, 20));
+                $pallets->markFull($this->request, $pallet, null);
             }
         }
     }
