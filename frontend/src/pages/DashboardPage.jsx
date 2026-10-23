@@ -20,6 +20,7 @@ import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { DASHBOARD_ALERTS } from '../roles.js';
 import Alert from '../components/Alert.jsx';
 import ReviewDialog from '../components/ReviewDialog.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
@@ -171,8 +172,8 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
 }
 
 // FR-45 bagian limbah B3: pallet mendesak dan kritis
-// Dua tahap limbah B3. Operator: dari area reclaimer ke TPS (batas kirim). HSE dan role
-// dengan akses Limbah B3: masa simpan di TPS sampai diserahkan ke vendor.
+// Dua tahap limbah B3. Bagian reclaimer: dari area reclaimer ke TPS (batas kirim). HSE dan
+// manajemen: masa simpan di TPS sampai diserahkan ke vendor. Pilihan per role di DASHBOARD_ALERTS.
 const B3_VIEWS = {
   tps: {
     title: 'Kirim ke TPS',
@@ -552,8 +553,9 @@ function ActivePallets({ pallets, view, sorot }) {
 }
 
 export default function DashboardPage() {
-  const { can } = useAuth();
-  const b3View = can('limbah_b3') ? B3_VIEWS.storage : B3_VIEWS.tps;
+  const { can, user } = useAuth();
+  const alerts = DASHBOARD_ALERTS[user.role] ?? { b3: 'tps', recovery: true };
+  const b3View = B3_VIEWS[alerts.b3];
   const [params, setParams] = useSearchParams();
   const today = localToday();
   const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'day';
@@ -604,30 +606,32 @@ export default function DashboardPage() {
             </p>
           )}
 
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <div className={`grid grid-cols-1 gap-6 ${alerts.recovery ? 'lg:grid-cols-2' : ''}`}>
             <B3AlertCard
               view={b3View}
               machine={data.machine}
               pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
               linkFor={(p) =>
-                can('limbah_b3')
-                  ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
-                  : b3View === B3_VIEWS.tps && can('drum_b3')
-                    ? `/drum-b3?sorot=pallet-${p.id}`
+                b3View === B3_VIEWS.tps && can('drum_b3')
+                  ? `/drum-b3?sorot=pallet-${p.id}`
+                  : b3View === B3_VIEWS.storage && can('limbah_b3')
+                    ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
                     : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
               }
             />
-            <RecoveryAlertCard
-              tolerance={data.tolerance}
-              target={data.target_recovery_rate}
-              chains={data.action_items.low_recovery_chains}
-              openCount={data.totals.open_chain_count}
-              label={periodLabel(anchor, period)}
-              onReviewed={(message) => {
-                setReviewMessage(message);
-                reload();
-              }}
-            />
+            {alerts.recovery && (
+              <RecoveryAlertCard
+                tolerance={data.tolerance}
+                target={data.target_recovery_rate}
+                chains={data.action_items.low_recovery_chains}
+                openCount={data.totals.open_chain_count}
+                label={periodLabel(anchor, period)}
+                onReviewed={(message) => {
+                  setReviewMessage(message);
+                  reload();
+                }}
+              />
+            )}
           </div>
 
           <section aria-labelledby="totals-title">

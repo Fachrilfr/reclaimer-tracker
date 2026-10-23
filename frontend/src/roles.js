@@ -10,6 +10,19 @@ export function roleLabel(role) {
   return ROLE_LABELS[role] ?? role;
 }
 
+// Kartu alert di dashboard per role, sesuai bagian masing-masing:
+//   tps      = pallet yang harus dikirim dari area reclaimer ke TPS (bagian reclaimer)
+//   storage  = masa simpan limbah B3 di TPS sampai diserahkan ke vendor (bagian HSE)
+//   recovery = rangkaian di bawah target recovery (bagian reclaimer)
+// Supervisor reclaimer tidak memantau TPS (sudah ada di Limbah B3 milik HSE), dan HSE
+// tidak memantau target recovery.
+export const DASHBOARD_ALERTS = {
+  operator: { b3: 'tps', recovery: true },
+  supervisor: { b3: 'tps', recovery: true },
+  hse: { b3: 'storage', recovery: false },
+  management: { b3: 'storage', recovery: true },
+};
+
 // Tingkat akses PRD §5. Kelola mencakup isi, tinjau, dan lihat; isi dan tinjau mencakup lihat.
 // Harus sama dengan 'levels' di backend/config/access.php.
 export const ACCESS_LEVELS = {
