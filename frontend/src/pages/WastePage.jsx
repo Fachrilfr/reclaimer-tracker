@@ -24,26 +24,20 @@ const LOCATIONS = [
 
 const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: 'Kritis' };
 
-// Keterangan: masa simpan di TPS (tugas HSE), surat jalan bila sudah diserahkan, lalu
-// catatan operator dan keterangan otomatis sistem
+// Keterangan: surat jalan bila sudah diserahkan, lalu catatan operator dan keterangan
+// otomatis sistem
 function Keterangan({ pallet }) {
   const hasNotes = pallet.notes || pallet.drum_notes.length > 0 || tpsDelayText(pallet.tps);
+  if (!pallet.surat_jalan && !hasNotes) return <span className="text-gray-600">–</span>;
 
   return (
     <div className="space-y-1.5">
-      {pallet.location !== 'diserahkan' && (
-        <div>
-          <span className="text-gray-600">Masa simpan: </span>
-          <StorageBadge storage={pallet.storage} />
-          <span className="mt-0.5 block text-caption text-gray-600">Batas simpan {formatDate(pallet.expiry_date)}</span>
-        </div>
-      )}
       {pallet.surat_jalan && (
         <p>
           <span className="text-gray-600">Surat jalan: </span>
           <Link
             to={`/arsip?q=${encodeURIComponent(pallet.surat_jalan.number)}`}
-            className="focus-ring rounded font-mono font-medium text-brand-blue-700 hover:underline"
+            className="focus-ring rounded break-all font-mono font-medium text-brand-blue-700 hover:underline"
           >
             {pallet.surat_jalan.number}
           </Link>
@@ -58,7 +52,19 @@ function Keterangan({ pallet }) {
   );
 }
 
-// Kolom sama dengan tabel pallet operator (Input pallet B3), supaya mudah dibaca semua role
+// Tanggal di baris pertama, jam di baris kedua, supaya tabel muat tanpa digeser
+function DateTime({ text }) {
+  const [date, time] = text.split(', ');
+  return (
+    <>
+      <span className="block whitespace-nowrap">{date}</span>
+      {time && <span className="block text-caption text-gray-600">pukul {time}</span>}
+    </>
+  );
+}
+
+// Kolom sama dengan tabel pallet operator (Input pallet B3), supaya mudah dibaca semua role,
+// ditambah masa simpan di TPS (tugas HSE)
 function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
   return (
     <Table caption="Inventaris pallet limbah B3">
@@ -74,6 +80,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
           <Th>Penuh dan terkirim ke TPS</Th>
           <Th>Batas kirim ke TPS</Th>
           <Th>Status kirim ke TPS</Th>
+          <Th>Masa simpan di TPS</Th>
           <Th>Keterangan</Th>
         </tr>
       </thead>
@@ -97,13 +104,21 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
               </Td>
             )}
             <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
-            <Td className="whitespace-nowrap">{startedText(p)}</Td>
-            <Td className="whitespace-nowrap">{fullText(p) ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
+            <Td>
+              <DateTime text={startedText(p)} />
+            </Td>
+            <Td>{fullText(p) ? <DateTime text={fullText(p)} /> : <span className="text-gray-600">Sedang diisi</span>}</Td>
             <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
             <Td>
               <TpsBadge tps={p.tps} compact />
             </Td>
-            <Td className="min-w-[16rem] text-body">
+            <Td>
+              <StorageBadge storage={p.storage} />
+              {p.location !== 'diserahkan' && (
+                <span className="mt-0.5 block whitespace-nowrap text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
+              )}
+            </Td>
+            <Td className="text-body">
               <Keterangan pallet={p} />
             </Td>
           </tr>
