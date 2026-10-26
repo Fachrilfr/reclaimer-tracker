@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Cylinder, LoaderCircle, PackageCheck, PackagePlus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
-import { formatDate, formatDateTime } from '../lib/format.js';
+import { formatDate } from '../lib/format.js';
+import { fullText, startedText } from '../lib/pallet.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
@@ -17,10 +18,6 @@ import { Table, Td, Th } from '../components/Table.jsx';
 // Tahap operator: dari area reclaimer ke TPS. Dua tombol mengambil waktu saat ditekan:
 // mulai diisi, lalu penuh. Pallet penuh langsung tercatat terkirim ke TPS dan diserahkan
 // ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
-
-/** Waktu tombol ditekan; data lama tanpa jam memakai tanggalnya saja. */
-const startedText = (p) => (p.started_at ? formatDateTime(p.started_at) : formatDate(p.start_date));
-const fullText = (p) => (p.full_at ? formatDateTime(p.full_at) : p.full_date ? formatDate(p.full_date) : null);
 
 function NotesField({ id, value, onChange, error }) {
   return (

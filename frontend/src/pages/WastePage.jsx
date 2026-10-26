@@ -9,7 +9,8 @@ import PageHeader from '../components/PageHeader.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
-import StorageBadge, { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import StorageBadge, { TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import { fullText, startedText } from '../lib/pallet.js';
 import { ErrorCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
@@ -23,9 +24,20 @@ const LOCATIONS = [
 
 const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: 'Kritis' };
 
+// Keterangan: masa simpan di TPS (tugas HSE), surat jalan bila sudah diserahkan, lalu
+// catatan operator dan keterangan otomatis sistem
 function Keterangan({ pallet }) {
+  const hasNotes = pallet.notes || pallet.drum_notes.length > 0 || tpsDelayText(pallet.tps);
+
   return (
-    <div className="space-y-1">
+    <div className="space-y-1.5">
+      {pallet.location !== 'diserahkan' && (
+        <div>
+          <span className="text-gray-600">Masa simpan: </span>
+          <StorageBadge storage={pallet.storage} />
+          <span className="mt-0.5 block text-caption text-gray-600">Batas simpan {formatDate(pallet.expiry_date)}</span>
+        </div>
+      )}
       {pallet.surat_jalan && (
         <p>
           <span className="text-gray-600">Surat jalan: </span>
@@ -41,12 +53,13 @@ function Keterangan({ pallet }) {
           </span>
         </p>
       )}
-      {(!pallet.surat_jalan || pallet.notes || pallet.drum_notes.length > 0 || tpsDelayText(pallet.tps)) && <PalletNotes pallet={pallet} />}
+      {hasNotes && <PalletNotes pallet={pallet} />}
     </div>
   );
 }
 
-function PalletTable({ pallets, drumsPerPallet, selectable, selected, onToggle, sorot }) {
+// Kolom sama dengan tabel pallet operator (Input pallet B3), supaya mudah dibaca semua role
+function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
   return (
     <Table caption="Inventaris pallet limbah B3">
       <thead>
@@ -57,10 +70,10 @@ function PalletTable({ pallets, drumsPerPallet, selectable, selected, onToggle, 
             </Th>
           )}
           <Th>No. pallet</Th>
-          <Th numeric>Drum</Th>
-          <Th>Mulai terisi</Th>
-          <Th>Kirim ke TPS</Th>
-          <Th>Masa simpan</Th>
+          <Th>Mulai diisi</Th>
+          <Th>Penuh dan terkirim ke TPS</Th>
+          <Th>Batas kirim ke TPS</Th>
+          <Th>Status kirim ke TPS</Th>
           <Th>Keterangan</Th>
         </tr>
       </thead>
@@ -84,30 +97,11 @@ function PalletTable({ pallets, drumsPerPallet, selectable, selected, onToggle, 
               </Td>
             )}
             <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
-            <Td numeric className="whitespace-nowrap">
-              {/* Pallet yang masih diisi tidak dihitung per drum */}
-              {p.location === 'reclaimer' ? <span className="text-gray-600">Sedang diisi</span> : `${p.drum_count}/${drumsPerPallet}`}
-            </Td>
-            <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
-            <Td className="min-w-[12rem]">
+            <Td className="whitespace-nowrap">{startedText(p)}</Td>
+            <Td className="whitespace-nowrap">{fullText(p) ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
+            <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
+            <Td>
               <TpsBadge tps={p.tps} compact />
-              <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-2 text-caption">
-                <dt className="text-gray-600">Batas kirim</dt>
-                <dd className="whitespace-nowrap text-gray-800">{formatDate(p.tps_due_date)}</dd>
-                <dt className="text-gray-600">Sampai di TPS</dt>
-                <dd className="whitespace-nowrap text-gray-800">{p.tps.sent_at ? formatDate(p.tps.sent_at) : 'Belum'}</dd>
-              </dl>
-            </Td>
-            <Td className="min-w-[11rem]">
-              <StorageBadge storage={p.storage} />
-              {p.location !== 'diserahkan' && (
-                <>
-                  <div className="mt-1.5">
-                    <StorageMeter storage={p.storage} label={`Masa simpan ${p.pallet_number}`} />
-                  </div>
-                  <span className="mt-1 block text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
-                </>
-              )}
             </Td>
             <Td className="min-w-[16rem] text-body">
               <Keterangan pallet={p} />
@@ -302,7 +296,6 @@ export default function WastePage() {
             <div className={`transition-opacity ${list.loading ? 'opacity-60' : ''}`} aria-busy={list.loading}>
               <PalletTable
                 pallets={list.data}
-                drumsPerPallet={meta.drums_per_pallet}
                 selectable={selectable}
                 selected={selected}
                 onToggle={toggle}
