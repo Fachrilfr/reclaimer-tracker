@@ -238,8 +238,7 @@ export default function DrumPage() {
                     <Th>No. pallet</Th>
                     <Th>Mulai diisi</Th>
                     <Th>Penuh dan terkirim ke TPS</Th>
-                    <Th>Batas kirim ke TPS</Th>
-                    <Th>Lama sampai terkirim ke TPS</Th>
+                    <Th>Total hari kirim ke TPS</Th>
                     <Th>Keterangan</Th>
                   </tr>
                 </thead>
@@ -254,7 +253,6 @@ export default function DrumPage() {
                       <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
                       <Td className="whitespace-nowrap">{startedText(p)}</Td>
                       <Td className="whitespace-nowrap">{fullText(p) ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
-                      <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
                       <Td>
                         <FillDays pallet={p} />
                       </Td>
