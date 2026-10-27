@@ -19,7 +19,7 @@
 </header>
 <footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian batch yang sudah selesai, dihitung pada tanggal dan shift batch awalnya.</footer>
 
-<div data-bagian="Ringkasan">
+<div>
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} batch)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
 
@@ -31,7 +31,7 @@
 </tr></table>
 </div>
 
-<table class="two" data-bagian="Saldo solvent dan maintenance"><tr>
+<table class="two"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
     <div class="muted">Bertambah dari hasil solvent tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
@@ -61,7 +61,7 @@
 </td>
 </tr></table>
 
-<div class="keep" data-bagian="Perbandingan per shift">
+<div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
     <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
@@ -77,7 +77,7 @@
 
 @if ($report['breakdown'])
     @php $unitLabel = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['breakdown']['unit']]; @endphp
-<div class="keep" data-bagian="Rincian per {{ strtolower($unitLabel) }}">
+<div class="keep">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
         <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
@@ -93,7 +93,7 @@
 </div>
 @endif
 
-<div data-bagian="Di bawah toleransi">
+<div>
 <h2>Rangkaian di bawah toleransi dan tinjauan supervisor</h2>
 @if (count($report['below_target']))
     <table>
@@ -113,7 +113,7 @@
 </div>
 
 @if (count($report['temp_abnormal']))
-<div data-bagian="Suhu tidak normal">
+<div>
     <h2>Batch dengan suhu di luar normal</h2>
     <table>
         <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
@@ -125,7 +125,7 @@
 @endif
 
 @if (count($report['solvent_usages']))
-<div class="keep" data-bagian="Pemakaian solvent">
+<div class="keep">
     <h2>Pemakaian solvent</h2>
     <div class="muted">Solvent yang diambil dari saldo hasil solvent. Tidak masuk ke mesin dan tidak ikut dihitung sebagai bahan masuk.</div>
     <table>
@@ -137,7 +137,7 @@
 </div>
 @endif
 
-<div class="page-break" data-bagian="Rincian rangkaian batch">
+<div class="page-break">
 <h2>Rincian rangkaian batch</h2>
 @if (count($report['chains']))
     <table>

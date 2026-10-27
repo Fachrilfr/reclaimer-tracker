@@ -21,7 +21,7 @@
 </header>
 <footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Berat resmi dari timbangan vendor, dicatat per surat jalan. Periode mengikuti tanggal serah terima.</footer>
 
-<div data-bagian="Ringkasan">
+<div>
 <h1>Laporan Limbah B3 {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet mulai terisi</div>
 
@@ -33,7 +33,7 @@
 </tr></table>
 </div>
 
-<table class="two" data-bagian="Per vendor dan per periode"><tr>
+<table class="two"><tr>
 <td class="col">
     <h2>Per vendor</h2>
     @if (count($report['by_vendor']))
@@ -64,7 +64,7 @@
 </td>
 </tr></table>
 
-<div class="keep" data-bagian="Surat jalan">
+<div class="keep">
 <h2>Surat jalan</h2>
 @if (count($report['surat_jalan']))
     <table>
@@ -86,7 +86,7 @@
 @endif
 </div>
 
-<div class="keep" data-bagian="Kepatuhan masa simpan">
+<div class="keep">
 <h2>Kepatuhan masa simpan</h2>
 <div class="muted">Lama simpan pallet yang diserahkan, dari mulai terisi sampai serah terima.</div>
 @if (count($report['compliance']))
@@ -106,7 +106,7 @@
 @endif
 </div>
 
-<div class="keep" data-bagian="Stok">
+<div class="keep">
 <h2>Stok {{ $stockLabel }}</h2>
 <div class="muted">Pallet yang belum diserahkan ke vendor, dengan sisa masa simpan saat itu.</div>
 @if (count($stock['rows']))
@@ -126,7 +126,7 @@
 @endif
 </div>
 
-<div class="keep" data-bagian="Maintenance mesin">
+<div class="keep">
 <h2>Maintenance mesin</h2>
 <div class="muted">Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.</div>
 @if ($report['maintenance']['count'])
