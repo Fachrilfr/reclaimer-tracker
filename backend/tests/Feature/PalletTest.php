@@ -54,6 +54,8 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.status', 'full')
             ->assertJsonPath('data.full_date', '2026-10-05')
             ->assertJsonPath('data.drum_count', 3)
+            // Lama pengisian: 1 Okt sampai 5 Okt = 4 hari
+            ->assertJsonPath('data.fill_days', 4)
             ->assertJsonPath('data.tps.level', 'terkirim')
             ->assertJsonPath('data.tps.sent_at', '2026-10-05')
             ->assertJsonPath('data.tps.late_days', 0)

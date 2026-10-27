@@ -9,7 +9,8 @@ import PageHeader from '../components/PageHeader.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
-import StorageBadge, { TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import StorageBadge, { tpsDelayText } from '../components/StorageBadge.jsx';
+import FillDays from '../components/FillDays.jsx';
 import { fullText, startedText } from '../lib/pallet.js';
 import { ErrorCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -79,7 +80,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
           <Th>Mulai diisi</Th>
           <Th>Penuh dan terkirim ke TPS</Th>
           <Th>Batas kirim ke TPS</Th>
-          <Th>Status kirim ke TPS</Th>
+          <Th>Lama sampai terkirim ke TPS</Th>
           <Th>Masa simpan di TPS</Th>
           <Th>Keterangan</Th>
         </tr>
@@ -110,7 +111,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
             <Td>{fullText(p) ? <DateTime text={fullText(p)} /> : <span className="text-gray-600">Sedang diisi</span>}</Td>
             <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
             <Td>
-              <TpsBadge tps={p.tps} compact />
+              <FillDays pallet={p} />
             </Td>
             <Td>
               <StorageBadge storage={p.storage} />

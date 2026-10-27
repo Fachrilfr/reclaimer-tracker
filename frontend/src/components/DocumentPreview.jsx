@@ -1,8 +1,48 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileText, LoaderCircle, X } from 'lucide-react';
+import { FileText, LoaderCircle, Printer, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import ExportButtons from './ExportButtons.jsx';
 import { ErrorCard } from './LoadState.jsx';
+
+// Pilihan bagian yang dicetak. Nomor halaman tertentu tetap bisa dipilih di jendela cetak browser.
+function PrintPanel({ sections, onToggle, onAll, onPrint }) {
+  const count = sections.filter((s) => s.checked).length;
+
+  return (
+    <section id="print-panel" aria-labelledby="print-title" className="border-b border-gray-200 bg-white px-4 py-3 sm:px-6">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h3 id="print-title" className="text-body font-semibold text-gray-900">
+          Pilih bagian yang dicetak
+        </h3>
+        <div className="flex gap-3 text-body">
+          <button type="button" onClick={() => onAll(true)} className="focus-ring rounded font-medium text-brand-blue-700 hover:underline">
+            Pilih semua
+          </button>
+          <button type="button" onClick={() => onAll(false)} className="focus-ring rounded font-medium text-brand-blue-700 hover:underline">
+            Kosongkan
+          </button>
+        </div>
+      </div>
+      <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+        {sections.map((s) => (
+          <label key={s.name} className="flex min-h-11 cursor-pointer items-center gap-2 text-body text-gray-800">
+            <input type="checkbox" checked={s.checked} onChange={() => onToggle(s.name)} className="h-5 w-5 accent-brand-blue-600" />
+            {s.name}
+          </label>
+        ))}
+      </div>
+      <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-caption text-gray-600">
+          Untuk nomor halaman tertentu, pilih Halaman → Kustom di jendela cetak, misalnya 1-2 atau 3.
+        </p>
+        <button type="button" onClick={onPrint} disabled={!count} className="btn-primary h-11 px-4 text-body">
+          <Printer className="h-5 w-5" aria-hidden="true" />
+          Cetak {count} bagian
+        </button>
+      </div>
+    </section>
+  );
+}
 
 /**
  * Laporan dibaca dulu sebagai dokumen di aplikasi, tanpa mengunduh berkas (supaya tidak
@@ -17,8 +57,30 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
   const [state, setState] = useState({ html: null, error: '', loading: false });
   const closeRef = useRef(null);
   const triggerRef = useRef(null);
+  const frameRef = useRef(null);
+  // Bagian dokumen (data-bagian di template laporan) yang bisa dipilih untuk dicetak
+  const [sections, setSections] = useState([]);
+  const [printing, setPrinting] = useState(false);
+
+  const readSections = () => {
+    const doc = frameRef.current?.contentDocument;
+    if (!doc) return;
+    setSections([...doc.querySelectorAll('[data-bagian]')].map((el) => ({ name: el.dataset.bagian, checked: true })));
+  };
+
+  // Bagian yang tidak dicentang disembunyikan saat dicetak saja; pratinjau tetap utuh
+  const print = () => {
+    const frame = frameRef.current;
+    const doc = frame?.contentDocument;
+    if (!doc) return;
+    const chosen = new Set(sections.filter((s) => s.checked).map((s) => s.name));
+    doc.querySelectorAll('[data-bagian]').forEach((el) => el.classList.toggle('tidak-dicetak', !chosen.has(el.dataset.bagian)));
+    frame.contentWindow.print();
+  };
 
   const load = async () => {
+    setSections([]);
+    setPrinting(false);
     setState({ html: null, error: '', loading: true });
     try {
       const { data } = await request(`${basePath}/document?period=${period}&date=${anchor}`);
@@ -76,11 +138,33 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
                 <h2 id="preview-title" className="text-h3 font-semibold text-gray-900">
                   {title}
                 </h2>
-                <p className="text-caption text-gray-600">Pratinjau dokumen. Unduh hanya bila perlu disimpan atau dicetak.</p>
+                <p className="text-caption text-gray-600">Pratinjau dokumen. Unduh atau cetak hanya bila perlu.</p>
               </div>
             </div>
-            <ExportButtons path={`${basePath}/export`} period={period} anchor={anchor} />
+            <div className="flex flex-wrap items-start gap-3">
+              <button
+                type="button"
+                onClick={() => setPrinting((v) => !v)}
+                disabled={!sections.length}
+                aria-expanded={printing}
+                aria-controls="print-panel"
+                className="btn-secondary h-11 px-4 text-body"
+              >
+                <Printer className="h-5 w-5" aria-hidden="true" />
+                Cetak
+              </button>
+              <ExportButtons path={`${basePath}/export`} period={period} anchor={anchor} />
+            </div>
           </div>
+
+          {printing && (
+            <PrintPanel
+              sections={sections}
+              onToggle={(name) => setSections((list) => list.map((s) => (s.name === name ? { ...s, checked: !s.checked } : s)))}
+              onAll={(checked) => setSections((list) => list.map((s) => ({ ...s, checked })))}
+              onPrint={print}
+            />
+          )}
 
           <div className="relative flex-1 overflow-hidden bg-gray-100">
             {state.loading && (
@@ -95,8 +179,16 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
               </div>
             )}
             {state.html && (
-              // sandbox tanpa izin: dokumen hanya ditampilkan, tidak menjalankan skrip
-              <iframe title={title} srcDoc={state.html} sandbox="" className="h-full w-full border-0 bg-gray-100" />
+              // sandbox tanpa allow-scripts: dokumen tidak menjalankan skrip apa pun.
+              // allow-same-origin agar aplikasi bisa membaca bagian dokumen, allow-modals untuk jendela cetak.
+              <iframe
+                ref={frameRef}
+                title={title}
+                srcDoc={state.html}
+                sandbox="allow-same-origin allow-modals"
+                onLoad={readSections}
+                className="h-full w-full border-0 bg-gray-100"
+              />
             )}
           </div>
         </div>

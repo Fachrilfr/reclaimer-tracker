@@ -21,6 +21,7 @@
 </header>
 <footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Berat resmi dari timbangan vendor, dicatat per surat jalan. Periode mengikuti tanggal serah terima.</footer>
 
+<div data-bagian="Ringkasan">
 <h1>Laporan Limbah B3 {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet mulai terisi</div>
 
@@ -30,8 +31,9 @@
     <td><div class="box"><div class="label">Diserahkan lewat batas simpan</div><div class="value {{ $s['over_limit_count'] ? 'bad' : '' }}">{{ $s['over_limit_count'] }} pallet</div><div class="muted">{{ $s['longest_days_stored'] !== null ? 'Terlama ' . $s['longest_days_stored'] . ' hari' : 'Belum ada penyerahan' }}</div></div></td>
     <td><div class="box"><div class="label">Stok {{ $stockLabel }}</div><div class="value">{{ count($stock['rows']) }} pallet</div><div class="muted">{{ collect($stock['rows'])->where('location', 'tps')->count() }} di TPS · {{ collect($stock['rows'])->where('location', 'reclaimer')->count() }} di area reclaimer</div></div></td>
 </tr></table>
+</div>
 
-<table class="two"><tr>
+<table class="two" data-bagian="Per vendor dan per periode"><tr>
 <td class="col">
     <h2>Per vendor</h2>
     @if (count($report['by_vendor']))
@@ -62,7 +64,7 @@
 </td>
 </tr></table>
 
-<div class="keep">
+<div class="keep" data-bagian="Surat jalan">
 <h2>Surat jalan</h2>
 @if (count($report['surat_jalan']))
     <table>
@@ -84,7 +86,7 @@
 @endif
 </div>
 
-<div class="keep">
+<div class="keep" data-bagian="Kepatuhan masa simpan">
 <h2>Kepatuhan masa simpan</h2>
 <div class="muted">Lama simpan pallet yang diserahkan, dari mulai terisi sampai serah terima.</div>
 @if (count($report['compliance']))
@@ -104,7 +106,7 @@
 @endif
 </div>
 
-<div class="keep">
+<div class="keep" data-bagian="Stok">
 <h2>Stok {{ $stockLabel }}</h2>
 <div class="muted">Pallet yang belum diserahkan ke vendor, dengan sisa masa simpan saat itu.</div>
 @if (count($stock['rows']))
@@ -124,7 +126,7 @@
 @endif
 </div>
 
-<div class="keep">
+<div class="keep" data-bagian="Maintenance mesin">
 <h2>Maintenance mesin</h2>
 <div class="muted">Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.</div>
 @if ($report['maintenance']['count'])

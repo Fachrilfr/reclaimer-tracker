@@ -19,6 +19,7 @@
 </header>
 <footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian batch yang sudah selesai, dihitung pada tanggal dan shift batch awalnya.</footer>
 
+<div data-bagian="Ringkasan">
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} batch)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
 
@@ -28,8 +29,9 @@
     <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div><div class="muted">Toleransi {{ $pct($report['target_recovery_rate']) }} · {{ $s['below_target_count'] }} rangkaian di bawah toleransi</div></div></td>
     <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div><div class="muted">Saldo awal {{ $kg($report['solvent']['opening']) }} kg</div></div></td>
 </tr></table>
+</div>
 
-<table class="two"><tr>
+<table class="two" data-bagian="Saldo solvent dan maintenance"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
     <div class="muted">Bertambah dari hasil solvent tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
@@ -59,7 +61,7 @@
 </td>
 </tr></table>
 
-<div class="keep">
+<div class="keep" data-bagian="Perbandingan per shift">
 <h2>Perbandingan per shift</h2>
 <table>
     <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
@@ -75,7 +77,7 @@
 
 @if ($report['breakdown'])
     @php $unitLabel = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['breakdown']['unit']]; @endphp
-<div class="keep">
+<div class="keep" data-bagian="Rincian per {{ strtolower($unitLabel) }}">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
         <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
@@ -91,6 +93,7 @@
 </div>
 @endif
 
+<div data-bagian="Di bawah toleransi">
 <h2>Rangkaian di bawah toleransi dan tinjauan supervisor</h2>
 @if (count($report['below_target']))
     <table>
@@ -107,8 +110,10 @@
 @else
     <div class="empty">Tidak ada rangkaian di bawah toleransi di periode ini.</div>
 @endif
+</div>
 
 @if (count($report['temp_abnormal']))
+<div data-bagian="Suhu tidak normal">
     <h2>Batch dengan suhu di luar normal</h2>
     <table>
         <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
@@ -116,10 +121,11 @@
             <tr><td>{{ $b['batch_number'] }}</td><td>{{ Fmt::date($b['date']) }}</td><td>{{ $b['shift'] }}</td><td class="num">{{ number_format($b['oil_temp'], 1, ',', '.') }} °C</td><td class="num">{{ number_format($b['vapour_temp'], 1, ',', '.') }} °C</td></tr>
         @endforeach
     </table>
+</div>
 @endif
 
 @if (count($report['solvent_usages']))
-<div class="keep">
+<div class="keep" data-bagian="Pemakaian solvent">
     <h2>Pemakaian solvent</h2>
     <div class="muted">Solvent yang diambil dari saldo hasil solvent. Tidak masuk ke mesin dan tidak ikut dihitung sebagai bahan masuk.</div>
     <table>
@@ -131,7 +137,8 @@
 </div>
 @endif
 
-<h2 class="page-break">Rincian rangkaian batch</h2>
+<div class="page-break" data-bagian="Rincian rangkaian batch">
+<h2>Rincian rangkaian batch</h2>
 @if (count($report['chains']))
     <table>
         <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Residu est.</th><th class="num">Persentase solvent</th></tr></thead>
@@ -149,6 +156,7 @@
 @else
     <div class="empty">Belum ada batch di periode ini.</div>
 @endif
+</div>
 
 </body>
 </html>
