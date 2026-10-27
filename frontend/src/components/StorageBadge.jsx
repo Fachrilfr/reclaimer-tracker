@@ -62,6 +62,8 @@ function Pill({ level, children }) {
 }
 
 export default function StorageBadge({ storage }) {
+  // Masa simpan baru berjalan setelah pallet sampai di TPS
+  if (storage.level === 'reclaimer') return <span className="whitespace-nowrap text-gray-600">Belum di TPS</span>;
   return <Pill level={storage.level}>{storageText(storage)}</Pill>;
 }
 
@@ -75,7 +77,7 @@ export function TpsBadge({ tps, compact = false }) {
 
 /** Meter hari yang sudah terpakai dari batas (FR-50), untuk masa simpan maupun batas kirim TPS. */
 export function StorageMeter({ storage, label }) {
-  if (storage.level === 'diserahkan' || storage.level === 'terkirim') return null;
+  if (['diserahkan', 'terkirim', 'reclaimer'].includes(storage.level)) return null;
   const used = Math.min(storage.days_elapsed, storage.max_days);
   const percent = Math.round((used / storage.max_days) * 100);
 

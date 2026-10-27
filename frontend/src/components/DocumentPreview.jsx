@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { FileText, LoaderCircle, X } from 'lucide-react';
+import { FileText, LoaderCircle, Printer, X } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import ExportButtons from './ExportButtons.jsx';
 import { ErrorCard } from './LoadState.jsx';
@@ -17,6 +17,9 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
   const [state, setState] = useState({ html: null, error: '', loading: false });
   const closeRef = useRef(null);
   const triggerRef = useRef(null);
+  const frameRef = useRef(null);
+  // Cetak langsung membuka jendela cetak browser: pengguna memilih printer dan halaman di sana
+  const print = () => frameRef.current?.contentWindow?.print();
 
   const load = async () => {
     setState({ html: null, error: '', loading: true });
@@ -76,10 +79,21 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
                 <h2 id="preview-title" className="text-h3 font-semibold text-gray-900">
                   {title}
                 </h2>
-                <p className="text-caption text-gray-600">Pratinjau dokumen. Unduh hanya bila perlu disimpan atau dicetak.</p>
+                <p className="text-caption text-gray-600">Pratinjau dokumen. Unduh atau cetak hanya bila perlu.</p>
               </div>
             </div>
-            <ExportButtons path={`${basePath}/export`} period={period} anchor={anchor} />
+            <div className="flex flex-wrap items-start gap-3">
+              <button
+                type="button"
+                onClick={print}
+                disabled={!state.html}
+                className="btn-secondary h-11 px-4 text-body"
+              >
+                <Printer className="h-5 w-5" aria-hidden="true" />
+                Cetak
+              </button>
+              <ExportButtons path={`${basePath}/export`} period={period} anchor={anchor} />
+            </div>
           </div>
 
           <div className="relative flex-1 overflow-hidden bg-gray-100">
@@ -95,8 +109,15 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
               </div>
             )}
             {state.html && (
-              // sandbox tanpa izin: dokumen hanya ditampilkan, tidak menjalankan skrip
-              <iframe title={title} srcDoc={state.html} sandbox="" className="h-full w-full border-0 bg-gray-100" />
+              // sandbox tanpa allow-scripts: dokumen tidak menjalankan skrip apa pun.
+              // allow-same-origin agar tombol Cetak bisa memanggil jendela cetak dokumen ini, allow-modals untuk jendela cetak.
+              <iframe
+                ref={frameRef}
+                title={title}
+                srcDoc={state.html}
+                sandbox="allow-same-origin allow-modals"
+                className="h-full w-full border-0 bg-gray-100"
+              />
             )}
           </div>
         </div>

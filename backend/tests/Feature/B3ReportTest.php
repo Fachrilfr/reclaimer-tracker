@@ -29,9 +29,9 @@ class B3ReportTest extends TestCase
         Carbon::setTestNow('2026-10-20 10:00:00');
         [$first, $second] = Vendor::orderBy('id')->pluck('id')->all();
 
-        // A dan B diserahkan 5 Okt (A lewat batas: 1 Jul + 90 hari = 29 Sep), C 15 Okt,
-        // D masih di TPS, E masih diisi di area reclaimer
-        $a = $this->pallet('2026-07-01', '2026-07-07');
+        // A dan B diserahkan 5 Okt (A lewat batas: sampai di TPS 1 Jul + 90 hari = 29 Sep),
+        // C 15 Okt, D masih di TPS, E masih diisi di area reclaimer
+        $a = $this->pallet('2026-06-25', '2026-07-01');
         $b = $this->pallet('2026-08-01', '2026-08-07');
         $c = $this->pallet('2026-08-10', '2026-08-16');
         $this->pallet('2026-09-01', '2026-09-04');

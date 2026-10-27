@@ -10,7 +10,8 @@ final class B3ReportExcel extends ReportWorkbook
 {
     public const LOCATION = ['tps' => 'Di TPS', 'reclaimer' => 'Di area reclaimer'];
 
-    public const LEVEL = ['aman' => 'Aman', 'perhatian' => 'Perhatian', 'mendesak' => 'Mendesak', 'kritis' => 'Kritis'];
+    // reclaimer: masa simpan belum berjalan karena pallet belum sampai di TPS
+    public const LEVEL = ['aman' => 'Aman', 'perhatian' => 'Perhatian', 'mendesak' => 'Mendesak', 'kritis' => 'Kritis', 'reclaimer' => 'Belum di TPS'];
 
     private const LEVEL_TONE = ['aman' => null, 'perhatian' => 'warning', 'mendesak' => 'urgent', 'kritis' => 'danger'];
 
@@ -54,7 +55,7 @@ final class B3ReportExcel extends ReportWorkbook
             total: $r['surat_jalan'] ? ['Total', null, null, null, $s['drum_count'], $s['weight_kg'], null, null, null, null] : null,
             empty: 'Belum ada surat jalan di periode ini.');
 
-        $this->table($book->createSheet(), 'Masa simpan', "Lama simpan pallet yang diserahkan, batas {$r['max_storage_days']} hari sejak mulai terisi",
+        $this->table($book->createSheet(), 'Masa simpan', "Lama simpan pallet yang diserahkan, batas {$r['max_storage_days']} hari sejak sampai di TPS",
             ['No. pallet', 'Surat jalan', 'Mulai terisi', 'Sampai di TPS', 'Serah terima', 'Batas simpan', 'Lama simpan (hari)', 'Status'],
             array_map(fn ($c) => [
                 $c['pallet_number'], $c['surat_jalan_number'], self::date($c['start_date']), $c['sent_to_tps_at'] ? self::date($c['sent_to_tps_at']) : null,
@@ -70,9 +71,9 @@ final class B3ReportExcel extends ReportWorkbook
             ['No. pallet', 'Lokasi', 'Drum', 'Mulai terisi', 'Sampai di TPS', 'Batas simpan', 'Sisa masa simpan (hari)', 'Status'],
             array_map(fn ($p) => [
                 $p['pallet_number'], self::LOCATION[$p['location']], $p['drum_count'] ?? 'Sedang diisi', self::date($p['start_date']),
-                $p['sent_to_tps_at'] ? self::date($p['sent_to_tps_at']) : null, self::date($p['expiry_date']), $p['days_remaining'], self::LEVEL[$p['level']],
+                $p['sent_to_tps_at'] ? self::date($p['sent_to_tps_at']) : null, $p['expiry_date'] ? self::date($p['expiry_date']) : null, $p['days_remaining'], self::LEVEL[$p['level']],
             ], $stock['rows']),
-            tones: [8 => fn ($row) => self::LEVEL_TONE[array_search($row[7], self::LEVEL, true)] ?? null, 7 => fn ($row) => $row[6] < 0 ? 'danger' : null],
+            tones: [8 => fn ($row) => self::LEVEL_TONE[array_search($row[7], self::LEVEL, true)] ?? null, 7 => fn ($row) => $row[6] !== null && $row[6] < 0 ? 'danger' : null],
             empty: 'Tidak ada pallet yang tersimpan pada akhir periode ini.');
 
         $this->table($book->createSheet(), 'Maintenance', 'Maintenance mesin di periode ini; pengiriman residu ke TPS ikut terhenti',
@@ -102,7 +103,7 @@ final class B3ReportExcel extends ReportWorkbook
                 ['weight', 'Berat timbangan vendor (kg)', $s['weight_kg'], 'Berat resmi, dicatat per surat jalan', self::KG],
             ]],
             ['Kepatuhan masa simpan', [
-                ['limit', 'Batas masa simpan (hari)', $r['max_storage_days'], 'Sejak pallet mulai terisi', null],
+                ['limit', 'Batas masa simpan (hari)', $r['max_storage_days'], 'Sejak pallet sampai di TPS', null],
                 ['over', 'Pallet diserahkan lewat batas', $s['over_limit_count'], $s['over_limit_count'] ? 'Rincian di sheet "Masa simpan"' : 'Semua pallet diserahkan dalam batas', null],
                 ['longest', 'Lama simpan terlama (hari)', $s['longest_days_stored'], null, null],
             ]],

@@ -73,7 +73,7 @@ class WasteFlowTest extends TestCase
 
     public function test_hse_sees_operator_pallets_by_location(): void
     {
-        $atTps = $this->fullPallet('2026-08-01', '2026-08-07');
+        $atTps = $this->fullPallet('2026-07-26', '2026-08-01');
         $this->fullPallet('2026-10-18', null);
 
         $response = $this->as('HSE-3001')->getJson('/api/b3/pallets')->assertOk();
@@ -84,19 +84,25 @@ class WasteFlowTest extends TestCase
             ->assertJsonPath('data.0.id', $atTps)
             ->assertJsonPath('data.0.location', 'tps')
             ->assertJsonPath('data.0.drum_count', 3)
-            ->assertJsonPath('data.0.tps.sent_at', '2026-08-07')
-            // Masa simpan 90 hari sejak 1 Agustus: 30 Okt, sisa 10 hari
+            ->assertJsonPath('data.0.tps.sent_at', '2026-08-01')
+            // Masa simpan 90 hari sejak sampai di TPS 1 Agustus: 30 Okt, sisa 10 hari
             ->assertJsonPath('data.0.storage.days_remaining', 10)
             ->assertJsonPath('data.0.storage.level', 'mendesak')
             ->assertJsonPath('meta.needs_action', 1);
 
+        // Pallet di area reclaimer belum terhitung masa simpannya
         $this->getJson('/api/b3/pallets?lokasi=reclaimer')->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.location', 'reclaimer');
+            ->assertJsonPath('data.0.location', 'reclaimer')
+            ->assertJsonPath('data.0.storage.level', 'reclaimer')
+            ->assertJsonPath('data.0.storage.days_remaining', null)
+            ->assertJsonPath('data.0.expiry_date', null);
     }
 
     public function test_reminders_follow_levels_and_critical_repeats_daily(): void
     {
-        $id = $this->fullPallet('2026-08-01', '2026-08-07');
+        $id = $this->fullPallet('2026-07-26', '2026-08-01');
+        // Pallet yang masih diisi sejak lama tidak pernah dapat pengingat masa simpan
+        $this->fullPallet('2026-06-01', null);
         $reminders = app(SendStorageReminders::class);
 
         // Sisa 10 hari: mendesak, sekali saja

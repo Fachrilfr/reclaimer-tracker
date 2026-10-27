@@ -93,7 +93,14 @@ class PalletController extends Controller
             // Waktu tombol ditekan: mulai diisi dan penuh (null untuk data lama tanpa jam)
             'started_at' => $pallet->created_at?->toIso8601String(),
             'full_at' => $pallet->full_at?->toIso8601String(),
-            'expiry_date' => $pallet->expiry_date->toDateString(),
+            // Total hari kirim ke TPS: tanggal penuh dan terkirim dikurangi tanggal mulai diisi.
+            // Null selama pallet masih diisi.
+            'fill_days' => $pallet->sent_to_tps_at
+                ? (int) round($pallet->start_date->copy()->startOfDay()->diffInDays($pallet->sent_to_tps_at->copy()->startOfDay()))
+                : null,
+            'sent_to_tps_at' => $pallet->sent_to_tps_at?->toDateString(),
+            // Batas simpan baru ada setelah pallet sampai di TPS
+            'expiry_date' => $pallet->expiry_date?->toDateString(),
             'tps_due_date' => $pallet->tps_due_date?->toDateString(),
             // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.
             'tps' => $pallet->tpsStatus($thresholds['tps'], $thresholds['maintenance'] ?? null)->toArray(),

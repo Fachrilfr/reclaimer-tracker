@@ -209,6 +209,7 @@ const B3_VIEWS = {
     status: (p) => p.tps,
     badge: (p) => <TpsBadge tps={p.tps} />,
     due: (p) => `Batas kirim ${formatDate(p.tps_due_date)}`,
+    since: (p) => `mulai ${formatDate(p.start_date)}`,
     actionNoun: 'perlu dikirim',
     noAction: 'Tidak ada pallet yang mendesak atau lewat batas kirim ke TPS.',
     listTitle: 'Pallet belum dikirim ke TPS',
@@ -221,12 +222,14 @@ const B3_VIEWS = {
     status: (p) => p.storage,
     badge: (p) => <StorageBadge storage={p.storage} />,
     due: (p) => `Batas simpan ${formatDate(p.expiry_date)}`,
+    // Masa simpan dihitung sejak pallet sampai di TPS
+    since: (p) => `di TPS sejak ${formatDate(p.sent_to_tps_at)}`,
     actionNoun: 'perlu ditindak',
     noAction: 'Tidak ada pallet yang mendesak atau kritis.',
-    listTitle: 'Pallet B3 aktif',
+    listTitle: 'Pallet B3 di TPS',
     listDescription: 'Belum diangkut vendor, urut dari batas simpan terdekat.',
     meterLabel: 'Masa simpan',
-    empty: 'Tidak ada pallet B3 yang tersimpan.',
+    empty: 'Tidak ada pallet B3 di TPS.',
   },
 };
 
@@ -557,7 +560,7 @@ function ActivePallets({ pallets, view, sorot }) {
               <div className="sm:col-span-3">
                 <span className="font-mono text-gray-900">{p.pallet_number}</span>
                 <span className="block text-caption text-gray-600">
-                  {p.drum_count} drum · mulai {formatDate(p.start_date)}
+                  {p.drum_count} drum · {view.since(p)}
                 </span>
               </div>
               <div className="sm:col-span-5">

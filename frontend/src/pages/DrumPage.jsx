@@ -10,6 +10,7 @@ import Alert from '../components/Alert.jsx';
 import Modal from '../components/Modal.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
+import FillDays from '../components/FillDays.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
@@ -153,8 +154,7 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
       {confirming && (
         <Modal title={`Tandai pallet ${pallet.pallet_number} penuh?`} onClose={() => !busy && setConfirming(false)}>
           <p className="text-body text-gray-800">
-            Waktu sekarang dicatat sebagai waktu penuh, dan pallet langsung tercatat terkirim ke TPS. Setelah itu pallet
-            menjadi tanggung jawab HSE dan tidak bisa dibatalkan.
+            Waktu sekarang dicatat sebagai waktu penuh, dan pallet langsung tercatat terkirim ke TPS.
           </p>
           <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setConfirming(false)} disabled={busy} className="btn-secondary h-11 px-4 text-body">
@@ -238,8 +238,7 @@ export default function DrumPage() {
                     <Th>No. pallet</Th>
                     <Th>Mulai diisi</Th>
                     <Th>Penuh dan terkirim ke TPS</Th>
-                    <Th>Batas kirim ke TPS</Th>
-                    <Th>Status kirim ke TPS</Th>
+                    <Th>Total hari kirim ke TPS</Th>
                     <Th>Keterangan</Th>
                   </tr>
                 </thead>
@@ -254,9 +253,8 @@ export default function DrumPage() {
                       <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
                       <Td className="whitespace-nowrap">{startedText(p)}</Td>
                       <Td className="whitespace-nowrap">{fullText(p) ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
-                      <Td className="whitespace-nowrap">{formatDate(p.tps_due_date)}</Td>
                       <Td>
-                        <TpsBadge tps={p.tps} compact />
+                        <FillDays pallet={p} />
                       </Td>
                       <Td className="min-w-[12rem] text-body">
                         <PalletNotes pallet={p} />

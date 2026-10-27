@@ -37,5 +37,12 @@
     header { position: relative; top: auto; margin-bottom: 6mm; }
     footer { position: static; order: 99; margin-top: 8mm; padding-top: 2mm; border-top: 1px solid #DDE3EA; }
     .page-break { page-break-before: auto; margin-top: 8mm; }
+    /* Cetak dari pratinjau: kertas A4 mendatar, tanpa bayangan */
+    @page { size: A4 landscape; margin: 12mm; }
+    @media print {
+        html { background: #FFFFFF; }
+        body { width: auto; min-width: 0; margin: 0; padding: 0; box-shadow: none; }
+        .page-break { break-before: page; margin-top: 0; }
+    }
 </style>
 @endif

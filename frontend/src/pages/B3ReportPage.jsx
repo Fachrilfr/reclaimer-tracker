@@ -163,14 +163,14 @@ function ReportBody({ report }) {
       <Section
         id="b3-compliance"
         title="Kepatuhan masa simpan"
-        description="Lama simpan pallet yang diserahkan, dari mulai terisi sampai serah terima. Yang lewat batas ada di atas."
+        description="Lama simpan pallet yang diserahkan, dari sampai di TPS sampai serah terima. Yang lewat batas ada di atas."
       >
         {report.compliance.length ? (
           <Table caption="Kepatuhan masa simpan">
             <thead>
               <tr>
                 <Th>Pallet</Th>
-                <Th>Mulai terisi</Th>
+                <Th>Sampai di TPS</Th>
                 <Th>Serah terima</Th>
                 <Th>Batas simpan</Th>
                 <Th numeric>Lama simpan</Th>
@@ -184,7 +184,7 @@ function ReportBody({ report }) {
                     <span className="font-mono text-gray-900">{c.pallet_number}</span>
                     <span className="block text-caption text-gray-600">{c.surat_jalan_number}</span>
                   </Td>
-                  <Td className="whitespace-nowrap">{formatDate(c.start_date)}</Td>
+                  <Td className="whitespace-nowrap">{formatDate(c.sent_to_tps_at ?? c.start_date)}</Td>
                   <Td className="whitespace-nowrap">{formatDate(c.handover_date)}</Td>
                   <Td className="whitespace-nowrap">{formatDate(c.expiry_date)}</Td>
                   <Td numeric className="whitespace-nowrap">
@@ -231,7 +231,7 @@ function ReportBody({ report }) {
                   </Td>
                   <Td numeric className="whitespace-nowrap">{p.drum_count ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
                   <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
-                  <Td className="whitespace-nowrap">{formatDate(p.expiry_date)}</Td>
+                  <Td className="whitespace-nowrap">{p.expiry_date ? formatDate(p.expiry_date) : <span className="text-gray-600">–</span>}</Td>
                   <Td>
                     <StorageBadge storage={{ level: p.level, days_remaining: p.days_remaining }} />
                   </Td>

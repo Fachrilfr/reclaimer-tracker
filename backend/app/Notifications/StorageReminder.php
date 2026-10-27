@@ -29,12 +29,11 @@ class StorageReminder extends Notification
             $days === 0 => 'batasnya hari ini',
             default => "sisa {$days} hari",
         };
-        $where = $pallet->sent_to_tps_at ? 'di TPS' : 'di area reclaimer';
 
         return [
             'title' => "Pallet {$pallet->pallet_number} {$level}: masa simpan {$remaining}",
-            'message' => "Pallet {$where}, batas simpan {$pallet->expiry_date->locale('id')->translatedFormat('j M Y')}. "
-                . ($pallet->sent_to_tps_at ? 'Serahkan ke vendor lewat surat jalan.' : 'Pallet belum dikirim ke TPS.'),
+            'message' => "Pallet di TPS, batas simpan {$pallet->expiry_date->locale('id')->translatedFormat('j M Y')}. "
+                . 'Serahkan ke vendor lewat surat jalan.',
         ];
     }
 
