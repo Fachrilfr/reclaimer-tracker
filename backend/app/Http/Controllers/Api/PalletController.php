@@ -98,7 +98,9 @@ class PalletController extends Controller
             'fill_days' => $pallet->sent_to_tps_at
                 ? (int) round($pallet->start_date->copy()->startOfDay()->diffInDays($pallet->sent_to_tps_at->copy()->startOfDay()))
                 : null,
-            'expiry_date' => $pallet->expiry_date->toDateString(),
+            'sent_to_tps_at' => $pallet->sent_to_tps_at?->toDateString(),
+            // Batas simpan baru ada setelah pallet sampai di TPS
+            'expiry_date' => $pallet->expiry_date?->toDateString(),
             'tps_due_date' => $pallet->tps_due_date?->toDateString(),
             // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.
             'tps' => $pallet->tpsStatus($thresholds['tps'], $thresholds['maintenance'] ?? null)->toArray(),

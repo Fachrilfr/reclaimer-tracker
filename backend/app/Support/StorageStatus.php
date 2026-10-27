@@ -11,6 +11,9 @@ use Carbon\CarbonInterface;
  *
  * Jenjang mengikuti parameter pengingat PRD FR-27: sisa <= 30 hari perhatian,
  * <= 14 mendesak, <= 7 kritis (termasuk yang sudah lewat batas).
+ *
+ * Masa simpan berjalan sejak pallet sampai di TPS. Pallet yang masih di area reclaimer
+ * berjenjang `reclaimer`: belum punya sisa hari dan tidak memicu pengingat.
  */
 final class StorageStatus
 {
@@ -42,6 +45,9 @@ final class StorageStatus
         if ($pallet->status === 'transported') {
             return new self('diserahkan', null, null, $pallet->max_storage_days);
         }
+        if ($pallet->sent_to_tps_at === null) {
+            return new self('reclaimer', null, null, $pallet->max_storage_days);
+        }
 
         $today = ($today ?? now())->copy()->startOfDay();
         $thresholds ??= self::thresholds();
@@ -49,7 +55,7 @@ final class StorageStatus
 
         $level = self::levelFor($days, $thresholds);
 
-        $elapsed = (int) round($pallet->start_date->copy()->startOfDay()->diffInDays($today, false));
+        $elapsed = (int) round($pallet->sent_to_tps_at->copy()->startOfDay()->diffInDays($today, false));
 
         return new self($level, $days, max(0, $elapsed), $pallet->max_storage_days);
     }

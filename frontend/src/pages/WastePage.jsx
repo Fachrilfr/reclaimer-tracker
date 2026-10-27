@@ -113,7 +113,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
             </Td>
             <Td>
               <StorageBadge storage={p.storage} />
-              {p.location !== 'diserahkan' && (
+              {p.location === 'tps' && (
                 <span className="mt-0.5 block whitespace-nowrap text-caption text-gray-600">Batas simpan {formatDate(p.expiry_date)}</span>
               )}
             </Td>

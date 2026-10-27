@@ -41,8 +41,10 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.start_date', '2026-10-01')
             ->assertJsonPath('data.status', 'filling')
             ->assertJsonPath('data.notes', 'Pallet kayu baru')
-            // 1 Okt + 90 hari = 30 Des
-            ->assertJsonPath('data.expiry_date', '2026-12-30')
+            // Masih di area reclaimer: masa simpan belum berjalan
+            ->assertJsonPath('data.expiry_date', null)
+            ->assertJsonPath('data.storage.level', 'reclaimer')
+            ->assertJsonPath('data.storage.days_remaining', null)
             ->json('data');
         $this->assertStringStartsWith('2026-10-01T08:15:00', $pallet['started_at']);
 
@@ -60,6 +62,9 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.tps.sent_at', '2026-10-05')
             ->assertJsonPath('data.tps.late_days', 0)
             ->assertJsonPath('data.notes', "Pallet kayu baru\nTutup drum diganti")
+            // Masa simpan mulai dihitung saat sampai di TPS: 5 Okt + 90 hari = 3 Jan
+            ->assertJsonPath('data.expiry_date', '2027-01-03')
+            ->assertJsonPath('data.storage.days_remaining', 90)
             ->json('data');
         $this->assertStringStartsWith('2026-10-05T14:40:00', $full['full_at']);
 
@@ -87,8 +92,8 @@ class PalletTest extends TestCase
         Carbon::setTestNow('2026-10-24 11:00:00');
         $this->postJson("/api/pallets/{$pallet['id']}/full")->assertOk()
             ->assertJsonPath('data.tps.late_days', 2)
-            // Masa simpan TPS ke vendor (HSE) tetap 90 hari dari mulai diisi
-            ->assertJsonPath('data.expiry_date', '2027-01-13');
+            // Masa simpan TPS ke vendor (HSE) 90 hari sejak sampai di TPS (24 Okt)
+            ->assertJsonPath('data.expiry_date', '2027-01-22');
     }
 
     public function test_tps_level_follows_delivery_deadline(): void
@@ -157,19 +162,29 @@ class PalletTest extends TestCase
             '2026-08-22' => [31, 'aman'],
         ];
 
-        foreach ($cases as $start => [$days, $level]) {
+        // Tanggal kunci = tanggal sampai di TPS
+        foreach ($cases as $arrived => [$days, $level]) {
             $pallet = B3Pallet::create([
-                'pallet_number' => "PLT-UJI-{$start}",
-                'start_date' => $start,
+                'pallet_number' => "PLT-UJI-{$arrived}",
+                'start_date' => Carbon::parse($arrived)->subDays(5),
                 'max_storage_days' => 90,
-                'expiry_date' => Carbon::parse($start)->addDays(90),
+                'sent_to_tps_at' => $arrived,
+                'expiry_date' => Carbon::parse($arrived)->addDays(90),
                 'status' => 'full',
             ]);
 
             $status = $pallet->storageStatus();
-            $this->assertSame($days, $status->daysRemaining, "start {$start}");
-            $this->assertSame($level, $status->level, "start {$start}");
+            $this->assertSame($days, $status->daysRemaining, "di TPS {$arrived}");
+            $this->assertSame($level, $status->level, "di TPS {$arrived}");
         }
+
+        // Pallet di area reclaimer belum terhitung masa simpannya
+        $filling = B3Pallet::create([
+            'pallet_number' => 'PLT-UJI-ISI', 'start_date' => '2026-06-01', 'max_storage_days' => 90, 'status' => 'filling',
+        ]);
+        $this->assertSame('reclaimer', $filling->storageStatus()->level);
+        $this->assertNull($filling->storageStatus()->daysRemaining);
+        $this->assertFalse($filling->storageStatus()->needsAction());
     }
 
     public function test_access_follows_matrix(): void

@@ -16,7 +16,8 @@ use Illuminate\Validation\ValidationException;
  * ke TPS dan menjadi tanggung jawab HSE. Drum tidak dicatat satu per satu; pallet penuh
  * dianggap berisi `drums_per_pallet` drum.
  *
- * Masa simpan dihitung sejak pallet mulai diisi (PRD §8, menunggu konfirmasi HSE).
+ * Masa simpan dihitung sejak pallet sampai di TPS; selama masih diisi di area reclaimer
+ * pallet belum punya batas simpan.
  */
 class RecordPallet
 {
@@ -42,7 +43,7 @@ class RecordPallet
                 'drum_count' => 0,
                 'start_date' => $start,
                 'max_storage_days' => $maxDays,
-                'expiry_date' => $start->copy()->addDays($maxDays),
+                'expiry_date' => null,
                 'tps_due_date' => $start->copy()->addDays((int) Parameter::number('tps_delivery_days')),
                 'status' => 'filling',
                 'notes' => $notes,
@@ -74,8 +75,9 @@ class RecordPallet
                 'status' => 'full',
                 'full_date' => $now->copy()->startOfDay(),
                 'full_at' => $now,
-                // Pallet penuh dikirim ke TPS dan diserahkan ke HSE
+                // Pallet penuh dikirim ke TPS dan diserahkan ke HSE; masa simpan mulai dihitung
                 'sent_to_tps_at' => $now->copy()->startOfDay(),
+                'expiry_date' => $now->copy()->startOfDay()->addDays($pallet->max_storage_days),
                 'notes' => filled($notes) ? trim(implode("\n", array_filter([$pallet->notes, $notes]))) : $pallet->notes,
             ]);
 
@@ -84,6 +86,7 @@ class RecordPallet
                 'status' => 'full',
                 'full_at' => $now->toDateTimeString(),
                 'sent_to_tps' => true,
+                'expiry_date' => $pallet->expiry_date->toDateString(),
             ]);
 
             return $pallet;

@@ -23,7 +23,7 @@
 
 <div>
 <h1>Laporan Limbah B3 {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet mulai terisi</div>
+<div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet sampai di TPS</div>
 
 <table class="kpi"><tr>
     <td><div class="box"><div class="label">Berat diserahkan (timbangan vendor)</div><div class="value">{{ $kg($s['weight_kg']) }} kg</div><div class="muted">{{ $s['surat_jalan_count'] }} surat jalan</div></div></td>
@@ -88,14 +88,14 @@
 
 <div class="keep">
 <h2>Kepatuhan masa simpan</h2>
-<div class="muted">Lama simpan pallet yang diserahkan, dari mulai terisi sampai serah terima.</div>
+<div class="muted">Lama simpan pallet yang diserahkan, dari sampai di TPS sampai serah terima.</div>
 @if (count($report['compliance']))
     <table>
-        <thead><tr><th>Pallet</th><th>Surat jalan</th><th>Mulai terisi</th><th>Serah terima</th><th>Batas simpan</th><th class="num">Lama simpan</th><th>Status</th></tr></thead>
+        <thead><tr><th>Pallet</th><th>Surat jalan</th><th>Sampai di TPS</th><th>Serah terima</th><th>Batas simpan</th><th class="num">Lama simpan</th><th>Status</th></tr></thead>
         @foreach ($report['compliance'] as $c)
             <tr>
                 <td>{{ $c['pallet_number'] }}</td><td>{{ $c['surat_jalan_number'] }}</td>
-                <td>{{ Fmt::date($c['start_date']) }}</td><td>{{ Fmt::date($c['handover_date']) }}</td><td>{{ Fmt::date($c['expiry_date']) }}</td>
+                <td>{{ Fmt::date($c['sent_to_tps_at'] ?? $c['start_date']) }}</td><td>{{ Fmt::date($c['handover_date']) }}</td><td>{{ Fmt::date($c['expiry_date']) }}</td>
                 <td class="num">{{ $c['days_stored'] }} hari</td>
                 <td class="{{ $c['over_days'] ? 'bad' : '' }}">{{ $c['over_days'] ? 'Lewat batas ' . $c['over_days'] . ' hari' : 'Dalam batas' }}</td>
             </tr>
@@ -115,9 +115,9 @@
         @foreach ($stock['rows'] as $p)
             <tr>
                 <td>{{ $p['pallet_number'] }}</td><td>{{ Fmt::LOCATION[$p['location']] }}</td><td class="num">{{ $p['drum_count'] ?? 'Sedang diisi' }}</td>
-                <td>{{ Fmt::date($p['start_date']) }}</td><td>{{ $p['sent_to_tps_at'] ? Fmt::date($p['sent_to_tps_at']) : '–' }}</td><td>{{ Fmt::date($p['expiry_date']) }}</td>
-                <td class="num">{{ $p['days_remaining'] < 0 ? 'lewat ' . -$p['days_remaining'] . ' hari' : $p['days_remaining'] . ' hari' }}</td>
-                <td class="{{ $levelClass[$p['level']] }}">{{ Fmt::LEVEL[$p['level']] }}</td>
+                <td>{{ Fmt::date($p['start_date']) }}</td><td>{{ $p['sent_to_tps_at'] ? Fmt::date($p['sent_to_tps_at']) : '–' }}</td><td>{{ $p['expiry_date'] ? Fmt::date($p['expiry_date']) : '–' }}</td>
+                <td class="num">{{ $p['days_remaining'] === null ? '–' : ($p['days_remaining'] < 0 ? 'lewat ' . -$p['days_remaining'] . ' hari' : $p['days_remaining'] . ' hari') }}</td>
+                <td class="{{ $levelClass[$p['level']] ?? 'muted' }}">{{ Fmt::LEVEL[$p['level']] }}</td>
             </tr>
         @endforeach
     </table>

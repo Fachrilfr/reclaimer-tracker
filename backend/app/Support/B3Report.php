@@ -75,13 +75,13 @@ final class B3Report
     }
 
     /**
-     * Lama simpan tiap pallet yang diserahkan di periode ini: dari mulai terisi sampai
+     * Lama simpan tiap pallet yang diserahkan di periode ini: dari sampai di TPS sampai
      * serah terima, dibandingkan batas masa simpan (FR-26).
      */
     private function compliance(Collection $suratJalan): array
     {
         return $suratJalan->flatMap(fn (SuratJalan $s) => $s->pallets->map(function (B3Pallet $p) use ($s) {
-            $days = (int) round($p->start_date->copy()->startOfDay()->diffInDays($s->handover_date->copy()->startOfDay()));
+            $days = (int) round(($p->sent_to_tps_at ?? $p->start_date)->copy()->startOfDay()->diffInDays($s->handover_date->copy()->startOfDay()));
 
             return [
                 'pallet_number' => $p->pallet_number,
@@ -106,7 +106,7 @@ final class B3Report
 
         $pallets = B3Pallet::with(['drums', 'suratJalan'])
             ->whereDate('start_date', '<=', $at->toDateString())
-            ->orderBy('expiry_date')->orderBy('id')
+            ->orderBy('id')
             ->get()
             ->filter(function (B3Pallet $p) use ($at) {
                 $handover = $p->suratJalan->first()?->handover_date;
@@ -118,8 +118,9 @@ final class B3Report
             'as_of' => $at->toDateString(),
             'is_current' => $this->end->isFuture(),
             'rows' => $pallets->map(function (B3Pallet $p) use ($at, $thresholds) {
-                $days = (int) round($at->diffInDays($p->expiry_date->copy()->startOfDay(), false));
                 $atTps = $p->sent_to_tps_at !== null && $p->sent_to_tps_at->copy()->startOfDay()->lte($at);
+                // Masa simpan baru berjalan setelah pallet sampai di TPS
+                $days = $atTps ? (int) round($at->diffInDays($p->expiry_date->copy()->startOfDay(), false)) : null;
                 // Pallet penuh berisi drum_count drum. Yang masih diisi tidak dihitung per drum
                 // lagi (null); hanya data lama yang punya catatan drum.
                 $drums = $atTps ? $p->drum_count : $p->drums->filter(fn ($d) => $d->filled_date->copy()->startOfDay()->lte($at))->count();
@@ -130,11 +131,11 @@ final class B3Report
                     'drum_count' => $drums ?: null,
                     'start_date' => $p->start_date->toDateString(),
                     'sent_to_tps_at' => $atTps ? $p->sent_to_tps_at->toDateString() : null,
-                    'expiry_date' => $p->expiry_date->toDateString(),
+                    'expiry_date' => $atTps ? $p->expiry_date->toDateString() : null,
                     'days_remaining' => $days,
-                    'level' => StorageStatus::levelFor($days, $thresholds),
+                    'level' => $atTps ? StorageStatus::levelFor($days, $thresholds) : 'reclaimer',
                 ];
-            })->values()->all(),
+            })->sortBy(fn (array $row) => [$row['days_remaining'] === null ? 1 : 0, $row['days_remaining'] ?? 0])->values()->all(),
         ];
     }
 

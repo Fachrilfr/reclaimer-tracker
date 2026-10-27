@@ -27,7 +27,8 @@ class SendStorageReminders
         $thresholds = StorageStatus::thresholds();
         $sent = 0;
 
-        $pallets = B3Pallet::where('status', '!=', 'transported')->orderBy('expiry_date')->get();
+        // Masa simpan baru berjalan setelah pallet sampai di TPS
+        $pallets = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get();
         foreach ($pallets as $pallet) {
             $status = StorageStatus::forPallet($pallet, $now, $thresholds);
             $type = B3NotificationLog::TYPES[$status->level] ?? null;

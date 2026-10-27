@@ -44,8 +44,8 @@ final class DashboardReport
         $totals = BatchChain::summarize($completed);
 
         $thresholds = PalletController::thresholds();
-        // Masa simpan di TPS sampai diserahkan ke vendor (HSE)
-        $activePallets = B3Pallet::where('status', '!=', 'transported')->orderBy('expiry_date')->get()
+        // Masa simpan di TPS sampai diserahkan ke vendor (HSE); pallet di area reclaimer belum terhitung
+        $activePallets = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
             ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
         // Pallet yang masih di area reclaimer, belum dikirim ke TPS (operator)
         $tpsPallets = B3Pallet::whereNull('sent_to_tps_at')->orderBy('tps_due_date')->get()

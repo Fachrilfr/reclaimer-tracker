@@ -82,12 +82,13 @@ class DashboardTest extends TestCase
     public function test_action_items_list_low_recovery_and_urgent_pallets(): void
     {
         B3Pallet::create([
-            'pallet_number' => 'PLT-202608-001', 'start_date' => '2026-08-01', 'max_storage_days' => 90,
-            'expiry_date' => '2026-10-30', 'status' => 'full',
+            'pallet_number' => 'PLT-202608-001', 'start_date' => '2026-07-26', 'max_storage_days' => 90,
+            'sent_to_tps_at' => '2026-08-01', 'expiry_date' => '2026-10-30', 'status' => 'full',
         ]);
+        // Masih diisi di area reclaimer: belum masuk daftar masa simpan di TPS
         B3Pallet::create([
             'pallet_number' => 'PLT-202610-001', 'start_date' => '2026-10-15', 'max_storage_days' => 90,
-            'expiry_date' => '2027-01-13', 'status' => 'filling',
+            'status' => 'filling',
         ]);
 
         $response = $this->getJson('/api/dashboard')->assertOk();
@@ -98,7 +99,8 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.action_items.pallets.0.pallet_number', 'PLT-202608-001')
             ->assertJsonPath('data.action_items.pallets.0.storage.days_remaining', 10)
             ->assertJsonPath('data.action_items.pallets.0.storage.level', 'mendesak')
-            ->assertJsonCount(2, 'data.active_pallets');
+            ->assertJsonCount(1, 'data.active_pallets')
+            ->assertJsonCount(1, 'data.tps_pallets');
     }
 
     public function test_dashboard_access_follows_matrix(): void
