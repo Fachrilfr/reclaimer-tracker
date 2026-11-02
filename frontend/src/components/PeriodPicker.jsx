@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { formatDate, formatDateRange, formatMonth, parseDate, toIso } from '../lib/format.js';
 
 // Pemilih periode bersama dashboard dan laporan (FR-47, FR-55).
@@ -14,7 +14,7 @@ export const PERIOD_OPTIONS = {
 };
 
 // Sama dengan ReportPeriod::MAX_WEEK_DAYS di backend
-const MAX_WEEK_DAYS = 31;
+const MAX_WEEK_DAYS = 7;
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -113,15 +113,34 @@ function monthCells(monthIso) {
   return [...Array(lead).fill(null), ...Array.from({ length: days }, (_, i) => toIso(y, m, i + 1))];
 }
 
+// Kotak tanggal awal / akhir: di tombol pemicu dan di kepala kalender. Yang sedang dipilih disorot.
+function DateSlot({ label, value, active, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`focus-ring flex min-h-11 min-w-0 flex-1 flex-col items-start justify-center rounded-lg border px-3 py-1.5 text-left transition-colors ${
+        active ? 'border-brand-blue-600 bg-brand-blue-50' : 'border-gray-200 bg-white hover:bg-gray-25'
+      }`}
+    >
+      <span className={`text-caption font-medium ${active ? 'text-brand-blue-700' : 'text-gray-600'}`}>{label}</span>
+      <span className="truncate text-body font-semibold tabular-nums text-gray-900">{value}</span>
+    </button>
+  );
+}
+
 /**
- * Tanggal awal dan akhir mingguan dipilih di satu kalender. Klik pertama = tanggal awal,
- * tanggal akhir langsung tersorot 7 hari (awal + 6). Klik kedua = tanggal akhir, atau
- * "Pakai 7 hari" untuk menerima rentang otomatis.
+ * Tanggal awal dan akhir mingguan dipilih di satu kalender, paling panjang 7 hari.
+ * Langkah 1: pilih tanggal awal; tanggal akhir langsung tersorot otomatis (awal + 6).
+ * Langkah 2: pilih tanggal akhir, atau terima tanggal akhir otomatis.
  */
 function WeekRangeCalendar({ anchor, end, today, onChange }) {
   const [open, setOpen] = useState(false);
-  // start null = menunggu tanggal awal; terisi = menunggu tanggal akhir
-  const [start, setStart] = useState(null);
+  // 'start' = memilih tanggal awal, 'end' = memilih tanggal akhir
+  const [step, setStep] = useState('start');
+  const [draftStart, setDraftStart] = useState(anchor);
+  const [draftEnd, setDraftEnd] = useState(end);
   const [month, setMonth] = useState(anchor.slice(0, 7) + '-01');
   const rootRef = useRef(null);
   const triggerRef = useRef(null);
@@ -129,22 +148,19 @@ function WeekRangeCalendar({ anchor, end, today, onChange }) {
 
   const close = (restoreFocus = true) => {
     setOpen(false);
-    setStart(null);
-    if (restoreFocus) triggerRef.current?.focus();
+    if (restoreFocus) triggerRef.current?.querySelector('button')?.focus();
   };
 
-  const toggle = () => {
-    if (open) return close();
-    setMonth(anchor.slice(0, 7) + '-01');
-    setStart(null);
+  const openAt = (nextStep) => {
+    setDraftStart(anchor);
+    setDraftEnd(end);
+    setStep(nextStep);
+    setMonth((nextStep === 'end' ? end : anchor).slice(0, 7) + '-01');
     setOpen(true);
   };
 
   useEffect(() => {
     if (!open) return undefined;
-    // Fokus ke tanggal awal yang sedang dipakai (atau tanggal pertama yang bisa dipilih)
-    const target = gridRef.current?.querySelector('[data-selected="true"]:not(:disabled)') ?? gridRef.current?.querySelector('button:not(:disabled)');
-    target?.focus();
     const onDown = (e) => !rootRef.current?.contains(e.target) && close(false);
     const onKey = (e) => e.key === 'Escape' && close();
     document.addEventListener('mousedown', onDown);
@@ -156,47 +172,69 @@ function WeekRangeCalendar({ anchor, end, today, onChange }) {
     // Dijalankan hanya saat kalender dibuka; close() hanya memakai setter dan ref
   }, [open]);
 
-  const shownStart = start ?? anchor;
-  const shownEnd = start ? addDays(start, 6) : end;
-  const maxEnd = start ? addDays(start, MAX_WEEK_DAYS - 1) : null;
+  // Fokus ke tanggal yang sedang dipilih setiap kali kalender dibuka atau langkah berganti
+  useEffect(() => {
+    if (!open) return;
+    const grid = gridRef.current;
+    (grid?.querySelector(`[data-edge="${step}"]:not(:disabled)`) ?? grid?.querySelector('button:not(:disabled)'))?.focus();
+  }, [open, step, month]);
+
+  const maxEnd = addDays(draftStart, MAX_WEEK_DAYS - 1);
 
   const pick = (day) => {
-    if (!start || day < start) {
-      setStart(day);
+    // Tanggal sebelum tanggal awal selalu menjadi tanggal awal baru
+    if (step === 'start' || day < draftStart) {
+      setDraftStart(day);
+      setDraftEnd(addDays(day, MAX_WEEK_DAYS - 1));
+      setStep('end');
       return;
     }
-    onChange('week', start, day);
+    onChange('week', draftStart, day);
     close();
   };
 
-  const stepMonth = (step) => {
+  const stepMonth = (delta) => {
     const { y, m } = parseDate(month);
-    const d = new Date(y, m - 1 + step, 1);
+    const d = new Date(y, m - 1 + delta, 1);
     setMonth(toIso(d.getFullYear(), d.getMonth() + 1, 1));
   };
-  const canNextMonth = month.slice(0, 7) < (maxEnd ?? today).slice(0, 7);
+  const canNextMonth = month.slice(0, 7) < (step === 'end' ? maxEnd : today).slice(0, 7);
 
   return (
     <div ref={rootRef} className="relative order-first w-full md:order-none md:w-auto">
-      <button
-        ref={triggerRef}
-        type="button"
-        onClick={toggle}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        className="field flex w-full items-center gap-2 text-left md:w-64"
-      >
-        <CalendarDays className="h-5 w-5 shrink-0 text-gray-600" aria-hidden="true" />
-        <span className="sr-only">Rentang mingguan:</span>
-        <span className="truncate tabular-nums">{formatDateRange(anchor, end)}</span>
-      </button>
+      <div ref={triggerRef} role="group" aria-label="Rentang mingguan" className="flex w-full items-stretch gap-2 md:w-[22rem]">
+        {/* Selama kalender terbuka, kotak menampilkan pilihan sementara; menekannya pindah langkah */}
+        <DateSlot
+          label="Dari"
+          value={formatDate(open ? draftStart : anchor)}
+          active={open && step === 'start'}
+          onClick={() => (open ? setStep('start') : openAt('start'))}
+        />
+        <DateSlot
+          label="Sampai"
+          value={formatDate(open ? draftEnd : end)}
+          active={open && step === 'end'}
+          onClick={() => (open ? setStep('end') : openAt('end'))}
+        />
+      </div>
 
       {open && (
         <div
           role="dialog"
-          aria-label="Pilih tanggal awal dan akhir"
-          className="absolute left-0 top-full z-20 mt-2 w-full min-w-[18rem] rounded-card border border-gray-200 bg-white p-3 shadow-pop md:left-auto md:right-0 md:w-80"
+          aria-label={step === 'start' ? 'Pilih tanggal awal' : 'Pilih tanggal akhir'}
+          className="absolute left-0 top-full z-20 mt-2 w-full min-w-[18rem] rounded-card border border-gray-200 bg-white p-3 shadow-pop md:left-auto md:right-0 md:w-[22rem]"
         >
+          <p className="mb-3 text-body text-gray-800" aria-live="polite">
+            {step === 'start' ? (
+              <>
+                <span className="font-semibold">Langkah 1 dari 2:</span> pilih tanggal awal.
+              </>
+            ) : (
+              <>
+                <span className="font-semibold">Langkah 2 dari 2:</span> pilih tanggal akhir, paling lambat {formatDate(maxEnd)}.
+              </>
+            )}
+          </p>
           <div className="flex items-center justify-between gap-2">
             <button type="button" onClick={() => stepMonth(-1)} aria-label="Bulan sebelumnya" className="btn-secondary h-11 w-11 shrink-0">
               <ChevronLeft className="h-5 w-5" aria-hidden="true" />
@@ -215,12 +253,6 @@ function WeekRangeCalendar({ anchor, end, today, onChange }) {
             </button>
           </div>
 
-          <p className="mt-2 text-caption text-gray-600" aria-live="polite">
-            {start
-              ? `Mulai ${formatDate(start)}. Pilih tanggal akhir, paling lambat ${formatDate(maxEnd)}.`
-              : 'Pilih tanggal awal.'}
-          </p>
-
           <div ref={gridRef} className="mt-2 grid grid-cols-7 gap-y-1 text-center">
             {WEEKDAYS.map((w) => (
               <span key={w} aria-hidden="true" className="py-1 text-caption font-medium text-gray-600">
@@ -229,48 +261,60 @@ function WeekRangeCalendar({ anchor, end, today, onChange }) {
             ))}
             {monthCells(month).map((day, i) => {
               if (!day) return <span key={`kosong-${i}`} />;
-              const disabled = start ? day > maxEnd : day > today;
-              const isEdge = day === shownStart || day === shownEnd;
-              const inRange = day > shownStart && day < shownEnd;
+              const disabled = step === 'start' ? day > today : day > maxEnd;
+              const isStart = day === draftStart;
+              const isEnd = day === draftEnd;
+              const inRange = day > draftStart && day < draftEnd;
+              // Pita rentang menyambung: tanggal awal membulat di kiri, tanggal akhir di kanan
+              const shape = isStart && isEnd ? 'rounded-lg' : isStart ? 'rounded-l-lg' : isEnd ? 'rounded-r-lg' : inRange ? '' : 'rounded-lg';
+              const tone = isStart
+                ? 'bg-brand-blue-600 text-white'
+                : isEnd
+                  ? 'bg-brand-blue-800 text-white'
+                  : inRange
+                    ? 'bg-brand-blue-50 text-brand-blue-700'
+                    : 'text-gray-800 hover:bg-gray-25';
+              const edgeLabel = isStart ? 'awal' : isEnd ? 'akhir' : null;
               return (
                 <button
                   key={day}
                   type="button"
                   disabled={disabled}
-                  data-selected={day === shownStart}
-                  aria-pressed={isEdge || inRange}
-                  aria-label={formatDate(day)}
+                  data-edge={isStart ? 'start' : isEnd ? 'end' : undefined}
+                  aria-label={`${formatDate(day)}${edgeLabel ? `, tanggal ${edgeLabel}` : ''}`}
                   onClick={() => pick(day)}
-                  className={`focus-ring h-11 rounded-lg text-body tabular-nums transition-colors disabled:cursor-not-allowed disabled:text-gray-400 ${
-                    isEdge
-                      ? 'bg-brand-blue-600 font-semibold text-white'
-                      : inRange
-                        ? 'bg-brand-blue-50 text-brand-blue-700'
-                        : 'text-gray-800 hover:bg-gray-25'
-                  } ${day === today && !isEdge ? 'font-semibold underline underline-offset-4' : ''}`}
+                  className={`focus-ring flex h-12 flex-col items-center justify-center text-body leading-none tabular-nums transition-colors disabled:cursor-not-allowed disabled:bg-transparent disabled:text-gray-400 ${shape} ${tone} ${
+                    edgeLabel ? 'font-semibold' : ''
+                  } ${day === today && !edgeLabel ? 'font-semibold underline underline-offset-4' : ''}`}
                 >
                   {parseDate(day).d}
+                  {edgeLabel && <span className="mt-1 text-[11px] font-medium">{edgeLabel}</span>}
                 </button>
               );
             })}
           </div>
 
-          <div className="mt-3 flex flex-wrap justify-end gap-2 border-t border-gray-100 pt-3">
-            <button type="button" onClick={() => close()} className="btn-secondary h-11 px-4 text-body">
-              Batal
-            </button>
-            {start && (
-              <button
-                type="button"
-                onClick={() => {
-                  onChange('week', start, addDays(start, 6));
-                  close();
-                }}
-                className="btn-primary h-11 px-4 text-body"
-              >
-                Pakai 7 hari
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+            <p className="text-caption text-gray-600">
+              {formatDateRange(draftStart, draftEnd)} · {daysBetween(draftStart, draftEnd) + 1} hari
+            </p>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => close()} className="btn-secondary h-11 px-4 text-body">
+                Batal
               </button>
-            )}
+              {step === 'end' && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange('week', draftStart, draftEnd);
+                    close();
+                  }}
+                  className="btn-primary h-11 px-4 text-body"
+                >
+                  Terapkan
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

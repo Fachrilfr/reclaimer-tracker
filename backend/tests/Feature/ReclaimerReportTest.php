@@ -102,8 +102,10 @@ class ReclaimerReportTest extends TestCase
 
         $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15&end=2026-10-14')
             ->assertUnprocessable()->assertJsonValidationErrors(['end']);
-        $this->getJson('/api/reports/reclaimer?period=week&date=2026-09-01&end=2026-10-15')
-            ->assertUnprocessable()->assertJsonValidationErrors(['end']);
+        // Paling panjang 7 hari: 15 s/d 21 Okt boleh, 15 s/d 22 Okt (8 hari) ditolak
+        $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15&end=2026-10-21')->assertOk();
+        $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15&end=2026-10-22')
+            ->assertUnprocessable()->assertJsonValidationErrors(['end' => 'paling panjang 7 hari']);
     }
 
     public function test_excel_export_contains_all_sheets_with_numbers(): void

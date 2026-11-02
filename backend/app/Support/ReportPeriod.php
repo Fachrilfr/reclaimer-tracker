@@ -20,8 +20,8 @@ final class ReportPeriod
     /** Rincian per periode: mingguan per hari, bulanan per minggu, tahunan per bulan. */
     public const BREAKDOWN = ['day' => null, 'week' => 'day', 'month' => 'week', 'year' => 'month'];
 
-    /** Rentang mingguan paling panjang, supaya rincian per harinya tetap terbaca. */
-    public const MAX_WEEK_DAYS = 31;
+    /** Rentang mingguan paling panjang (meeting 30 Okt 2026: maksimal 7 hari). */
+    public const MAX_WEEK_DAYS = 7;
 
     /**
      * Periode, tanggal, dan tanggal akhir (khusus mingguan) dari query string.
