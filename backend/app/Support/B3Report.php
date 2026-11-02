@@ -34,6 +34,7 @@ final class B3Report
         $compliance = $this->compliance($suratJalan);
         $stock = $this->stock();
         $unit = ReportPeriod::BREAKDOWN[$this->period];
+        $hse = (new HseDashboardReport($this->period, $this->start, $this->period === 'week' ? $this->end : null))->toArray();
         // Berat residu dari input reclaimer yang selesai di periode ini (Tinta X - hasil solvent)
         $residue = BatchChain::summarize(DashboardReport::chainsBetween($this->start, $this->end)
             ->filter(fn (BatchChain $c) => $c->isComplete()));
@@ -63,6 +64,9 @@ final class B3Report
             'surat_jalan' => $suratJalan->map(fn (SuratJalan $s) => $s->present())->all(),
             'compliance' => $compliance,
             'stock' => $stock,
+            // Sama dengan Dashboard HSE: berat residu per periode dan per input
+            'residue_breakdown' => $hse['breakdown'],
+            'residue_inputs' => $hse['inputs'],
             // Maintenance menghentikan pengiriman residu ke TPS (batas kirim tetap berjalan)
             'maintenance' => MaintenanceHistory::forPeriod($this->start, $this->end),
         ];

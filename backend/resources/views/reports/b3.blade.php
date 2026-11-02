@@ -65,6 +65,42 @@
 </td>
 </tr></table>
 
+{{-- Data residu sama dengan Dashboard HSE --}}
+@if ($report['residue_breakdown'])
+    @php $residueUnit = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['residue_breakdown']['unit']]; @endphp
+    <div class="keep">
+    <h2>Residu per {{ strtolower($residueUnit) }}</h2>
+    <table>
+        <thead><tr><th>{{ $residueUnit }}</th><th class="num">Total proses</th><th class="num">Berat residu (kg)</th><th class="num">Timbangan vendor (kg)</th><th class="num">Surat jalan</th></tr></thead>
+        @foreach ($report['residue_breakdown']['rows'] as $row)
+            <tr>
+                <td>{{ $report['residue_breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
+                <td class="num">{{ $row['chain_count'] }}</td>
+                <td class="num">{{ $row['chain_count'] ? $kg($row['residue']) : '–' }}</td>
+                <td class="num">{{ $row['surat_jalan_count'] ? $kg($row['vendor_weight']) : '–' }}</td>
+                <td class="num">{{ $row['surat_jalan_count'] ?: '–' }}</td>
+            </tr>
+        @endforeach
+    </table>
+    </div>
+@endif
+
+<h2>Residu per input</h2>
+@if (count($report['residue_inputs']))
+    <table>
+        <thead><tr><th>No. input</th><th>Tanggal</th><th>Shift</th><th class="num">Tinta X masuk (kg)</th><th class="num">Berat residu (kg)</th></tr></thead>
+        @foreach ($report['residue_inputs'] as $row)
+            <tr>
+                <td>{{ $row['batch_number'] }}@if ($row['batch_count'] > 1) <span class="muted">+ {{ $row['batch_count'] - 1 }} lanjutan</span>@endif</td>
+                <td>{{ Fmt::date($row['date']) }}</td><td>{{ $row['shift'] }}</td>
+                <td class="num">{{ $kg($row['input']) }}</td><td class="num">{{ $kg($row['residue']) }}</td>
+            </tr>
+        @endforeach
+    </table>
+@else
+    <div class="empty">Belum ada proses selesai di periode ini.</div>
+@endif
+
 <div class="keep">
 <h2>Surat jalan</h2>
 @if (count($report['surat_jalan']))

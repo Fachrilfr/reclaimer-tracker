@@ -148,6 +148,7 @@ class B3ReportTest extends TestCase
         // Pratinjau dokumen: isi sama dengan PDF, dibaca di aplikasi tanpa mengunduh
         $html = $this->getJson('/api/reports/b3/document?period=month&date=2026-10-20')->assertOk()->json('data.html');
         $this->assertStringContainsString('Laporan Residu Bulanan', $html);
+        $this->assertStringContainsString('Residu per input', $html);
         $this->assertStringContainsString('Maintenance mesin', $html);
         $this->assertStringContainsString('SJ-001', $html);
         $this->assertDatabaseMissing('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);

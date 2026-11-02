@@ -18,7 +18,7 @@ const INPUT_PREVIEW = 20;
 
 // Pallet tidak ditimbang di TPS, jadi berat residu dibaca dari dua sisi: estimasi dari
 // input reclaimer dan timbangan vendor saat serah terima.
-function ResiduePerInput({ inputs, sorot }) {
+export function ResiduePerInput({ inputs, sorot }) {
   const [showAll, setShowAll] = useState(false);
   const shown = showAll ? inputs : inputs.slice(0, INPUT_PREVIEW);
 
@@ -85,7 +85,7 @@ function ResiduePerInput({ inputs, sorot }) {
   );
 }
 
-function ResidueBreakdown({ breakdown }) {
+export function ResidueBreakdown({ breakdown }) {
   const { unit, rows } = breakdown;
 
   return (

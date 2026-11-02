@@ -23,11 +23,12 @@
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
 
-<table class="kpi"><tr>
-    <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div><div class="muted">Bahan masuk ke mesin reclaimer</div></div></td>
-    <td><div class="box"><div class="label">Hasil solvent</div><div class="value">{{ $kg($s['recovery']) }} kg</div><div class="muted">Berat residu {{ $kg($s['residue']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div><div class="muted">Toleransi {{ $pct($report['target_recovery_rate']) }} · {{ $s['below_target_count'] }} rangkaian di bawah toleransi</div></div></td>
-    <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div><div class="muted">Saldo awal {{ $kg($report['solvent']['opening']) }} kg</div></div></td>
+<table class="kpi kpi-5"><tr>
+    <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Hasil solvent</div><div class="value">{{ $kg($s['recovery']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Berat residu</div><div class="value">{{ $kg($s['residue']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div></div></td>
+    <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div></div></td>
 </tr></table>
 </div>
 

@@ -63,21 +63,19 @@ function ReportBody({ report }) {
         dashboard: per rangkaian selesai, pada tanggal dan shift input awalnya.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" note="Bahan masuk ke mesin reclaimer" />
-        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" note={`Berat residu ${formatNumber(s.residue)} kg`} />
-        <StatCard
-          label="Persentase solvent"
-          value={s.chain_count ? formatPercent(s.recovery_rate) : '–'}
-          note={`Toleransi ${formatPercent(target)} · ${s.below_target_count} rangkaian di bawah toleransi`}
-          tone={!s.chain_count ? 'neutral' : s.recovery_rate >= target ? 'good' : 'bad'}
-        />
-        <StatCard
-          label={report.solvent.closing_is_current ? 'Saldo solvent saat ini' : 'Saldo solvent akhir'}
-          value={formatNumber(report.solvent.closing)}
-          unit="kg"
-          note={`Saldo awal ${formatNumber(report.solvent.opening)} kg`}
-        />
+      {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" />
+        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" />
+        <StatCard label="Berat residu" value={formatNumber(s.residue)} unit="kg" />
+        <StatCard label="Persentase solvent" value={s.chain_count ? formatPercent(s.recovery_rate) : '–'} />
+        <div className="col-span-2 xl:col-span-1">
+          <StatCard
+            label={report.solvent.closing_is_current ? 'Saldo solvent saat ini' : 'Saldo solvent akhir'}
+            value={formatNumber(report.solvent.closing)}
+            unit="kg"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

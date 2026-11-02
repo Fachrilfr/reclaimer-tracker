@@ -10,6 +10,7 @@ import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge from '../components/StorageBadge.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
+import { ResidueBreakdown, ResiduePerInput } from './HseDashboardPage.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
 const LOCATION = { tps: 'Di TPS', reclaimer: 'Di area reclaimer' };
@@ -98,6 +99,17 @@ function ReportBody({ report }) {
           </Section>
         )}
       </div>
+
+      {/* Data residu sama dengan Dashboard HSE */}
+      {report.residue_breakdown && (
+        <Section id="b3-residu-periode" title={`Residu per ${BREAKDOWN_LABEL[report.residue_breakdown.unit].toLowerCase()}`}>
+          <ResidueBreakdown breakdown={report.residue_breakdown} />
+        </Section>
+      )}
+
+      <Section id="b3-residu-input" title="Residu per input" description="Berat residu = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas.">
+        <ResiduePerInput inputs={report.residue_inputs} />
+      </Section>
 
       <Section id="b3-sj" title="Surat jalan" description="Penyerahan pallet dari TPS ke vendor di periode ini.">
         {report.surat_jalan.length ? (
