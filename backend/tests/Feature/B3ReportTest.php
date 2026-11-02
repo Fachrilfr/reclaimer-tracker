@@ -129,8 +129,9 @@ class B3ReportTest extends TestCase
         $book = IOFactory::load($path);
         unlink($path);
         $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Masa simpan', 'Stok akhir periode', 'Maintenance'], $book->getSheetNames());
-        $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
-        $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B9')->getValue());
+        $this->assertSame('Berat residu (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
+        $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A10')->getValue());
+        $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B10')->getValue());
         $this->assertSame('Lewat batas 6 hari', $book->getSheetByName('Masa simpan')->getCell('H6')->getValue());
 
         $pdf = $this->getJson('/api/reports/b3/export?format=pdf&period=year&date=2026-10-20')->assertOk()->json('data');

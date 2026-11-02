@@ -100,6 +100,7 @@ final class B3ReportExcel extends ReportWorkbook
                 ['sj', 'Surat jalan', $s['surat_jalan_count'], null, null],
                 ['pallets', 'Pallet diserahkan', $s['pallet_count'], null, null],
                 ['drums', 'Drum diserahkan', $s['drum_count'], null, null],
+                ['residue', 'Berat residu (kg)', $s['residue'], "Dari {$s['residue_chain_count']} proses selesai, Tinta X − hasil solvent", self::KG],
                 ['weight', 'Berat timbangan vendor (kg)', $s['weight_kg'], 'Berat resmi, dicatat per surat jalan', self::KG],
             ]],
             ['Kepatuhan masa simpan', [

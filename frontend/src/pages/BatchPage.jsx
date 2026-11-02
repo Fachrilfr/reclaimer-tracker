@@ -583,7 +583,7 @@ function BatchForm({ formData, onSaved }) {
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.recovery)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-600">Residu estimasi (Tinta X − recovery)</dt>
+              <dt className="text-gray-600">Berat residu (Tinta X − hasil solvent)</dt>
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.residue)} kg</dd>
             </div>
             {form.is_continuation && (

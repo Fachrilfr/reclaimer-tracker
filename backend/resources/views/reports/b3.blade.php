@@ -26,6 +26,7 @@
 <div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet sampai di TPS</div>
 
 <table class="kpi"><tr>
+    <td><div class="box"><div class="label">Berat residu</div><div class="value">{{ $kg($s['residue']) }} kg</div><div class="muted">Dari {{ $s['residue_chain_count'] }} proses selesai, Tinta X − hasil solvent</div></div></td>
     <td><div class="box"><div class="label">Berat diserahkan (timbangan vendor)</div><div class="value">{{ $kg($s['weight_kg']) }} kg</div><div class="muted">{{ $s['surat_jalan_count'] }} surat jalan</div></div></td>
     <td><div class="box"><div class="label">Pallet diserahkan</div><div class="value">{{ $s['pallet_count'] }}</div><div class="muted">{{ $s['drum_count'] }} drum</div></div></td>
     <td><div class="box"><div class="label">Diserahkan lewat batas simpan</div><div class="value {{ $s['over_limit_count'] ? 'bad' : '' }}">{{ $s['over_limit_count'] }} pallet</div><div class="muted">{{ $s['longest_days_stored'] !== null ? 'Terlama ' . $s['longest_days_stored'] . ' hari' : 'Belum ada penyerahan' }}</div></div></td>

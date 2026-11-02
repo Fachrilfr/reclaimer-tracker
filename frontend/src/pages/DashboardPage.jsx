@@ -430,7 +430,7 @@ function Breakdown({ breakdown, target, sorot }) {
             <Th>Shift awal</Th>
             <Th numeric>Tinta X masuk</Th>
             <Th numeric>Hasil solvent</Th>
-            <Th numeric>Residu estimasi</Th>
+            <Th numeric>Berat residu</Th>
             <Th numeric>Persentase solvent</Th>
           </tr>
         </thead>
@@ -494,7 +494,7 @@ function Breakdown({ breakdown, target, sorot }) {
           <Th numeric>Total proses</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
-          <Th numeric>Residu estimasi</Th>
+          <Th numeric>Berat residu</Th>
           <Th numeric>Persentase solvent</Th>
         </tr>
       </thead>
@@ -674,7 +674,7 @@ export default function DashboardPage() {
                 }
               />
               <StatCard
-                label="Residu (estimasi)"
+                label="Berat residu"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
                 note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
@@ -721,7 +721,7 @@ export default function DashboardPage() {
                   <Th numeric>Total proses</Th>
                   <Th numeric>Tinta X masuk</Th>
                   <Th numeric>Hasil solvent</Th>
-                  <Th numeric>Residu estimasi</Th>
+                  <Th numeric>Berat residu</Th>
                   <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>

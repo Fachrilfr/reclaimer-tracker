@@ -65,7 +65,7 @@ function ReportBody({ report }) {
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" note="Bahan masuk ke mesin reclaimer" />
-        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" note={`Residu estimasi ${formatNumber(s.residue)} kg`} />
+        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" note={`Berat residu ${formatNumber(s.residue)} kg`} />
         <StatCard
           label="Persentase solvent"
           value={s.chain_count ? formatPercent(s.recovery_rate) : '–'}
@@ -157,7 +157,7 @@ function ReportBody({ report }) {
               <Th numeric>Total proses</Th>
               <Th numeric>Tinta X masuk</Th>
               <Th numeric>Hasil solvent</Th>
-              <Th numeric>Residu estimasi</Th>
+              <Th numeric>Berat residu</Th>
               <Th numeric>Persentase solvent</Th>
             </tr>
           </thead>
@@ -187,7 +187,7 @@ function ReportBody({ report }) {
                 <Th numeric>Total proses</Th>
                 <Th numeric>Tinta X masuk</Th>
                 <Th numeric>Hasil solvent</Th>
-                <Th numeric>Residu estimasi</Th>
+                <Th numeric>Berat residu</Th>
                 <Th numeric>Persentase solvent</Th>
               </tr>
             </thead>

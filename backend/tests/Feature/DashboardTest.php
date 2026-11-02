@@ -128,6 +128,11 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.breakdown.unit', 'week')
             ->assertJsonPath('data.breakdown.rows.3.vendor_weight', 450.5);
 
+        // Laporan residu memakai angka berat residu yang sama
+        $this->getJson('/api/reports/b3?period=month&date=2026-10-20')->assertOk()
+            ->assertJsonPath('data.summary.residue', 930)
+            ->assertJsonPath('data.summary.residue_chain_count', 3);
+
         $this->getJson('/api/dashboard/hse?period=day&date=2026-10-20')->assertOk()
             ->assertJsonPath('data.totals.residue', 630)
             ->assertJsonPath('data.breakdown', null);

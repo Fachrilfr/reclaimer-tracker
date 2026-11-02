@@ -32,7 +32,13 @@ function ReportBody({ report }) {
         Batas masa simpan {report.max_storage_days} hari sejak pallet mulai terisi.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <StatCard
+          label="Berat residu"
+          value={formatNumber(s.residue)}
+          unit="kg"
+          note={s.residue_chain_count ? `Dari ${s.residue_chain_count} proses selesai, Tinta X − hasil solvent` : 'Belum ada proses selesai di periode ini'}
+        />
         <StatCard
           label="Berat diserahkan"
           value={formatNumber(s.weight_kg)}

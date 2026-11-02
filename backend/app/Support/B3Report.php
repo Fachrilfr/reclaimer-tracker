@@ -34,6 +34,9 @@ final class B3Report
         $compliance = $this->compliance($suratJalan);
         $stock = $this->stock();
         $unit = ReportPeriod::BREAKDOWN[$this->period];
+        // Berat residu dari input reclaimer yang selesai di periode ini (Tinta X - hasil solvent)
+        $residue = BatchChain::summarize(DashboardReport::chainsBetween($this->start, $this->end)
+            ->filter(fn (BatchChain $c) => $c->isComplete()));
 
         return [
             'period' => $this->period,
@@ -45,6 +48,8 @@ final class B3Report
             'summary' => self::totals($suratJalan) + [
                 'over_limit_count' => collect($compliance)->where('over_days', '>', 0)->count(),
                 'longest_days_stored' => collect($compliance)->max('days_stored'),
+                'residue' => $residue['residue'],
+                'residue_chain_count' => $residue['chain_count'],
             ],
             'by_vendor' => $suratJalan->groupBy(fn (SuratJalan $s) => $s->vendor?->name ?? '–')
                 ->map(fn (Collection $group, string $vendor) => ['vendor' => $vendor] + self::totals($group))

@@ -38,7 +38,7 @@ function ResiduePerInput({ inputs, sorot }) {
             <Th>No. input</Th>
             <Th>Tanggal dan shift</Th>
             <Th numeric>Tinta X masuk</Th>
-            <Th numeric>Residu estimasi</Th>
+            <Th numeric>Berat residu</Th>
           </tr>
         </thead>
         <tbody>
@@ -94,7 +94,7 @@ function ResidueBreakdown({ breakdown }) {
         <tr>
           <Th>{BREAKDOWN_LABEL[unit]}</Th>
           <Th numeric>Total proses</Th>
-          <Th numeric>Residu estimasi</Th>
+          <Th numeric>Berat residu</Th>
           <Th numeric>Timbangan vendor</Th>
           <Th numeric>Surat jalan</Th>
         </tr>
@@ -145,7 +145,7 @@ export default function HseDashboardPage() {
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <StatCard
-                label="Residu estimasi"
+                label="Berat residu"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
                 note={
@@ -188,7 +188,7 @@ export default function HseDashboardPage() {
           <Section
             id="hse-inputs"
             title="Residu per input"
-            description="Residu estimasi = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas."
+            description="Berat residu = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas."
           >
             <ResiduePerInput inputs={data.inputs} sorot={sorot} />
           </Section>
