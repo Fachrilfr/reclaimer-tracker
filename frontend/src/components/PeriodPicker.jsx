@@ -115,8 +115,7 @@ function monthCells(monthIso) {
 
 /**
  * Mingguan dipilih di satu kalender: setiap klik selalu menjadi tanggal awal, dan 7 hari
- * sejak tanggal itu langsung terpilih dan diterapkan. Kalender tetap terbuka, jadi pengguna
- * bisa berpindah minggu dengan bebas; data halaman ikut berganti di belakangnya.
+ * sejak tanggal itu langsung terpilih dan diterapkan, lalu kalender tertutup.
  */
 function WeekRangeCalendar({ anchor, end, today, onChange }) {
   const [open, setOpen] = useState(false);
@@ -153,7 +152,11 @@ function WeekRangeCalendar({ anchor, end, today, onChange }) {
     // Dijalankan hanya saat kalender dibuka; close() hanya memakai setter dan ref
   }, [open]);
 
-  const pick = (day) => onChange('week', day, addDays(day, MAX_WEEK_DAYS - 1));
+  // Klik langsung menerapkan 7 hari lalu menutup kalender; halaman menampilkan loading seperti biasa
+  const pick = (day) => {
+    onChange('week', day, addDays(day, MAX_WEEK_DAYS - 1));
+    close();
+  };
 
   const stepMonth = (delta) => {
     const { y, m } = parseDate(month);
