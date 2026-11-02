@@ -16,6 +16,9 @@ return [
 
     'features' => [
         'dashboard' => ['operator' => 'lihat', 'supervisor' => 'tinjau', 'hse' => 'lihat', 'management' => 'lihat'],
+        // Dashboard HSE: berat residu dari input dan timbangan vendor, pallet di TPS.
+        // Keputusan meeting 30 Okt 2026: menu terpisah khusus akun HSE.
+        'dashboard_hse' => ['hse' => 'lihat'],
         'batch' => ['operator' => 'isi', 'supervisor' => 'lihat', 'hse' => 'lihat'],
         // Pemakaian solvent dari saldo hasil recovery, dicatat terpisah dari batch.
         // Belum ada di matriks PRD §5.1: operator mencatat, supervisor memantau.
@@ -55,7 +58,7 @@ return [
     'home' => [
         'operator' => 'batch',
         'supervisor' => 'dashboard',
-        'hse' => 'limbah_b3',
+        'hse' => 'dashboard_hse',
         'management' => 'dashboard',
         'admin' => 'pengguna',
     ],

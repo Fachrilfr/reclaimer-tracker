@@ -19,9 +19,9 @@ final class B3Report
 
     public readonly Carbon $end;
 
-    public function __construct(public readonly string $period, Carbon $anchor)
+    public function __construct(public readonly string $period, Carbon $anchor, ?Carbon $until = null)
     {
-        [$this->start, $this->end] = ReportPeriod::range($period, $anchor);
+        [$this->start, $this->end] = ReportPeriod::range($period, $anchor, $until);
     }
 
     public function toArray(): array
@@ -141,6 +141,6 @@ final class B3Report
 
     public function filename(string $extension): string
     {
-        return ReportPeriod::filename('Laporan-Limbah-B3', $this->period, $this->start, $this->end, $extension);
+        return ReportPeriod::filename('Laporan-Residu', $this->period, $this->start, $this->end, $extension);
     }
 }

@@ -1,11 +1,10 @@
 import { useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Biohazard, ChevronRight, CircleCheck, Recycle, TriangleAlert, Wrench } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import {
   formatDate,
-  formatDateRange,
   formatMonth,
   formatMonthShort,
   formatNumber,
@@ -14,8 +13,9 @@ import {
 } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import StatCard from '../components/StatCard.jsx';
-import PeriodPicker, { localToday, periodLabel, periodStart } from '../components/PeriodPicker.jsx';
+import PeriodPicker, { usePeriodParams } from '../components/PeriodPicker.jsx';
 import TrendChart, { FLAG_COLOR, FLAG_TRIANGLE } from '../components/TrendChart.jsx';
+import { BREAKDOWN_LABEL, bucketLabel } from '../components/ReportParts.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
@@ -26,7 +26,7 @@ import ReviewDialog from '../components/ReviewDialog.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
-const PERIODS = ['day', 'month', 'year'];
+const PERIODS = ['day', 'week', 'month', 'year'];
 
 function Kg({ value }) {
   return (
@@ -59,15 +59,17 @@ function trendPoints(trend, valueOf, detailOf, flagOf = () => false) {
 // tooltip menampilkan persen dan beratnya dalam kg.
 const TREND_SERIES = {
   solvent: { label: 'Solvent', title: 'Tren solvent', color: SOLVENT_COLOR },
-  waste: { label: 'Limbah B3', title: 'Tren limbah B3', color: WASTE_COLOR },
+  waste: { label: 'Residu', title: 'Tren residu', color: WASTE_COLOR },
 };
 
-function TrendCharts({ trend, period, anchor }) {
+function TrendCharts({ trend, period, anchor, label }) {
   const [series, setSeries] = useState('solvent');
   const range =
     period === 'day'
       ? `14 hari sampai ${formatDate(anchor)}`
-      : period === 'month'
+      : period === 'week'
+        ? `per hari, ${label}`
+        : period === 'month'
         ? `per hari, ${formatMonth(anchor)}`
         : `per bulan, ${parseDate(anchor).y}`;
   const target = trend.target_recovery_rate;
@@ -84,7 +86,7 @@ function TrendCharts({ trend, period, anchor }) {
           <p className="mt-1 text-body text-gray-600">
             {isSolvent
               ? `Hasil solvent dibanding Tinta X masuk, ${range}.`
-              : `Residu yang menjadi limbah B3 dibanding Tinta X masuk, ${range}.`}
+              : `Residu dibanding Tinta X masuk, ${range}.`}
           </p>
           {isSolvent && (
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
@@ -142,7 +144,7 @@ function TrendCharts({ trend, period, anchor }) {
             : trendPoints(
                 trend,
                 (p) => p.residue_rate,
-                (p) => `Limbah B3 ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
+                (p) => `Residu ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
               )
         }
         flagLabel={isSolvent ? 'di bawah toleransi' : undefined}
@@ -203,7 +205,7 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
 // FR-45 bagian limbah B3: pallet mendesak dan kritis
 // Dua tahap limbah B3. Bagian reclaimer: dari area reclaimer ke TPS (batas kirim). HSE dan
 // manajemen: masa simpan di TPS sampai diserahkan ke vendor. Pilihan per role di DASHBOARD_ALERTS.
-const B3_VIEWS = {
+export const B3_VIEWS = {
   tps: {
     title: 'Kirim ke TPS',
     status: (p) => p.tps,
@@ -218,7 +220,7 @@ const B3_VIEWS = {
     empty: 'Semua pallet sudah dikirim ke TPS.',
   },
   storage: {
-    title: 'Limbah B3 di TPS',
+    title: 'Residu di TPS',
     status: (p) => p.storage,
     badge: (p) => <StorageBadge storage={p.storage} />,
     due: (p) => `Batas simpan ${formatDate(p.expiry_date)}`,
@@ -246,7 +248,7 @@ function AlertItemLink({ to, children }) {
   );
 }
 
-function B3AlertCard({ pallets, view, linkFor, machine }) {
+export function B3AlertCard({ pallets, view, linkFor, machine }) {
   const urgent = pallets.length > 0;
   const hasCritical = pallets.some((p) => view.status(p).level === 'kritis');
 
@@ -485,11 +487,11 @@ function Breakdown({ breakdown, target, sorot }) {
   }
 
   return (
-    <Table caption={unit === 'week' ? 'Rincian per minggu' : 'Rincian per bulan'}>
+    <Table caption={`Rincian per ${BREAKDOWN_LABEL[unit].toLowerCase()}`}>
       <thead>
         <tr>
-          <Th>{unit === 'week' ? 'Minggu' : 'Bulan'}</Th>
-          <Th numeric>Rangkaian</Th>
+          <Th>{BREAKDOWN_LABEL[unit]}</Th>
+          <Th numeric>Total proses</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
           <Th numeric>Residu estimasi</Th>
@@ -499,7 +501,7 @@ function Breakdown({ breakdown, target, sorot }) {
       <tbody>
         {visible.map((r) => (
           <tr key={r.start}>
-            <Td className="whitespace-nowrap">{unit === 'week' ? formatDateRange(r.start, r.end) : formatMonth(r.start)}</Td>
+            <Td className="whitespace-nowrap">{bucketLabel(r, unit)}</Td>
             <Td numeric>{r.chain_count}</Td>
             <Td numeric>
               <Kg value={r.input} />
@@ -520,7 +522,7 @@ function Breakdown({ breakdown, target, sorot }) {
   );
 }
 
-function ActivePallets({ pallets, view, sorot }) {
+export function ActivePallets({ pallets, view, sorot }) {
   const [onlyAction, setOnlyAction] = useState(false);
   const shown = onlyAction ? pallets.filter((p) => view.status(p).needs_action) : pallets;
 
@@ -588,28 +590,18 @@ export default function DashboardPage() {
   const { can, user } = useAuth();
   const alerts = DASHBOARD_ALERTS[user.role] ?? { b3: 'tps', recovery: true };
   const b3View = B3_VIEWS[alerts.b3];
-  const [params, setParams] = useSearchParams();
-  const today = localToday();
-  const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'day';
-  const rawDate = params.get('date');
-  const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
+  const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(PERIODS, 'day');
 
-  const { data, error, loading, reload } = useResource(`/dashboard?period=${period}&date=${anchor}`);
+  const { data, error, loading, reload } = useResource(`/dashboard?${query}`);
   const sorot = useSorot(Boolean(data) && !loading);
   const [reviewMessage, setReviewMessage] = useState('');
 
-  const change = (nextPeriod, nextAnchor) => {
-    setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
-  };
-
-  const isCurrent = periodStart(anchor, period) === periodStart(today, period);
-
   return (
     <>
-      <PageHeader title="Dashboard" description={`Material balance reclaimer dan limbah B3, ${periodLabel(anchor, period)}.`} />
+      <PageHeader title="Dashboard" description={`Material balance reclaimer dan residu, ${label}.`} />
 
       <div className="mt-6">
-        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
       </div>
 
       {!data ? (
@@ -648,7 +640,7 @@ export default function DashboardPage() {
                   ? `/drum-b3?sorot=pallet-${p.id}`
                   : b3View === B3_VIEWS.storage && can('limbah_b3')
                     ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
-                    : `/dashboard?period=${period}&date=${anchor}&sorot=pallet-${p.id}`
+                    : `/dashboard?${query}&sorot=pallet-${p.id}`
               }
             />
             {alerts.recovery && (
@@ -657,7 +649,7 @@ export default function DashboardPage() {
                 target={data.target_recovery_rate}
                 chains={data.action_items.low_recovery_chains}
                 openCount={data.totals.open_chain_count}
-                label={periodLabel(anchor, period)}
+                label={label}
                 onReviewed={(message) => {
                   setReviewMessage(message);
                   reload();
@@ -670,7 +662,7 @@ export default function DashboardPage() {
             <h2 id="totals-title" className="sr-only">
               Angka utama
             </h2>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
               <StatCard
                 label="Tinta X masuk"
                 value={formatNumber(data.totals.input)}
@@ -688,6 +680,12 @@ export default function DashboardPage() {
                 note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
               />
               <StatCard
+                label="Hasil solvent"
+                value={formatNumber(data.totals.recovery)}
+                unit="kg"
+                note={data.totals.chain_count ? 'Masuk ke saldo solvent' : undefined}
+              />
+              <StatCard
                 label="Persentase solvent"
                 value={data.totals.chain_count ? formatPercent(data.totals.recovery_rate) : '–'}
                 note={
@@ -703,29 +701,27 @@ export default function DashboardPage() {
                 label="Saldo solvent"
                 value={formatNumber(data.totals.solvent_balance)}
                 unit="kg"
-                note={isCurrent ? 'Saat ini' : `Akhir ${periodLabel(anchor, period)}`}
+                note={isCurrent ? 'Saat ini' : `Akhir ${label}`}
               />
             </div>
           </section>
 
-          <TrendCharts trend={data.trend} period={period} anchor={anchor} />
+          <TrendCharts trend={data.trend} period={period} anchor={anchor} label={label} />
 
           <section aria-labelledby="shift-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="shift-title" className="text-h2 font-semibold">
                 Perbandingan per shift
               </h2>
-              <p className="mt-1 text-body text-gray-600">
-                Rangkaian yang dilanjutkan lintas shift dihitung di shift input awalnya.
-              </p>
             </div>
             <Table caption="Perbandingan per shift">
               <thead>
                 <tr>
                   <Th>Shift</Th>
-                  <Th numeric>Rangkaian</Th>
+                  <Th numeric>Total proses</Th>
                   <Th numeric>Tinta X masuk</Th>
                   <Th numeric>Hasil solvent</Th>
+                  <Th numeric>Residu estimasi</Th>
                   <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>
@@ -739,6 +735,9 @@ export default function DashboardPage() {
                     </Td>
                     <Td numeric>
                       <Kg value={s.recovery} />
+                    </Td>
+                    <Td numeric>
+                      <Kg value={s.residue} />
                     </Td>
                     <Td
                       numeric
@@ -755,17 +754,13 @@ export default function DashboardPage() {
           <section aria-labelledby="breakdown-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="breakdown-title" className="text-h2 font-semibold">
-                {data.breakdown.unit === 'chain'
-                  ? 'Rangkaian batch'
-                  : data.breakdown.unit === 'week'
-                    ? 'Per minggu'
-                    : 'Per bulan'}
+                {data.breakdown.unit === 'chain' ? 'Rincian proses' : `Per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}
               </h2>
-              <p className="mt-1 text-body text-gray-600">
-                {data.breakdown.unit === 'chain'
-                  ? 'Rangkaian dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.'
-                  : 'Hanya rangkaian selesai. Persentase solvent dari total hasil solvent dibagi total Tinta X masuk, bukan rata-rata persentase.'}
-              </p>
+              {data.breakdown.unit === 'chain' && (
+                <p className="mt-1 text-body text-gray-600">
+                  Rangkaian dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.
+                </p>
+              )}
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />
           </section>

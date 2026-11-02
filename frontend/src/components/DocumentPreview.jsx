@@ -11,7 +11,7 @@ import { ErrorCard } from './LoadState.jsx';
  *
  * `basePath` contoh: /reports/b3 → /reports/b3/document dan /reports/b3/export
  */
-export default function DocumentPreview({ basePath, title, period, anchor }) {
+export default function DocumentPreview({ basePath, title, query }) {
   const { request } = useAuth();
   const [open, setOpen] = useState(false);
   const [state, setState] = useState({ html: null, error: '', loading: false });
@@ -24,7 +24,7 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
   const load = async () => {
     setState({ html: null, error: '', loading: true });
     try {
-      const { data } = await request(`${basePath}/document?period=${period}&date=${anchor}`);
+      const { data } = await request(`${basePath}/document?${query}`);
       setState({ html: data.html, error: '', loading: false });
     } catch (err) {
       setState({ html: null, error: err.message, loading: false });
@@ -92,7 +92,7 @@ export default function DocumentPreview({ basePath, title, period, anchor }) {
                 <Printer className="h-5 w-5" aria-hidden="true" />
                 Cetak
               </button>
-              <ExportButtons path={`${basePath}/export`} period={period} anchor={anchor} />
+              <ExportButtons path={`${basePath}/export`} query={query} />
             </div>
           </div>
 

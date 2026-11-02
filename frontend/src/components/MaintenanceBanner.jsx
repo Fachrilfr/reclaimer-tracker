@@ -25,8 +25,6 @@ export default function MaintenanceBanner() {
             <p>
               Alasan: {machine.maintenance_reason}
               {machine.maintenance_reported_by && ` · Dilaporkan oleh ${machine.maintenance_reported_by}`}
-              {machine.maintenance_expected_end_at &&
-                ` · Perkiraan selesai ${formatDateTime(machine.maintenance_expected_end_at)}`}
               .
             </p>
             <p className="mt-1">

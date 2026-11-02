@@ -13,7 +13,6 @@ use App\Support\Reports\ReportWorkbook;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Symfony\Component\HttpFoundation\Response;
 
 class ReportController extends Controller
@@ -26,16 +25,16 @@ class ReportController extends Controller
     /** Pratinjau Laporan Reclaimer (FR-55). */
     public function reclaimer(Request $request): JsonResponse
     {
-        [$period, $anchor] = $this->period($request);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
 
-        return response()->json(['status' => 'success', 'data' => (new ReclaimerReport($period, $anchor))->toArray()]);
+        return response()->json(['status' => 'success', 'data' => (new ReclaimerReport($period, $anchor, $until))->toArray()]);
     }
 
     /** Ekspor Laporan Reclaimer ke Excel atau PDF (FR-56). */
     public function exportReclaimer(Request $request): Response
     {
-        [$period, $anchor] = $this->period($request);
-        $report = new ReclaimerReport($period, $anchor);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
+        $report = new ReclaimerReport($period, $anchor, $until);
 
         return $this->export($request, 'reclaimer', $report->toArray(), fn ($ext) => $report->filename($ext), ReclaimerReportExcel::class, 'reports.reclaimer');
     }
@@ -43,24 +42,24 @@ class ReportController extends Controller
     /** Pratinjau Laporan Limbah B3 (HSE). */
     public function b3(Request $request): JsonResponse
     {
-        [$period, $anchor] = $this->period($request);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
 
-        return response()->json(['status' => 'success', 'data' => (new B3Report($period, $anchor))->toArray()]);
+        return response()->json(['status' => 'success', 'data' => (new B3Report($period, $anchor, $until))->toArray()]);
     }
 
     /** Pratinjau dokumen Laporan Reclaimer (isi sama dengan PDF), dilihat tanpa mengunduh. */
     public function reclaimerDocument(Request $request): JsonResponse
     {
-        [$period, $anchor] = $this->period($request);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
 
-        return $this->document('reports.reclaimer', (new ReclaimerReport($period, $anchor))->toArray(), $request->user()->name);
+        return $this->document('reports.reclaimer', (new ReclaimerReport($period, $anchor, $until))->toArray(), $request->user()->name);
     }
 
     public function b3Document(Request $request): JsonResponse
     {
-        [$period, $anchor] = $this->period($request);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
 
-        return $this->document('reports.b3', (new B3Report($period, $anchor))->toArray(), $request->user()->name);
+        return $this->document('reports.b3', (new B3Report($period, $anchor, $until))->toArray(), $request->user()->name);
     }
 
     /**
@@ -81,8 +80,8 @@ class ReportController extends Controller
 
     public function exportB3(Request $request): Response
     {
-        [$period, $anchor] = $this->period($request);
-        $report = new B3Report($period, $anchor);
+        [$period, $anchor, $until] = ReportPeriod::fromRequest($request, 'month');
+        $report = new B3Report($period, $anchor, $until);
 
         return $this->export($request, 'limbah_b3', $report->toArray(), fn ($ext) => $report->filename($ext), B3ReportExcel::class, 'reports.b3');
     }
@@ -160,20 +159,5 @@ class ReportController extends Controller
         $canvas->page_text($canvas->get_width() - 110, $canvas->get_height() - 30, 'Halaman {PAGE_NUM} dari {PAGE_COUNT}', null, 7, [0.36, 0.40, 0.45]);
 
         return $dompdf->output();
-    }
-
-    /** @return array{0: string, 1: Carbon} */
-    private function period(Request $request): array
-    {
-        $data = $request->validate([
-            'period' => ['nullable', 'in:' . implode(',', ReportPeriod::PERIODS)],
-            'date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
-        ], [
-            'period.in' => 'Periode harus harian, mingguan, bulanan, atau tahunan.',
-            'date.date_format' => 'Tanggal tidak valid.',
-            'date.before_or_equal' => 'Tanggal tidak boleh setelah hari ini.',
-        ]);
-
-        return [$data['period'] ?? 'month', isset($data['date']) ? Carbon::parse($data['date']) : now()];
     }
 }

@@ -1,9 +1,9 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatDuration, formatNumber } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
-import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
+import PeriodPicker, { usePeriodParams } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DocumentPreview from '../components/DocumentPreview.jsx';
 import EmptyState from '../components/EmptyState.jsx';
@@ -81,7 +81,7 @@ function ReportBody({ report }) {
               </tbody>
             </Table>
           ) : (
-            <Empty>Tidak ada limbah B3 yang diserahkan ke vendor di periode ini.</Empty>
+            <Empty>Tidak ada residu yang diserahkan ke vendor di periode ini.</Empty>
           )}
         </Section>
 
@@ -287,26 +287,19 @@ function ReportBody({ report }) {
 }
 
 export default function B3ReportPage() {
-  const [params, setParams] = useSearchParams();
-  const today = localToday();
-  const period = REPORT_PERIODS.includes(params.get('period')) ? params.get('period') : 'month';
-  const rawDate = params.get('date');
-  const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
-  const { data, error, loading, reload } = useResource(`/reports/b3?period=${period}&date=${anchor}`);
-
-  const change = (nextPeriod, nextAnchor) =>
-    setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
+  const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(REPORT_PERIODS, 'month');
+  const { data, error, loading, reload } = useResource(`/reports/b3?${query}`);
 
   return (
     <>
       <PageHeader
-        title="Laporan Limbah B3"
-        description={`Berat limbah B3 yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
-        actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Limbah B3, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
+        title="Laporan Residu"
+        description={`Berat residu yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${label}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Residu, ${label}`} query={query} />}
       />
 
       <div className="mt-6">
-        <PeriodPicker periods={REPORT_PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={REPORT_PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
       </div>
 
       {!data ? (
@@ -314,7 +307,7 @@ export default function B3ReportPage() {
           {loading ? (
             <LoadingCard label="Menyusun laporan…" />
           ) : (
-            <ErrorCard title="Laporan limbah B3 belum bisa dimuat." message={error} onRetry={reload} />
+            <ErrorCard title="Laporan residu belum bisa dimuat." message={error} onRetry={reload} />
           )}
         </div>
       ) : (

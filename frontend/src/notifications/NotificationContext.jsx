@@ -6,13 +6,14 @@ const POLL_MS = 60_000;
 const NotificationContext = createContext(null);
 
 /**
- * Isi lonceng pemberitahuan dan status mesin untuk banner maintenance (FR-21).
+ * Isi lonceng pemberitahuan, status mesin untuk banner maintenance (FR-21), dan pallet yang
+ * sedang diisi untuk banner pallet.
  * Diperbarui tiap 60 detik dan saat tab kembali aktif; halaman yang mengubah status
  * mesin memanggil reload() supaya banner langsung berubah.
  */
 export function NotificationProvider({ children }) {
   const { request } = useAuth();
-  const [state, setState] = useState({ enabled: false, unread: 0, items: [], machine: null, loaded: false });
+  const [state, setState] = useState({ enabled: false, unread: 0, items: [], machine: null, fillingPallet: null, loaded: false });
   const busy = useRef(false);
 
   const reload = useCallback(async () => {
@@ -20,7 +21,14 @@ export function NotificationProvider({ children }) {
     busy.current = true;
     try {
       const { data } = await request('/notifications');
-      setState({ enabled: data.enabled, unread: data.unread_count, items: data.items, machine: data.machine, loaded: true });
+      setState({
+        enabled: data.enabled,
+        unread: data.unread_count,
+        items: data.items,
+        machine: data.machine,
+        fillingPallet: data.filling_pallet ?? null,
+        loaded: true,
+      });
     } catch {
       // Gagal sesaat (jaringan): tampilan lama dipertahankan, dicoba lagi di putaran berikutnya
     } finally {

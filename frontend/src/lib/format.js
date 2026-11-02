@@ -39,14 +39,10 @@ export function formatDateTime(isoWithTime) {
   return `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}, ${time}`;
 }
 
+// Durasi maintenance selalu dalam menit (keputusan meeting 30 Okt 2026)
 export function formatDuration(minutes) {
   if (minutes === null || minutes === undefined) return '–';
-  const days = Math.floor(minutes / 1440);
-  const hours = Math.floor((minutes % 1440) / 60);
-  const mins = minutes % 60;
-  return [days && `${days} hari`, hours && `${hours} jam`, (mins || (!days && !hours)) && `${mins} menit`]
-    .filter(Boolean)
-    .join(' ');
+  return `${formatNumber(minutes, 0)} menit`;
 }
 
 export function formatMonthShort(iso) {

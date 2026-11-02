@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Cylinder, LoaderCircle, PackageCheck, PackagePlus } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
+import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDate } from '../lib/format.js';
 import { fullText, startedText } from '../lib/pallet.js';
@@ -173,6 +174,7 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
 
 export default function DrumPage() {
   const { can, request } = useAuth();
+  const notifications = useNotifications();
   const canFill = can('drum_b3', 'isi');
   const resource = useResource('/pallets');
   const [message, setMessage] = useState('');
@@ -182,6 +184,8 @@ export default function DrumPage() {
     setMessage('');
     const response = await request(path, { method: 'POST', body });
     setMessage(response.message);
+    // Banner pallet yang sedang diisi di semua halaman ikut berubah
+    notifications.reload();
     await resource.reload();
   };
 

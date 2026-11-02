@@ -17,7 +17,7 @@ final class B3ReportExcel extends ReportWorkbook
 
     protected function title(): string
     {
-        return 'Laporan Limbah B3';
+        return 'Laporan Residu';
     }
 
     protected function build(Spreadsheet $book): void
@@ -33,7 +33,7 @@ final class B3ReportExcel extends ReportWorkbook
             array_map(fn ($v) => [$v['vendor'], $v['surat_jalan_count'], $v['pallet_count'], $v['drum_count'], $v['weight_kg']], $r['by_vendor']),
             formats: [5 => self::KG],
             total: $r['by_vendor'] ? $total('Total', $s) : null,
-            empty: 'Tidak ada limbah B3 yang diserahkan ke vendor di periode ini.');
+            empty: 'Tidak ada residu yang diserahkan ke vendor di periode ini.');
 
         if ($breakdown = $r['breakdown']) {
             $label = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$breakdown['unit']];
@@ -77,12 +77,12 @@ final class B3ReportExcel extends ReportWorkbook
             empty: 'Tidak ada pallet yang tersimpan pada akhir periode ini.');
 
         $this->table($book->createSheet(), 'Maintenance', 'Maintenance mesin di periode ini; pengiriman residu ke TPS ikut terhenti',
-            ['Mulai', 'Selesai', 'Durasi di periode (jam)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
-            array_map(fn ($m) => [self::dateTime($m['start']), $m['end'] ? self::dateTime($m['end']) : 'Masih berlangsung', round($m['minutes_in_period'] / 60, 2), $m['reason'], $m['end_note'], $m['started_by']], $r['maintenance']['rows']),
-            formats: [3 => self::HOURS],
+            ['Mulai', 'Selesai', 'Durasi di periode (menit)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
+            array_map(fn ($m) => [self::dateTime($m['start']), $m['end'] ? self::dateTime($m['end']) : 'Masih berlangsung', $m['minutes_in_period'], $m['reason'], $m['end_note'], $m['started_by']], $r['maintenance']['rows']),
+            formats: [3 => self::MINUTES],
             tones: [2 => fn ($row) => $row[1] === 'Masih berlangsung' ? 'urgent' : null],
             wrap: [4 => 36, 5 => 36],
-            total: $r['maintenance']['rows'] ? ['Total', null, round($r['maintenance']['total_minutes'] / 60, 2), null, null, null] : null,
+            total: $r['maintenance']['rows'] ? ['Total', null, $r['maintenance']['total_minutes'], null, null, null] : null,
             empty: 'Mesin tidak menjalani maintenance di periode ini.');
     }
 
@@ -115,7 +115,7 @@ final class B3ReportExcel extends ReportWorkbook
             ]],
             ['Maintenance mesin', [
                 ['maintenance', 'Jumlah maintenance', $r['maintenance']['count'], $r['maintenance']['count'] ? 'Pengiriman residu ke TPS terhenti selama maintenance' : null, null],
-                ['downtime', 'Total downtime di periode (jam)', round($r['maintenance']['total_minutes'] / 60, 2), null, self::HOURS],
+                ['downtime', 'Total downtime di periode (menit)', $r['maintenance']['total_minutes'], null, self::MINUTES],
             ]],
         ]);
 

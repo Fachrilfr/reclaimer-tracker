@@ -79,9 +79,9 @@ class ReclaimerReportTest extends TestCase
         $this->assertEquals(1000, $report['solvent']['closing']);
     }
 
-    public function test_weekly_report_covers_monday_to_sunday(): void
+    public function test_weekly_report_runs_seven_days_from_the_chosen_start(): void
     {
-        $report = $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15')->assertOk()->json('data');
+        $report = $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-12')->assertOk()->json('data');
 
         $this->assertSame('2026-10-12', $report['start']);
         $this->assertSame('2026-10-18', $report['end']);
@@ -91,6 +91,19 @@ class ReclaimerReportTest extends TestCase
         // Saldo awal minggu ini = saldo setelah batch 3 Okt
         $this->assertEquals(1000, $report['solvent']['opening']);
         $this->assertEquals(100, $report['solvent']['used']);
+    }
+
+    public function test_weekly_report_accepts_a_chosen_end_date(): void
+    {
+        $report = $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15&end=2026-10-17')->assertOk()->json('data');
+        $this->assertSame('2026-10-15', $report['start']);
+        $this->assertSame('2026-10-17', $report['end']);
+        $this->assertCount(3, $report['breakdown']['rows']);
+
+        $this->getJson('/api/reports/reclaimer?period=week&date=2026-10-15&end=2026-10-14')
+            ->assertUnprocessable()->assertJsonValidationErrors(['end']);
+        $this->getJson('/api/reports/reclaimer?period=week&date=2026-09-01&end=2026-10-15')
+            ->assertUnprocessable()->assertJsonValidationErrors(['end']);
     }
 
     public function test_excel_export_contains_all_sheets_with_numbers(): void

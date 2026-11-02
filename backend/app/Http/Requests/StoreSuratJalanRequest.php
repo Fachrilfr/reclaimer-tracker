@@ -21,9 +21,9 @@ class StoreSuratJalanRequest extends FormRequest
             'pallet_ids' => ['required', 'array', 'min:' . max(1, (int) Parameter::number('min_pallet_per_delivery'))],
             'pallet_ids.*' => ['integer', 'distinct'],
             'weight_kg' => ['required', 'numeric', 'gt:0', 'max:999999'],
-            'vendor_officer_name' => ['nullable', 'string', 'max:100'],
+            'vendor_officer_name' => ['required', 'string', 'max:100'],
             'notes' => ['nullable', 'string', 'max:500'],
-            'file' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
+            'file' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:10240'],
         ];
     }
 
@@ -46,9 +46,9 @@ class StoreSuratJalanRequest extends FormRequest
             'weight_kg.numeric' => 'Isi dengan angka, contoh 450,5.',
             'weight_kg.gt' => 'Berat harus lebih dari 0 kg.',
             'weight_kg.max' => 'Angka terlalu besar. Periksa kembali satuan kg.',
+            'vendor_officer_name.required' => 'Isi nama petugas vendor yang menerima pallet.',
             'vendor_officer_name.max' => 'Nama petugas vendor paling panjang 100 karakter.',
             'notes.max' => 'Catatan paling panjang 500 karakter.',
-            'file.required' => 'Unggah bukti surat jalan (PDF, JPG, atau PNG).',
             'file.uploaded' => 'Bukti gagal diunggah. Pastikan ukurannya paling besar 10 MB, lalu coba lagi.',
             'file.mimes' => 'Bukti harus berupa PDF, JPG, atau PNG.',
             'file.max' => 'Ukuran bukti paling besar 10 MB.',

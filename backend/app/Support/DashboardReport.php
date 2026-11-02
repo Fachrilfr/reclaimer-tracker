@@ -13,7 +13,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
- * Isi dashboard (FR-45 s/d FR-50) untuk satu periode: harian, bulanan, atau tahunan.
+ * Isi dashboard (FR-45 s/d FR-50) untuk satu periode: harian, mingguan, bulanan, atau tahunan.
  *
  * Agregat dihitung per rangkaian batch yang sudah selesai (BatchChain), satu kali,
  * pada tanggal dan shift batch awalnya. Rangkaian yang belum selesai hanya ditampilkan
@@ -27,13 +27,9 @@ final class DashboardReport
 
     private readonly float $target;
 
-    public function __construct(private readonly string $period, private readonly Carbon $anchor)
+    public function __construct(private readonly string $period, private readonly Carbon $anchor, ?Carbon $until = null)
     {
-        [$this->start, $this->end] = match ($period) {
-            'day' => [$anchor->copy()->startOfDay(), $anchor->copy()->endOfDay()],
-            'month' => [$anchor->copy()->startOfMonth(), $anchor->copy()->endOfMonth()],
-            'year' => [$anchor->copy()->startOfYear(), $anchor->copy()->endOfYear()],
-        };
+        [$this->start, $this->end] = ReportPeriod::range($period, $anchor, $until);
         $this->target = Parameter::number('target_recovery_rate');
     }
 
@@ -88,7 +84,7 @@ final class DashboardReport
     }
 
     /** @return Collection<int, BatchChain> rangkaian dengan batch awal bertanggal di rentang ini */
-    private static function chainsBetween(Carbon $from, Carbon $to): Collection
+    public static function chainsBetween(Carbon $from, Carbon $to): Collection
     {
         return BatchChain::whereRoot(fn (Builder $q) => $q
             ->whereDate('date', '>=', $from->toDateString())
@@ -105,7 +101,7 @@ final class DashboardReport
     }
 
     /**
-     * FR-49: harian per rangkaian (termasuk yang belum selesai), bulanan per minggu,
+     * FR-49: harian per rangkaian (termasuk yang belum selesai), mingguan per hari, bulanan per minggu,
      * tahunan per bulan (hanya rangkaian selesai).
      */
     private function breakdown(Collection $chains, Collection $completed): array
@@ -114,20 +110,20 @@ final class DashboardReport
             return ['unit' => 'chain', 'rows' => $chains->map(fn (BatchChain $c) => $c->toArray())->values()->all()];
         }
 
-        $unit = $this->period === 'month' ? 'week' : 'month';
+        $unit = ReportPeriod::BREAKDOWN[$this->period];
 
         return ['unit' => $unit, 'rows' => BatchChain::buckets($completed, $this->start, $this->end, $unit)];
     }
 
     /**
      * FR-48: tren recovery rate dan residu. Harian: 14 hari sampai tanggal dipilih;
-     * bulanan: per hari dalam bulan; tahunan: per bulan.
+     * mingguan dan bulanan: per hari dalam periode; tahunan: per bulan.
      */
     private function trend(): array
     {
         [$from, $to, $unit] = match ($this->period) {
             'day' => [$this->anchor->copy()->subDays(13)->startOfDay(), $this->end, 'day'],
-            'month' => [$this->start, $this->end, 'day'],
+            'week', 'month' => [$this->start, $this->end, 'day'],
             'year' => [$this->start, $this->end, 'month'],
         };
 

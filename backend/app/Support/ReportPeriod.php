@@ -2,11 +2,14 @@
 
 namespace App\Support;
 
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /**
- * Periode laporan: harian, mingguan (Senin s/d Minggu), bulanan, tahunan.
- * Dipakai Laporan Reclaimer dan Laporan Limbah B3 supaya rentang dan nama berkasnya sama.
+ * Periode laporan: harian, mingguan, bulanan, tahunan. Mingguan memakai tanggal awal dan
+ * akhir pilihan pengguna; tanpa tanggal akhir, 7 hari sejak tanggal awal.
+ * Dipakai dashboard dan semua laporan supaya rentang dan nama berkasnya sama.
  */
 final class ReportPeriod
 {
@@ -17,12 +20,55 @@ final class ReportPeriod
     /** Rincian per periode: mingguan per hari, bulanan per minggu, tahunan per bulan. */
     public const BREAKDOWN = ['day' => null, 'week' => 'day', 'month' => 'week', 'year' => 'month'];
 
+    /** Rentang mingguan paling panjang, supaya rincian per harinya tetap terbaca. */
+    public const MAX_WEEK_DAYS = 31;
+
+    /**
+     * Periode, tanggal, dan tanggal akhir (khusus mingguan) dari query string.
+     *
+     * @param  list<string>  $periods
+     * @return array{0: string, 1: Carbon, 2: ?Carbon}
+     */
+    public static function fromRequest(Request $request, string $default, array $periods = self::PERIODS): array
+    {
+        $data = $request->validate([
+            'period' => ['nullable', 'in:' . implode(',', $periods)],
+            'date' => ['nullable', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'end' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:date'],
+        ], [
+            'period.in' => 'Periode harus ' . self::joinLabels($periods) . '.',
+            'date.date_format' => 'Tanggal tidak valid.',
+            'date.before_or_equal' => 'Tanggal tidak boleh setelah hari ini.',
+            'end.date_format' => 'Tanggal akhir tidak valid.',
+            'end.after_or_equal' => 'Tanggal akhir tidak boleh sebelum tanggal awal.',
+        ]);
+
+        $period = $data['period'] ?? $default;
+        $anchor = isset($data['date']) ? Carbon::parse($data['date']) : now();
+        $end = $period === 'week' && isset($data['end']) ? Carbon::parse($data['end']) : null;
+
+        if ($end && $anchor->copy()->startOfDay()->diffInDays($end->copy()->startOfDay()) >= self::MAX_WEEK_DAYS) {
+            throw ValidationException::withMessages(['end' => 'Rentang mingguan paling panjang ' . self::MAX_WEEK_DAYS . ' hari.']);
+        }
+
+        return [$period, $anchor, $end];
+    }
+
+    /** @param  list<string>  $periods */
+    private static function joinLabels(array $periods): string
+    {
+        $labels = array_map(fn (string $p) => strtolower(self::LABELS[$p]), $periods);
+        $last = array_pop($labels);
+
+        return $labels ? implode(', ', $labels) . ', atau ' . $last : $last;
+    }
+
     /** @return array{0: Carbon, 1: Carbon} */
-    public static function range(string $period, Carbon $anchor): array
+    public static function range(string $period, Carbon $anchor, ?Carbon $until = null): array
     {
         return match ($period) {
             'day' => [$anchor->copy()->startOfDay(), $anchor->copy()->endOfDay()],
-            'week' => [$anchor->copy()->startOfWeek(Carbon::MONDAY), $anchor->copy()->endOfWeek(Carbon::SUNDAY)],
+            'week' => [$anchor->copy()->startOfDay(), ($until ?? $anchor->copy()->addDays(6))->copy()->endOfDay()],
             'month' => [$anchor->copy()->startOfMonth(), $anchor->copy()->endOfMonth()],
             'year' => [$anchor->copy()->startOfYear(), $anchor->copy()->endOfYear()],
         };

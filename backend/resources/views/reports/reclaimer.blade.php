@@ -51,10 +51,10 @@
         <table>
             <thead><tr><th>Mulai</th><th>Alasan</th><th class="num">Durasi</th></tr></thead>
             @foreach ($report['maintenance']['rows'] as $m)
-                <tr><td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['reason'] }}</td><td class="num">{{ number_format($m['minutes_in_period'] / 60, 1, ',', '.') }} jam</td></tr>
+                <tr><td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['reason'] }}</td><td class="num">{{ number_format($m['minutes_in_period'], 0, ',', '.') }} menit</td></tr>
             @endforeach
         </table>
-        <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'] / 60, 1, ',', '.') }} jam.</div>
+        <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'], 0, ',', '.') }} menit.</div>
     @else
         <div class="empty">Tidak ada maintenance di periode ini.</div>
     @endif
@@ -64,7 +64,7 @@
 <div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
-    <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
+    <thead><tr><th>Shift</th><th class="num">Total proses</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
     @foreach ($report['by_shift'] as $row)
         <tr>
             <td>{{ $row['shift'] }}</td><td class="num">{{ $row['chain_count'] }}</td><td class="num">{{ $kg($row['input']) }}</td>
@@ -80,7 +80,7 @@
 <div class="keep">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
-        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
+        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Total proses</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>

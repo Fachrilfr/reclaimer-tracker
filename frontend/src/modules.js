@@ -9,6 +9,7 @@ import {
   History,
   LayoutDashboard,
   Recycle,
+  Scale,
   SlidersHorizontal,
   Truck,
   Users,
@@ -24,6 +25,7 @@ import WastePage from './pages/WastePage.jsx';
 import SuratJalanPage from './pages/SuratJalanPage.jsx';
 import ArchivePage from './pages/ArchivePage.jsx';
 import B3ReportPage from './pages/B3ReportPage.jsx';
+import HseDashboardPage from './pages/HseDashboardPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -69,11 +71,19 @@ export const MODULE_GROUPS = [
     ],
   },
   {
-    label: 'Limbah B3',
+    label: 'Residu',
     modules: [
       {
+        key: 'dashboard_hse',
+        label: 'Dashboard HSE',
+        path: '/dashboard-hse',
+        icon: Scale,
+        summary: 'Berat residu per input dan per periode, timbangan vendor, dan pallet di TPS.',
+        page: HseDashboardPage,
+      },
+      {
         key: 'limbah_b3',
-        label: 'Limbah B3',
+        label: 'Residu',
         path: '/limbah-b3',
         icon: Biohazard,
         summary:
@@ -101,7 +111,7 @@ export const MODULE_GROUPS = [
         label: 'Arsip surat jalan',
         path: '/arsip',
         icon: Archive,
-        summary: 'Riwayat surat jalan sebagai penutup dokumen limbah B3, dengan pencarian dan unduhan bukti.',
+        summary: 'Riwayat surat jalan sebagai penutup dokumen residu, dengan pencarian dan unduhan bukti.',
         page: ArchivePage,
       },
     ],
@@ -119,7 +129,7 @@ export const MODULE_GROUPS = [
       },
       {
         key: 'laporan_b3',
-        label: 'Laporan limbah B3',
+        label: 'Laporan residu',
         path: '/laporan-b3',
         icon: ClipboardCheck,
         summary: 'Berat yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, dan stok, dengan ekspor Excel dan PDF.',
@@ -151,7 +161,7 @@ export const MODULE_GROUPS = [
         label: 'Data master',
         path: '/data-master',
         icon: Database,
-        summary: 'Bahan, jenis limbah B3, shift, dan vendor.',
+        summary: 'Bahan, jenis residu, shift, dan vendor.',
         page: null,
       },
       {

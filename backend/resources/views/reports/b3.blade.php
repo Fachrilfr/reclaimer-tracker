@@ -11,18 +11,18 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<title>Laporan Limbah B3 {{ $report['period_label'] }}</title>
+<title>Laporan Residu {{ $report['period_label'] }}</title>
 @include('reports.partials.style')
 </head>
 <body>
 <header>
     <img src="{{ $logo }}" alt="Indofood CBP">
-    <div class="title">Material Balance &amp; B3 Tracker<br>Laporan Limbah B3 {{ $report['period_label'] }} · {{ $period }}</div>
+    <div class="title">Material Balance &amp; B3 Tracker<br>Laporan Residu {{ $report['period_label'] }} · {{ $period }}</div>
 </header>
 <footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Berat resmi dari timbangan vendor, dicatat per surat jalan. Periode mengikuti tanggal serah terima.</footer>
 
 <div>
-<h1>Laporan Limbah B3 {{ $report['period_label'] }}</h1>
+<h1>Laporan Residu {{ $report['period_label'] }}</h1>
 <div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet sampai di TPS</div>
 
 <table class="kpi"><tr>
@@ -44,7 +44,7 @@
             @endforeach
         </table>
     @else
-        <div class="empty">Tidak ada limbah B3 yang diserahkan ke vendor di periode ini.</div>
+        <div class="empty">Tidak ada residu yang diserahkan ke vendor di periode ini.</div>
     @endif
 </td>
 <td class="col">
@@ -136,11 +136,11 @@
             <tr>
                 <td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['end'] ? Fmt::dateTime($m['end']) : 'Masih berlangsung' }}</td>
                 <td>{{ $m['reason'] }}</td><td>{{ $m['end_note'] ?? '–' }}</td>
-                <td class="num">{{ number_format($m['minutes_in_period'] / 60, 1, ',', '.') }} jam</td>
+                <td class="num">{{ number_format($m['minutes_in_period'], 0, ',', '.') }} menit</td>
             </tr>
         @endforeach
     </table>
-    <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'] / 60, 1, ',', '.') }} jam.</div>
+    <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'], 0, ',', '.') }} menit.</div>
 @else
     <div class="empty">Mesin tidak menjalani maintenance di periode ini.</div>
 @endif

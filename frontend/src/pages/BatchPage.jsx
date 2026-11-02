@@ -664,7 +664,7 @@ function BatchForm({ formData, onSaved }) {
                 Menyimpan…
               </>
             ) : isFinishing ? (
-              'Simpan batch'
+              'Simpan input'
             ) : (
               'Simpan sebagai belum selesai'
             )}

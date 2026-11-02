@@ -24,7 +24,7 @@ final class ReclaimerReportExcel extends ReportWorkbook
         $this->summarySheet($book->getActiveSheet());
 
         $this->table($book->createSheet(), 'Per shift', 'Material balance per shift awal rangkaian',
-            ['Shift', 'Rangkaian', 'Input', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Residu estimasi (kg)', 'Persentase solvent'],
+            ['Shift', 'Total proses', 'Input', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Residu estimasi (kg)', 'Persentase solvent'],
             array_map(fn ($x) => [$x['shift'], $x['chain_count'], $x['batch_count'], $x['input'], $x['recovery'], $x['residue'], $x['chain_count'] ? $x['recovery_rate'] : null], $r['by_shift']),
             formats: [4 => self::KG, 5 => self::KG, 6 => self::KG, 7 => self::PERCENT],
             tones: [7 => fn ($row) => $belowTarget($row[6])],
@@ -34,7 +34,7 @@ final class ReclaimerReportExcel extends ReportWorkbook
         if ($breakdown = $r['breakdown']) {
             $label = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$breakdown['unit']];
             $this->table($book->createSheet(), "Per {$label}", 'Material balance per ' . strtolower($label),
-                [$label, 'Rangkaian', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Residu estimasi (kg)', 'Persentase solvent'],
+                [$label, 'Total proses', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Residu estimasi (kg)', 'Persentase solvent'],
                 array_map(fn ($x) => [
                     self::bucketLabel($x, $breakdown['unit']),
                     $x['chain_count'], $x['input'], $x['recovery'], $x['residue'], $x['chain_count'] ? $x['recovery_rate'] : null,
@@ -85,12 +85,12 @@ final class ReclaimerReportExcel extends ReportWorkbook
             tab: $r['temp_abnormal'] ? self::TONES['urgent'][0] : null);
 
         $this->table($book->createSheet(), 'Maintenance', 'Riwayat maintenance mesin di periode ini',
-            ['Mulai', 'Selesai', 'Durasi di periode (jam)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
-            array_map(fn ($m) => [self::dateTime($m['start']), $m['end'] ? self::dateTime($m['end']) : 'Masih berlangsung', round($m['minutes_in_period'] / 60, 2), $m['reason'], $m['end_note'], $m['started_by']], $r['maintenance']['rows']),
-            formats: [3 => self::HOURS],
+            ['Mulai', 'Selesai', 'Durasi di periode (menit)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
+            array_map(fn ($m) => [self::dateTime($m['start']), $m['end'] ? self::dateTime($m['end']) : 'Masih berlangsung', $m['minutes_in_period'], $m['reason'], $m['end_note'], $m['started_by']], $r['maintenance']['rows']),
+            formats: [3 => self::MINUTES],
             tones: [2 => fn ($row) => $row[1] === 'Masih berlangsung' ? 'urgent' : null],
             wrap: [4 => 36, 5 => 36],
-            total: ['Total', null, round($r['maintenance']['total_minutes'] / 60, 2), null, null, null],
+            total: ['Total', null, $r['maintenance']['total_minutes'], null, null, null],
             empty: 'Mesin tidak menjalani maintenance di periode ini.');
     }
 
@@ -124,7 +124,7 @@ final class ReclaimerReportExcel extends ReportWorkbook
             ]],
             ['Maintenance mesin', [
                 ['maintenance', 'Jumlah maintenance', $r['maintenance']['count'], null, null],
-                ['downtime', 'Total downtime di periode (jam)', round($r['maintenance']['total_minutes'] / 60, 2), null, self::HOURS],
+                ['downtime', 'Total downtime di periode (menit)', $r['maintenance']['total_minutes'], null, self::MINUTES],
             ]],
         ]);
 

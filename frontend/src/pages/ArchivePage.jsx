@@ -70,7 +70,7 @@ export default function ArchivePage() {
     <>
       <PageHeader
         title="Arsip surat jalan"
-        description="Surat jalan yang sudah tersimpan, sebagai penutup dokumen limbah B3. Cari per nomor surat jalan, pallet, vendor, atau nama berkas."
+        description="Surat jalan yang sudah tersimpan, sebagai penutup dokumen residu. Cari per nomor surat jalan, pallet, vendor, atau nama berkas."
       />
 
       <section aria-labelledby="archive-title" className="card mt-6">
@@ -198,10 +198,17 @@ export default function ArchivePage() {
                         <span className="block text-caption text-gray-600">{formatDateTime(s.created_at)}</span>
                       </Td>
                       <Td>
-                        <DownloadProof item={s} onError={setDownloadError} />
-                        <span className="mt-1 block max-w-[10rem] truncate text-caption text-gray-600" title={s.file_name}>
-                          {s.file_name}
-                        </span>
+                        {s.file_name ? (
+                          <>
+                            <DownloadProof item={s} onError={setDownloadError} />
+                            <span className="mt-1 block max-w-[10rem] truncate text-caption text-gray-600" title={s.file_name}>
+                              {s.file_name}
+                            </span>
+                          </>
+                        ) : (
+                          // Bukti opsional sejak meeting 30 Okt 2026
+                          <span className="text-caption text-gray-600">Tanpa bukti</span>
+                        )}
                       </Td>
                     </tr>
                   ))}

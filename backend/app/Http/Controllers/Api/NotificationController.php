@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\B3Pallet;
 use App\Models\Machine;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -11,12 +12,14 @@ use Illuminate\Notifications\DatabaseNotification;
 class NotificationController extends Controller
 {
     /**
-     * Isi lonceng dan banner: pemberitahuan terbaru milik pengguna, serta status
-     * mesin untuk banner maintenance yang tampil ke semua pengguna.
+     * Isi lonceng dan banner: pemberitahuan terbaru milik pengguna, status mesin untuk
+     * banner maintenance, dan pallet yang sedang diisi. Kedua banner tampil ke semua pengguna.
      */
     public function index(Request $request): JsonResponse
     {
         $user = $request->user();
+        // Hanya satu pallet yang bisa diisi pada satu waktu (RecordPallet)
+        $filling = B3Pallet::where('status', 'filling')->first();
 
         return response()->json([
             'status' => 'success',
@@ -30,6 +33,13 @@ class NotificationController extends Controller
                         'created_at' => $n->created_at->toIso8601String(),
                     ]),
                 'machine' => Machine::main()?->load('reporter')->summary(),
+                'filling_pallet' => $filling ? [
+                    'id' => $filling->id,
+                    'pallet_number' => $filling->pallet_number,
+                    'drum_count' => $filling->drum_count,
+                    'started_at' => $filling->created_at?->toIso8601String(),
+                    'start_date' => $filling->start_date->toDateString(),
+                ] : null,
             ],
         ]);
     }

@@ -48,7 +48,6 @@ class MachineMaintenanceTest extends TestCase
     {
         $this->as('OP-1001')->postJson('/api/machine/maintenance', [
             'reason' => 'Pompa vakum bocor',
-            'expected_end_at' => '2026-10-20 15:00:00',
         ])->assertOk()
             ->assertJsonPath('data.status', 'maintenance')
             ->assertJsonPath('data.maintenance_reason', 'Pompa vakum bocor')
@@ -71,18 +70,6 @@ class MachineMaintenanceTest extends TestCase
 
         $this->assertDatabaseHas('machine_maintenance_logs', ['action' => 'start', 'reason' => 'Pompa vakum bocor']);
         $this->assertDatabaseHas('audit_logs', ['action' => 'maintenance_start']);
-    }
-
-    public function test_expected_end_from_browser_is_saved_in_wib(): void
-    {
-        // Browser mengirim 15.00 WIB sebagai 08.00 UTC
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', [
-            'reason' => 'Pompa vakum bocor',
-            'expected_end_at' => '2026-10-20T08:00:00.000Z',
-        ])->assertOk()
-            ->assertJsonPath('data.maintenance_expected_end_at', '2026-10-20T15:00:00+07:00');
-
-        $this->assertDatabaseHas('machines', ['maintenance_expected_end_at' => '2026-10-20 15:00:00']);
     }
 
     public function test_batch_is_blocked_during_maintenance(): void
@@ -186,5 +173,17 @@ class MachineMaintenanceTest extends TestCase
         // Pallet yang tepat waktu tidak diberi keterangan
         $pallet->update(['sent_to_tps_at' => '2026-10-16']);
         $this->getJson('/api/pallets')->assertJsonPath('data.recent.0.tps.delay', null);
+    }
+
+    public function test_report_documents_show_maintenance_duration_in_minutes(): void
+    {
+        Carbon::setTestNow('2026-10-20 08:00:00');
+        $this->as('OP-1001')->postJson('/api/machine/maintenance', ['reason' => 'Pompa vakum bocor'])->assertOk();
+        Carbon::setTestNow('2026-10-20 10:35:00');
+        $this->postJson('/api/machine/operating', ['note' => 'Seal diganti'])->assertOk();
+
+        $html = $this->as('MGT-4001')->getJson('/api/reports/reclaimer/document?period=day&date=2026-10-20')->assertOk()->json('data.html');
+        $this->assertStringContainsString('155 menit', $html);
+        $this->assertStringNotContainsString(' jam</td>', $html);
     }
 }

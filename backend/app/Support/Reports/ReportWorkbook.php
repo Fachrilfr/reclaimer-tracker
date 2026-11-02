@@ -27,7 +27,7 @@ abstract class ReportWorkbook
 
     protected const PERCENT = '0.0"%"';
 
-    protected const HOURS = '#,##0.00';
+    protected const MINUTES = '#,##0';
 
     // Token warna dari design.md
     protected const BLUE_900 = '0A3557';

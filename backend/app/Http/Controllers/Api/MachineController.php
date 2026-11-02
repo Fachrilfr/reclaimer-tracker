@@ -28,15 +28,12 @@ class MachineController extends Controller
     {
         $data = $request->validate([
             'reason' => ['required', 'string', 'max:255'],
-            'expected_end_at' => ['nullable', 'date', 'after:now'],
         ], [
             'reason.required' => 'Tulis alasan maintenance, misalnya "Pompa vakum bocor".',
             'reason.max' => 'Alasan paling panjang 255 karakter.',
-            'expected_end_at.date' => 'Perkiraan selesai tidak valid.',
-            'expected_end_at.after' => 'Perkiraan selesai harus setelah waktu sekarang.',
         ]);
 
-        $machine = $setStatus->startMaintenance($request, trim($data['reason']), $data['expected_end_at'] ?? null);
+        $machine = $setStatus->startMaintenance($request, trim($data['reason']));
 
         return response()->json([
             'status' => 'success',

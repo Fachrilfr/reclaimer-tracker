@@ -108,8 +108,8 @@ function SuratJalanForm({ data, preselected, onSaved }) {
     if (weight === null) errs.weight_kg = 'Isi berat dari timbangan vendor dalam kg.';
     else if (Number.isNaN(weight)) errs.weight_kg = 'Isi dengan angka, contoh 450,5.';
     else if (weight <= 0) errs.weight_kg = 'Berat harus lebih dari 0 kg.';
-    if (!file) errs.file = 'Unggah bukti surat jalan (PDF, JPG, atau PNG).';
-    else if (file.size > MAX_FILE_MB * 1024 * 1024) errs.file = `Ukuran bukti paling besar ${MAX_FILE_MB} MB.`;
+    if (!form.vendor_officer_name.trim()) errs.vendor_officer_name = 'Isi nama petugas vendor yang menerima pallet.';
+    if (file && file.size > MAX_FILE_MB * 1024 * 1024) errs.file = `Ukuran bukti paling besar ${MAX_FILE_MB} MB.`;
     return errs;
   };
 
@@ -129,9 +129,9 @@ function SuratJalanForm({ data, preselected, onSaved }) {
     body.append('vendor_id', form.vendor_id);
     body.append('handover_date', form.handover_date);
     body.append('weight_kg', String(parseDecimal(form.weight_kg)));
-    if (form.vendor_officer_name.trim()) body.append('vendor_officer_name', form.vendor_officer_name.trim());
+    body.append('vendor_officer_name', form.vendor_officer_name.trim());
     if (form.notes.trim()) body.append('notes', form.notes.trim());
-    body.append('file', file);
+    if (file) body.append('file', file);
 
     setIsSaving(true);
     try {
@@ -213,12 +213,12 @@ function SuratJalanForm({ data, preselected, onSaved }) {
               )}
             </Field>
           </div>
-          <Field id="vendor_officer_name" label="Petugas vendor" hint="Opsional." error={errors.vendor_officer_name}>
+          <Field id="vendor_officer_name" label="Petugas vendor" required error={errors.vendor_officer_name}>
             {(props) => (
               <input {...props} type="text" maxLength={100} value={form.vendor_officer_name} onChange={set('vendor_officer_name')} className="field" />
             )}
           </Field>
-          <Field id="file" label="Bukti surat jalan" required hint={`PDF, JPG, atau PNG, paling besar ${MAX_FILE_MB} MB.`} error={errors.file}>
+          <Field id="file" label="Bukti surat jalan" hint={`Opsional. PDF, JPG, atau PNG, paling besar ${MAX_FILE_MB} MB.`} error={errors.file}>
             {(props) => (
               <input
                 {...props}
@@ -272,7 +272,7 @@ export default function SuratJalanPage() {
         title="Surat jalan"
         description={
           canFill
-            ? 'Serahkan pallet dari TPS ke vendor. Surat jalan menjadi penutup dokumen limbah B3 dan tersimpan di arsip.'
+            ? 'Serahkan pallet dari TPS ke vendor. Surat jalan menjadi penutup dokumen residu dan tersimpan di arsip.'
             : 'Pallet di TPS yang menunggu diserahkan ke vendor. Surat jalan yang sudah tersimpan ada di arsip.'
         }
       />
@@ -308,7 +308,7 @@ export default function SuratJalanPage() {
             title="Belum ada pallet di TPS yang bisa diserahkan."
             action={
               <Link to="/limbah-b3?lokasi=semua" className="btn-secondary h-11 px-4 text-body">
-                Lihat limbah B3
+                Lihat residu
               </Link>
             }
           >

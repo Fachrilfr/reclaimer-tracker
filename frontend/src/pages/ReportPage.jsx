@@ -1,9 +1,8 @@
-import { useSearchParams } from 'react-router-dom';
 import { Recycle } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatDuration, formatNumber, formatPercent } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
-import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
+import PeriodPicker, { usePeriodParams } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
 import DocumentPreview from '../components/DocumentPreview.jsx';
@@ -150,12 +149,12 @@ function ReportBody({ report }) {
         </Section>
       </div>
 
-      <Section id="lap-shift" title="Perbandingan per shift" description="Rangkaian lintas shift dihitung di shift input awalnya.">
+      <Section id="lap-shift" title="Perbandingan per shift">
         <Table caption="Perbandingan per shift">
           <thead>
             <tr>
               <Th>Shift</Th>
-              <Th numeric>Rangkaian</Th>
+              <Th numeric>Total proses</Th>
               <Th numeric>Tinta X masuk</Th>
               <Th numeric>Hasil solvent</Th>
               <Th numeric>Residu estimasi</Th>
@@ -185,7 +184,7 @@ function ReportBody({ report }) {
             <thead>
               <tr>
                 <Th>{BREAKDOWN_LABEL[report.breakdown.unit]}</Th>
-                <Th numeric>Rangkaian</Th>
+                <Th numeric>Total proses</Th>
                 <Th numeric>Tinta X masuk</Th>
                 <Th numeric>Hasil solvent</Th>
                 <Th numeric>Residu estimasi</Th>
@@ -334,26 +333,19 @@ function ReportBody({ report }) {
 }
 
 export default function ReportPage() {
-  const [params, setParams] = useSearchParams();
-  const today = localToday();
-  const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'month';
-  const rawDate = params.get('date');
-  const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
-  const { data, error, loading, reload } = useResource(`/reports/reclaimer?period=${period}&date=${anchor}`);
-
-  const change = (nextPeriod, nextAnchor) =>
-    setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
+  const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(PERIODS, 'month');
+  const { data, error, loading, reload } = useResource(`/reports/reclaimer?${query}`);
 
   return (
     <>
       <PageHeader
         title="Laporan Reclaimer"
-        description={`Material balance, saldo solvent, dan catatan operasional, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
-        actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
+        description={`Material balance, saldo solvent, dan catatan operasional, ${label}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${label}`} query={query} />}
       />
 
       <div className="mt-6">
-        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
       </div>
 
       {!data ? (
