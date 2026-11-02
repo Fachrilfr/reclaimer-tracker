@@ -7,7 +7,7 @@ export default function StatCard({ label, value, unit, note, tone = 'neutral' })
   }[tone];
 
   return (
-    <div className="card p-4 sm:p-5">
+    <div className="card h-full p-4 sm:p-5">
       <p className="text-label font-medium text-gray-600">{label}</p>
       <p className="mt-1 text-display font-bold tabular-nums text-gray-900">
         {value}

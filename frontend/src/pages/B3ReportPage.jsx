@@ -32,33 +32,15 @@ function ReportBody({ report }) {
         Batas masa simpan {report.max_storage_days} hari sejak pallet mulai terisi.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        <StatCard
-          label="Berat residu"
-          value={formatNumber(s.residue)}
-          unit="kg"
-          note={s.residue_chain_count ? `Dari ${s.residue_chain_count} proses selesai, Tinta X − hasil solvent` : 'Belum ada proses selesai di periode ini'}
-        />
-        <StatCard
-          label="Berat diserahkan"
-          value={formatNumber(s.weight_kg)}
-          unit="kg"
-          note={`${s.surat_jalan_count} surat jalan, timbangan vendor`}
-        />
-        <StatCard label="Pallet diserahkan" value={s.pallet_count} note={`${s.drum_count} drum`} />
-        <StatCard
-          label="Diserahkan lewat batas simpan"
-          value={s.over_limit_count}
-          unit="pallet"
-          note={s.pallet_count ? `Lama simpan terlama ${s.longest_days_stored} hari` : 'Belum ada penyerahan di periode ini'}
-          tone={!s.pallet_count ? 'neutral' : s.over_limit_count ? 'bad' : 'good'}
-        />
-        <StatCard
-          label={`Stok ${stockLabel}`}
-          value={stock.rows.length}
-          unit="pallet"
-          note={`${atTps} di TPS · ${stock.rows.length - atTps} di area reclaimer`}
-        />
+      {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <StatCard label="Berat residu" value={formatNumber(s.residue)} unit="kg" />
+        <StatCard label="Berat diserahkan" value={formatNumber(s.weight_kg)} unit="kg" />
+        <StatCard label="Pallet diserahkan" value={s.pallet_count} unit="pallet" />
+        <StatCard label="Lewat batas simpan" value={s.over_limit_count} unit="pallet" />
+        <div className="col-span-2 xl:col-span-1">
+          <StatCard label={`Stok di TPS ${stockLabel}`} value={atTps} unit="pallet" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">

@@ -17,6 +17,7 @@
     .warn { color: #9A6700; font-weight: bold; }
     .muted { color: #5B6673; }
     .kpi td { border: none; padding: 0 3mm 0 0; width: 25%; }
+    .kpi-5 td { width: 20%; }
     .kpi .box { border: 1px solid #DDE3EA; border-radius: 2mm; padding: 2.5mm 3mm; }
     .kpi .label { color: #5B6673; font-size: 7.5pt; }
     .kpi .value { font-size: 13pt; font-weight: bold; color: #141A21; }
