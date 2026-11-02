@@ -59,7 +59,7 @@ function trendPoints(trend, valueOf, detailOf, flagOf = () => false) {
 // tooltip menampilkan persen dan beratnya dalam kg.
 const TREND_SERIES = {
   solvent: { label: 'Solvent', title: 'Tren solvent', color: SOLVENT_COLOR },
-  waste: { label: 'Residu', title: 'Tren residu', color: WASTE_COLOR },
+  waste: { label: 'Limbah B3', title: 'Tren limbah B3', color: WASTE_COLOR },
 };
 
 function TrendCharts({ trend, period, anchor, label }) {
@@ -86,7 +86,7 @@ function TrendCharts({ trend, period, anchor, label }) {
           <p className="mt-1 text-body text-gray-600">
             {isSolvent
               ? `Hasil solvent dibanding Tinta X masuk, ${range}.`
-              : `Residu dibanding Tinta X masuk, ${range}.`}
+              : `Residu yang menjadi limbah B3 dibanding Tinta X masuk, ${range}.`}
           </p>
           {isSolvent && (
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
@@ -144,7 +144,7 @@ function TrendCharts({ trend, period, anchor, label }) {
             : trendPoints(
                 trend,
                 (p) => p.residue_rate,
-                (p) => `Residu ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
+                (p) => `Limbah B3 ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
               )
         }
         flagLabel={isSolvent ? 'di bawah toleransi' : undefined}
@@ -220,7 +220,7 @@ export const B3_VIEWS = {
     empty: 'Semua pallet sudah dikirim ke TPS.',
   },
   storage: {
-    title: 'Residu di TPS',
+    title: 'Limbah B3 di TPS',
     status: (p) => p.storage,
     badge: (p) => <StorageBadge storage={p.storage} />,
     due: (p) => `Batas simpan ${formatDate(p.expiry_date)}`,
@@ -430,7 +430,7 @@ function Breakdown({ breakdown, target, sorot }) {
             <Th>Shift awal</Th>
             <Th numeric>Tinta X masuk</Th>
             <Th numeric>Hasil solvent</Th>
-            <Th numeric>Berat residu</Th>
+            <Th numeric>Residu estimasi</Th>
             <Th numeric>Persentase solvent</Th>
           </tr>
         </thead>
@@ -494,7 +494,7 @@ function Breakdown({ breakdown, target, sorot }) {
           <Th numeric>Total proses</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
-          <Th numeric>Berat residu</Th>
+          <Th numeric>Residu estimasi</Th>
           <Th numeric>Persentase solvent</Th>
         </tr>
       </thead>
@@ -598,7 +598,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description={`Material balance reclaimer dan residu, ${label}.`} />
+      <PageHeader title="Dashboard" description={`Material balance reclaimer dan limbah B3, ${label}.`} />
 
       <div className="mt-6">
         <PeriodPicker periods={PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
@@ -674,7 +674,7 @@ export default function DashboardPage() {
                 }
               />
               <StatCard
-                label="Berat residu"
+                label="Residu (estimasi)"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
                 note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
@@ -721,7 +721,7 @@ export default function DashboardPage() {
                   <Th numeric>Total proses</Th>
                   <Th numeric>Tinta X masuk</Th>
                   <Th numeric>Hasil solvent</Th>
-                  <Th numeric>Berat residu</Th>
+                  <Th numeric>Residu estimasi</Th>
                   <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>
