@@ -35,7 +35,8 @@ class SetMachineStatus
                 'status' => 'maintenance',
                 'maintenance_reason' => $reason,
                 'maintenance_started_at' => now(),
-                'maintenance_expected_end_at' => $expectedEnd ? Carbon::parse($expectedEnd) : null,
+                // Frontend mengirim waktu UTC (…Z); kolom datetime menyimpan jam WIB
+                'maintenance_expected_end_at' => $expectedEnd ? Carbon::parse($expectedEnd)->setTimezone(config('app.timezone')) : null,
                 'maintenance_reported_by' => $request->user()->id,
             ]);
             $this->log($request, $machine, 'start', $reason);

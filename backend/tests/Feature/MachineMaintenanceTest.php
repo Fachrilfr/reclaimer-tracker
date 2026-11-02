@@ -73,13 +73,25 @@ class MachineMaintenanceTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'maintenance_start']);
     }
 
+    public function test_expected_end_from_browser_is_saved_in_wib(): void
+    {
+        // Browser mengirim 15.00 WIB sebagai 08.00 UTC
+        $this->as('OP-1001')->postJson('/api/machine/maintenance', [
+            'reason' => 'Pompa vakum bocor',
+            'expected_end_at' => '2026-10-20T08:00:00.000Z',
+        ])->assertOk()
+            ->assertJsonPath('data.maintenance_expected_end_at', '2026-10-20T15:00:00+07:00');
+
+        $this->assertDatabaseHas('machines', ['maintenance_expected_end_at' => '2026-10-20 15:00:00']);
+    }
+
     public function test_batch_is_blocked_during_maintenance(): void
     {
         $this->as('SPV-2001')->postJson('/api/machine/maintenance', ['reason' => 'Ganti seal'])->assertOk();
 
         $this->as('OP-1001')->batch()
             ->assertUnprocessable()
-            ->assertJsonPath('errors.machine.0', 'Mesin IRAC-01 sedang maintenance. Batch tidak bisa disimpan sampai mesin kembali beroperasi.');
+            ->assertJsonPath('errors.machine.0', 'Mesin IRAC-01 sedang maintenance. Input tidak bisa disimpan sampai mesin kembali beroperasi.');
         $this->assertDatabaseCount('reclaimer_batches', 0);
         $this->assertDatabaseCount('solvent_ledger', 1);
 
