@@ -79,8 +79,8 @@ function StatusForm({ maintenance, onDone }) {
       <h3 className="text-h3 font-semibold">{maintenance ? 'Mesin sudah beroperasi' : 'Laporkan maintenance'}</h3>
       <p className="-mt-3 text-body text-gray-600">
         {maintenance
-          ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Batch bisa dicatat lagi.'
-          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Batch tidak bisa dicatat selama maintenance.'}
+          ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Input bisa dicatat lagi.'
+          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Input tidak bisa dicatat selama maintenance.'}
       </p>
       {formError && <Alert tone="danger">{formError}</Alert>}
       <div className={`grid grid-cols-1 gap-4 ${maintenance ? '' : 'sm:grid-cols-3'}`}>
@@ -201,7 +201,7 @@ export default function MachinePage() {
                 </div>
               </dl>
             ) : (
-              <p className="mt-3 text-body text-gray-600">Mesin beroperasi normal. Batch reclaimer bisa dicatat.</p>
+              <p className="mt-3 text-body text-gray-600">Mesin beroperasi normal. Input reclaimer bisa dicatat.</p>
             )}
 
             {can('mesin', 'isi') && <StatusForm key={machine.status} maintenance={maintenance} onDone={handleDone} />}

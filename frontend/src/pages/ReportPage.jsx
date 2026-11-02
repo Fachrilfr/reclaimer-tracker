@@ -59,9 +59,9 @@ function ReportBody({ report }) {
   return (
     <div className="mt-6 space-y-6">
       <p className="text-body text-gray-600">
-        {s.chain_count} rangkaian selesai ({s.batch_count} batch)
+        {s.chain_count} rangkaian selesai ({s.batch_count} input)
         {s.open_chain_count > 0 && ` · ${s.open_chain_count} rangkaian belum selesai tidak dihitung`}. Angka sama dengan
-        dashboard: per rangkaian selesai, pada tanggal dan shift batch awalnya.
+        dashboard: per rangkaian selesai, pada tanggal dan shift input awalnya.
       </p>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
@@ -85,7 +85,7 @@ function ReportBody({ report }) {
         <Section
           id="lap-solvent"
           title="Saldo solvent"
-          description="Bertambah dari hasil solvent tiap batch, berkurang saat solvent diambil dari saldo."
+          description="Bertambah dari hasil solvent tiap input, berkurang saat solvent diambil dari saldo."
           padded
         >
           <dl className="divide-y divide-gray-100 text-body tabular-nums">
@@ -150,7 +150,7 @@ function ReportBody({ report }) {
         </Section>
       </div>
 
-      <Section id="lap-shift" title="Perbandingan per shift" description="Rangkaian lintas shift dihitung di shift batch awalnya.">
+      <Section id="lap-shift" title="Perbandingan per shift" description="Rangkaian lintas shift dihitung di shift input awalnya.">
         <Table caption="Perbandingan per shift">
           <thead>
             <tr>
@@ -257,11 +257,11 @@ function ReportBody({ report }) {
       </Section>
 
       {report.temp_abnormal.length > 0 && (
-        <Section id="lap-suhu" title="Batch dengan suhu di luar normal">
-          <Table caption="Batch dengan suhu di luar normal">
+        <Section id="lap-suhu" title="Input dengan suhu di luar normal">
+          <Table caption="Input dengan suhu di luar normal">
             <thead>
               <tr>
-                <Th>No. batch</Th>
+                <Th>No. input</Th>
                 <Th>Tanggal dan shift</Th>
                 <Th numeric>Suhu oli</Th>
                 <Th numeric>Suhu uap</Th>
@@ -290,7 +290,7 @@ function ReportBody({ report }) {
             <summary className="focus-ring mx-4 mb-3 inline-flex min-h-11 cursor-pointer items-center rounded text-body font-medium text-brand-blue-700 sm:mx-5">
               Tampilkan atau sembunyikan rincian
             </summary>
-            <Table caption="Rincian rangkaian batch">
+            <Table caption="Rincian rangkaian input">
               <thead>
                 <tr>
                   <Th>Rangkaian</Th>
@@ -324,8 +324,8 @@ function ReportBody({ report }) {
             </Table>
           </details>
         ) : (
-          <EmptyState icon={Recycle} title="Belum ada batch di periode ini.">
-            Pilih periode lain, atau tunggu operator mencatat batch.
+          <EmptyState icon={Recycle} title="Belum ada input di periode ini.">
+            Pilih periode lain, atau tunggu operator mencatat input.
           </EmptyState>
         )}
       </Section>

@@ -30,7 +30,7 @@ export default function MaintenanceBanner() {
               .
             </p>
             <p className="mt-1">
-              Batch reclaimer tidak bisa dicatat dan pengiriman residu ke TPS ikut terhenti. Batas kirim pallet ke TPS
+              Input reclaimer tidak bisa dicatat dan pengiriman residu ke TPS ikut terhenti. Batas kirim pallet ke TPS
               tetap berjalan.
             </p>
           </div>

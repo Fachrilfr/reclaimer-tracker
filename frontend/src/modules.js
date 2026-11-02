@@ -47,7 +47,7 @@ export const MODULE_GROUPS = [
         path: '/batch',
         icon: Recycle,
         summary:
-          'Catat Tinta X, hasil solvent, dan suhu per batch. Residu, persentase solvent, dan saldo solvent dihitung langsung.',
+          'Catat Tinta X, hasil solvent, dan suhu per input. Residu, persentase solvent, dan saldo solvent dihitung langsung.',
         page: BatchPage,
       },
       {
@@ -130,7 +130,7 @@ export const MODULE_GROUPS = [
         label: 'Jejak audit',
         path: '/audit',
         icon: History,
-        summary: 'Riwayat perubahan dari batch reclaimer sampai surat jalan dan dokumen penutup.',
+        summary: 'Riwayat perubahan dari input reclaimer sampai surat jalan dan dokumen penutup.',
         page: null,
       },
     ],

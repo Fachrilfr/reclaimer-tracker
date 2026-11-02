@@ -17,11 +17,11 @@
     <img src="{{ $logo }}" alt="Indofood CBP">
     <div class="title">Material Balance &amp; B3 Tracker<br>Laporan Reclaimer {{ $report['period_label'] }} · {{ $period }}</div>
 </header>
-<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian batch yang sudah selesai, dihitung pada tanggal dan shift batch awalnya.</footer>
+<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian input yang sudah selesai, dihitung pada tanggal dan shift input awalnya.</footer>
 
 <div>
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} batch)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
+<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
 
 <table class="kpi"><tr>
     <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div><div class="muted">Bahan masuk ke mesin reclaimer</div></div></td>
@@ -34,7 +34,7 @@
 <table class="two"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
-    <div class="muted">Bertambah dari hasil solvent tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
+    <div class="muted">Bertambah dari hasil solvent tiap input (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
     <table>
         <tr><td>Saldo awal</td><td class="num">{{ $kg($report['solvent']['opening']) }} kg</td></tr>
         <tr><td>Hasil solvent masuk</td><td class="num">+{{ $kg($report['solvent']['recovered']) }} kg</td></tr>
@@ -114,9 +114,9 @@
 
 @if (count($report['temp_abnormal']))
 <div>
-    <h2>Batch dengan suhu di luar normal</h2>
+    <h2>Input dengan suhu di luar normal</h2>
     <table>
-        <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
+        <thead><tr><th>No. input</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
         @foreach ($report['temp_abnormal'] as $b)
             <tr><td>{{ $b['batch_number'] }}</td><td>{{ Fmt::date($b['date']) }}</td><td>{{ $b['shift'] }}</td><td class="num">{{ number_format($b['oil_temp'], 1, ',', '.') }} °C</td><td class="num">{{ number_format($b['vapour_temp'], 1, ',', '.') }} °C</td></tr>
         @endforeach
@@ -138,7 +138,7 @@
 @endif
 
 <div class="page-break">
-<h2>Rincian rangkaian batch</h2>
+<h2>Rincian rangkaian input</h2>
 @if (count($report['chains']))
     <table>
         <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Residu est.</th><th class="num">Persentase solvent</th></tr></thead>
@@ -154,7 +154,7 @@
     </table>
     <div class="muted">Berat dalam kg.</div>
 @else
-    <div class="empty">Belum ada batch di periode ini.</div>
+    <div class="empty">Belum ada input di periode ini.</div>
 @endif
 </div>
 

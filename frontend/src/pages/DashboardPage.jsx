@@ -149,7 +149,7 @@ function TrendCharts({ trend, period, anchor }) {
         format={formatPercent}
         axisFormat={(v) => `${formatNumber(v, 0)}%`}
         reference={isSolvent ? { value: target, label: `Toleransi ${formatNumber(target, 0)}%` } : undefined}
-        emptyText="Belum ada rangkaian batch yang selesai di rentang ini."
+        emptyText="Belum ada rangkaian input yang selesai di rentang ini."
       />
     </section>
   );
@@ -328,7 +328,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
             {below && <> (kurang {formatNumber(Math.abs(tolerance.gap), 1)} poin)</>}.
           </>
         ) : (
-          <>Belum ada rangkaian batch selesai di {label}.</>
+          <>Belum ada rangkaian input selesai di {label}.</>
         )}
         {openCount > 0 && (
           <span className="block text-caption text-gray-600">
@@ -411,20 +411,20 @@ function Breakdown({ breakdown, target, sorot }) {
 
   if (!visible.length) {
     return (
-      <EmptyState icon={Recycle} title="Belum ada batch di periode ini.">
+      <EmptyState icon={Recycle} title="Belum ada input di periode ini.">
         {unit === 'chain'
-          ? 'Batch yang dicatat operator di periode ini akan muncul di sini.'
-          : 'Belum ada rangkaian batch yang selesai di periode ini.'}
+          ? 'Input yang dicatat operator di periode ini akan muncul di sini.'
+          : 'Belum ada rangkaian input yang selesai di periode ini.'}
       </EmptyState>
     );
   }
 
   if (unit === 'chain') {
     return (
-      <Table caption="Rincian per rangkaian batch">
+      <Table caption="Rincian per rangkaian input">
         <thead>
           <tr>
-            <Th>Rangkaian batch</Th>
+            <Th>Rangkaian input</Th>
             <Th>Shift awal</Th>
             <Th numeric>Tinta X masuk</Th>
             <Th numeric>Hasil solvent</Th>
@@ -469,7 +469,7 @@ function Breakdown({ breakdown, target, sorot }) {
                   <>
                     {formatPercent(c.recovery_rate)}
                     {c.batch_count > 1 && (
-                      <span className="block text-caption font-normal text-gray-600">gabungan {c.batch_count} batch</span>
+                      <span className="block text-caption font-normal text-gray-600">gabungan {c.batch_count} input</span>
                     )}
                     <ReviewNote review={c.review} />
                   </>
@@ -677,8 +677,8 @@ export default function DashboardPage() {
                 unit="kg"
                 note={
                   data.totals.chain_count
-                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} batch)`
-                    : 'Belum ada rangkaian batch selesai di periode ini'
+                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} input)`
+                    : 'Belum ada rangkaian input selesai di periode ini'
                 }
               />
               <StatCard
@@ -716,7 +716,7 @@ export default function DashboardPage() {
                 Perbandingan per shift
               </h2>
               <p className="mt-1 text-body text-gray-600">
-                Rangkaian yang dilanjutkan lintas shift dihitung di shift batch awalnya.
+                Rangkaian yang dilanjutkan lintas shift dihitung di shift input awalnya.
               </p>
             </div>
             <Table caption="Perbandingan per shift">
@@ -763,7 +763,7 @@ export default function DashboardPage() {
               </h2>
               <p className="mt-1 text-body text-gray-600">
                 {data.breakdown.unit === 'chain'
-                  ? 'Rangkaian dicatat pada tanggal batch awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.'
+                  ? 'Rangkaian dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.'
                   : 'Hanya rangkaian selesai. Persentase solvent dari total hasil solvent dibagi total Tinta X masuk, bukan rata-rata persentase.'}
               </p>
             </div>

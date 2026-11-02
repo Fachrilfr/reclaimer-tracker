@@ -108,7 +108,7 @@ class BatchController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => "Batch {$batch->batch_number} tersimpan.",
+            'message' => "Input {$batch->batch_number} tersimpan.",
             'data' => self::present($batch),
         ], 201);
     }
