@@ -57,10 +57,10 @@ function rangeDates(range, params, today) {
 
 function BatchRows({ batches, sorot }) {
   return (
-    <Table caption="Riwayat batch">
+    <Table caption="Riwayat input">
       <thead>
         <tr>
-          <Th>No. batch</Th>
+          <Th>No. input</Th>
           <Th>Tanggal dan shift</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
@@ -108,7 +108,7 @@ function BatchRows({ batches, sorot }) {
                   <>
                     {formatPercent(b.chain_recovery_rate)}
                     {b.chain_batch_count > 1 && (
-                      <span className="block text-caption font-normal text-gray-600">gabungan {b.chain_batch_count} batch</span>
+                      <span className="block text-caption font-normal text-gray-600">gabungan {b.chain_batch_count} input</span>
                     )}
                   </>
                 ) : (
@@ -219,13 +219,13 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
     <section aria-labelledby="recent-title" className="card mt-6">
       <div className="p-4 sm:p-5">
         <h2 id="recent-title" className="text-h2 font-semibold">
-          Riwayat batch
+          Riwayat input
         </h2>
         <p className="mt-1 text-body text-gray-600">
-          Terbaru di atas. Batch awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah rangkaian selesai.
+          Terbaru di atas. Input awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah rangkaian selesai.
         </p>
 
-        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat batch">
+        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat input">
           <div className="lg:col-span-3">
             <label htmlFor="filter-rentang" className="mb-1.5 block text-label font-medium text-gray-800">
               Tanggal
@@ -259,7 +259,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
               type="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="No. batch, keterangan, operator"
+              placeholder="No. input, keterangan, operator"
               aria-describedby="filter-cari-hint"
               className="field pl-10"
             />
@@ -336,7 +336,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
             <span>
               {meta
                 ? meta.total_chains
-                  ? `${meta.total_chains} rangkaian (${meta.total_batches} batch)`
+                  ? `${meta.total_chains} rangkaian (${meta.total_batches} input)`
                   : 'Tidak ada hasil'
                 : ''}
               {filterSummary && ` · ${filterSummary}`}
@@ -365,14 +365,14 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
         </div>
       ) : !list.data ? (
         <p role="status" className="px-4 pb-6 text-body text-gray-600 sm:px-5">
-          Memuat riwayat batch…
+          Memuat riwayat input…
         </p>
       ) : list.data.length ? (
         <div className={`transition-opacity ${list.loading ? 'opacity-60' : ''}`} aria-busy={list.loading}>
           <BatchRows batches={list.data} sorot={sorot} />
           {meta.last_page > 1 && (
             <nav
-              aria-label="Halaman riwayat batch"
+              aria-label="Halaman riwayat input"
               className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-body text-gray-600 sm:px-5"
             >
               <span>
@@ -404,7 +404,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
       ) : hasFilter ? (
         <EmptyState
           icon={Search}
-          title="Tidak ada batch yang cocok dengan filter."
+          title="Tidak ada input yang cocok dengan filter."
           action={
             <button type="button" onClick={reset} className="btn-secondary h-11 px-4 text-body">
               Hapus filter
@@ -414,8 +414,8 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
           Coba perluas rentang tanggal atau ubah status dan kata kunci.
         </EmptyState>
       ) : (
-        <EmptyState icon={Recycle} title="Belum ada batch tercatat.">
-          Batch yang disimpan akan muncul di sini.
+        <EmptyState icon={Recycle} title="Belum ada input tercatat.">
+          Input yang disimpan akan muncul di sini.
         </EmptyState>
       )}
     </section>

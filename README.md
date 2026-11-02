@@ -1,6 +1,6 @@
 # Reclaimer Tracker
 
-Material Balance & B3 Tracker: pencatatan batch reclaimer, material balance, dan masa simpan limbah B3. Kebutuhan lengkap ada di PRD, panduan tampilan di `design.md`.
+Material Balance & B3 Tracker: pencatatan input reclaimer, material balance, dan masa simpan limbah B3. Kebutuhan lengkap ada di PRD, panduan tampilan di `design.md`.
 
 ## Struktur Project
 
@@ -55,7 +55,7 @@ php artisan migrate:fresh --seed
 
 ### Data dummy untuk mencoba fitur
 
-Untuk melihat dashboard, daftar batch, dan pallet B3 dengan isi, tambahkan data dummy 45 hari terakhir ke database yang baru dibuat. Data ini bukan data produksi, dan seeder menolak berjalan di production atau di database yang sudah berisi batch.
+Untuk melihat dashboard, daftar input, dan pallet B3 dengan isi, tambahkan data dummy 45 hari terakhir ke database yang baru dibuat. Data ini bukan data produksi, dan seeder menolak berjalan di production atau di database yang sudah berisi input.
 
 ```bash
 php artisan migrate:fresh --seed

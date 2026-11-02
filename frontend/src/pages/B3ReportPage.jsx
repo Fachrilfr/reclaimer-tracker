@@ -1,15 +1,16 @@
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatDuration, formatNumber } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
-import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
+import PeriodPicker, { usePeriodParams } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import DocumentPreview from '../components/DocumentPreview.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import StorageBadge from '../components/StorageBadge.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
+import { ResidueBreakdown, ResiduePerInput } from './HseDashboardPage.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
 
 const LOCATION = { tps: 'Di TPS', reclaimer: 'Di area reclaimer' };
@@ -32,27 +33,15 @@ function ReportBody({ report }) {
         Batas masa simpan {report.max_storage_days} hari sejak pallet mulai terisi.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          label="Berat diserahkan"
-          value={formatNumber(s.weight_kg)}
-          unit="kg"
-          note={`${s.surat_jalan_count} surat jalan, timbangan vendor`}
-        />
-        <StatCard label="Pallet diserahkan" value={s.pallet_count} note={`${s.drum_count} drum`} />
-        <StatCard
-          label="Diserahkan lewat batas simpan"
-          value={s.over_limit_count}
-          unit="pallet"
-          note={s.pallet_count ? `Lama simpan terlama ${s.longest_days_stored} hari` : 'Belum ada penyerahan di periode ini'}
-          tone={!s.pallet_count ? 'neutral' : s.over_limit_count ? 'bad' : 'good'}
-        />
-        <StatCard
-          label={`Stok ${stockLabel}`}
-          value={stock.rows.length}
-          unit="pallet"
-          note={`${atTps} di TPS · ${stock.rows.length - atTps} di area reclaimer`}
-        />
+      {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <StatCard label="Berat residu" value={formatNumber(s.residue)} unit="kg" />
+        <StatCard label="Berat diserahkan" value={formatNumber(s.weight_kg)} unit="kg" />
+        <StatCard label="Pallet diserahkan" value={s.pallet_count} unit="pallet" />
+        <StatCard label="Lewat batas simpan" value={s.over_limit_count} unit="pallet" />
+        <div className="col-span-2 xl:col-span-1">
+          <StatCard label={`Stok di TPS ${stockLabel}`} value={atTps} unit="pallet" />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -81,7 +70,7 @@ function ReportBody({ report }) {
               </tbody>
             </Table>
           ) : (
-            <Empty>Tidak ada limbah B3 yang diserahkan ke vendor di periode ini.</Empty>
+            <Empty>Tidak ada residu yang diserahkan ke vendor di periode ini.</Empty>
           )}
         </Section>
 
@@ -110,6 +99,17 @@ function ReportBody({ report }) {
           </Section>
         )}
       </div>
+
+      {/* Data residu sama dengan Dashboard HSE */}
+      {report.residue_breakdown && (
+        <Section id="b3-residu-periode" title={`Residu per ${BREAKDOWN_LABEL[report.residue_breakdown.unit].toLowerCase()}`}>
+          <ResidueBreakdown breakdown={report.residue_breakdown} />
+        </Section>
+      )}
+
+      <Section id="b3-residu-input" title="Residu per input" description="Berat residu = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas.">
+        <ResiduePerInput inputs={report.residue_inputs} />
+      </Section>
 
       <Section id="b3-sj" title="Surat jalan" description="Penyerahan pallet dari TPS ke vendor di periode ini.">
         {report.surat_jalan.length ? (
@@ -287,26 +287,19 @@ function ReportBody({ report }) {
 }
 
 export default function B3ReportPage() {
-  const [params, setParams] = useSearchParams();
-  const today = localToday();
-  const period = REPORT_PERIODS.includes(params.get('period')) ? params.get('period') : 'month';
-  const rawDate = params.get('date');
-  const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
-  const { data, error, loading, reload } = useResource(`/reports/b3?period=${period}&date=${anchor}`);
-
-  const change = (nextPeriod, nextAnchor) =>
-    setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
+  const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(REPORT_PERIODS, 'month');
+  const { data, error, loading, reload } = useResource(`/reports/b3?${query}`);
 
   return (
     <>
       <PageHeader
-        title="Laporan Limbah B3"
-        description={`Berat limbah B3 yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
-        actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Limbah B3, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
+        title="Laporan Residu"
+        description={`Berat residu yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${label}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Residu, ${label}`} query={query} />}
       />
 
       <div className="mt-6">
-        <PeriodPicker periods={REPORT_PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={REPORT_PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
       </div>
 
       {!data ? (
@@ -314,7 +307,7 @@ export default function B3ReportPage() {
           {loading ? (
             <LoadingCard label="Menyusun laporan…" />
           ) : (
-            <ErrorCard title="Laporan limbah B3 belum bisa dimuat." message={error} onRetry={reload} />
+            <ErrorCard title="Laporan residu belum bisa dimuat." message={error} onRetry={reload} />
           )}
         </div>
       ) : (

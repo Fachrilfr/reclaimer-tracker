@@ -25,17 +25,9 @@ function StatusPill({ maintenance }) {
   );
 }
 
-// Datetime lokal minimal untuk input "Perkiraan selesai"
-function nowLocal() {
-  const d = new Date();
-  d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-  return d.toISOString().slice(0, 16);
-}
-
 function StatusForm({ maintenance, onDone }) {
   const { request } = useAuth();
   const [reason, setReason] = useState('');
-  const [expectedEnd, setExpectedEnd] = useState('');
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -57,12 +49,9 @@ function StatusForm({ maintenance, onDone }) {
     try {
       const response = await request(maintenance ? '/machine/operating' : '/machine/maintenance', {
         method: 'POST',
-        body: maintenance
-          ? { note: reason.trim() }
-          : { reason: reason.trim(), expected_end_at: expectedEnd ? new Date(expectedEnd).toISOString() : null },
+        body: maintenance ? { note: reason.trim() } : { reason: reason.trim() },
       });
       setReason('');
-      setExpectedEnd('');
       setErrors({});
       onDone(response.message);
     } catch (err) {
@@ -79,45 +68,27 @@ function StatusForm({ maintenance, onDone }) {
       <h3 className="text-h3 font-semibold">{maintenance ? 'Mesin sudah beroperasi' : 'Laporkan maintenance'}</h3>
       <p className="-mt-3 text-body text-gray-600">
         {maintenance
-          ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Batch bisa dicatat lagi.'
-          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Batch tidak bisa dicatat selama maintenance.'}
+          ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Input bisa dicatat lagi.'
+          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Input tidak bisa dicatat selama maintenance.'}
       </p>
       {formError && <Alert tone="danger">{formError}</Alert>}
-      <div className={`grid grid-cols-1 gap-4 ${maintenance ? '' : 'sm:grid-cols-3'}`}>
-        <div className={maintenance ? '' : 'sm:col-span-2'}>
-          <Field
-            id={field}
-            label={maintenance ? 'Catatan perbaikan' : 'Alasan maintenance'}
-            required
-            error={errors[field]}
-          >
-            {(props) => (
-              <input
-                {...props}
-                type="text"
-                maxLength={255}
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                className="field"
-              />
-            )}
-          </Field>
-        </div>
-        {!maintenance && (
-          <Field id="expected_end_at" label="Perkiraan selesai" hint="Opsional." error={errors.expected_end_at}>
-            {(props) => (
-              <input
-                {...props}
-                type="datetime-local"
-                min={nowLocal()}
-                value={expectedEnd}
-                onChange={(e) => setExpectedEnd(e.target.value)}
-                className="field"
-              />
-            )}
-          </Field>
+      <Field
+        id={field}
+        label={maintenance ? 'Catatan perbaikan' : 'Alasan maintenance'}
+        required
+        error={errors[field]}
+      >
+        {(props) => (
+          <input
+            {...props}
+            type="text"
+            maxLength={255}
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            className="field sm:max-w-xl"
+          />
         )}
-      </div>
+      </Field>
       <button type="submit" disabled={isSaving} className="btn-primary h-12 w-full px-5 text-body-lg sm:w-auto">
         {isSaving ? (
           <>
@@ -186,12 +157,6 @@ export default function MachinePage() {
                   <dd className="text-gray-900">{formatDateTime(machine.maintenance_started_at)}</dd>
                 </div>
                 <div>
-                  <dt className="text-label font-medium text-gray-600">Perkiraan selesai</dt>
-                  <dd className="text-gray-900">
-                    {machine.maintenance_expected_end_at ? formatDateTime(machine.maintenance_expected_end_at) : 'Belum diisi'}
-                  </dd>
-                </div>
-                <div>
                   <dt className="text-label font-medium text-gray-600">Alasan</dt>
                   <dd className="text-gray-900">{machine.maintenance_reason}</dd>
                 </div>
@@ -201,7 +166,7 @@ export default function MachinePage() {
                 </div>
               </dl>
             ) : (
-              <p className="mt-3 text-body text-gray-600">Mesin beroperasi normal. Batch reclaimer bisa dicatat.</p>
+              <p className="mt-3 text-body text-gray-600">Mesin beroperasi normal. Input reclaimer bisa dicatat.</p>
             )}
 
             {can('mesin', 'isi') && <StatusForm key={machine.status} maintenance={maintenance} onDone={handleDone} />}

@@ -28,9 +28,9 @@ final class ReclaimerReport
 
     public readonly Carbon $end;
 
-    public function __construct(public readonly string $period, Carbon $anchor)
+    public function __construct(public readonly string $period, Carbon $anchor, ?Carbon $until = null)
     {
-        [$this->start, $this->end] = ReportPeriod::range($period, $anchor);
+        [$this->start, $this->end] = ReportPeriod::range($period, $anchor, $until);
     }
 
     public function toArray(): array

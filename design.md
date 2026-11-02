@@ -91,7 +91,7 @@ Untuk material balance: **Input = biru**, **Output reclaim = hijau**, **Losses/l
 | Peran | Font | Catatan |
 |---|---|---|
 | UI & teks | **Plus Jakarta Sans** (Google Fonts) | Modern, mudah dibaca, karya desainer Indonesia |
-| Angka & kode dokumen | **JetBrains Mono** | Nomor surat jalan, nomor batch, manifest |
+| Angka & kode dokumen | **JetBrains Mono** | Nomor surat jalan, nomor input, manifest |
 | Fallback | `system-ui, -apple-system, "Segoe UI", sans-serif` | |
 
 Logo memakai huruf serif miring yang khas — **jangan** meniru gaya itu untuk teks UI.

@@ -38,7 +38,7 @@ class StoreBatchRequest extends FormRequest
 
             if (! $this->boolean('is_continuation')) {
                 if ((float) $this->input('ink_weight') <= 0) {
-                    $validator->errors()->add('ink_weight', 'Isi berat Tinta X yang masuk ke mesin. Untuk batch tanpa Tinta baru, pilih Batch lanjutan.');
+                    $validator->errors()->add('ink_weight', 'Isi berat Tinta X yang masuk ke mesin. Untuk input tanpa Tinta baru, pilih Input lanjutan.');
                 }
 
                 return;
@@ -46,12 +46,12 @@ class StoreBatchRequest extends FormRequest
 
             // FR-05: batch lanjutan tidak membawa Tinta baru
             if ((float) $this->input('ink_weight') > 0) {
-                $validator->errors()->add('ink_weight', 'Batch lanjutan tidak membawa Tinta X baru. Kosongkan berat Tinta X, atau catat sebagai batch baru.');
+                $validator->errors()->add('ink_weight', 'Input lanjutan tidak membawa Tinta X baru. Kosongkan berat Tinta X, atau catat sebagai input baru.');
             }
 
             // Keterangan batch lanjutan wajib mencatat jam, misalnya "Lanjutan Pkl 15.30"
             if (! preg_match(self::TIME_PATTERN, (string) $this->input('notes'))) {
-                $validator->errors()->add('notes', 'Batch lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
+                $validator->errors()->add('notes', 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
             }
         }];
     }
@@ -67,8 +67,8 @@ class StoreBatchRequest extends FormRequest
             'date.date_format' => 'Tanggal proses tidak valid.',
             'shift_id.required' => 'Pilih shift.',
             'shift_id.exists' => 'Shift tidak ditemukan. Pilih ulang shift.',
-            'parent_batch_id.required_if' => 'Pilih batch awal yang dilanjutkan.',
-            'parent_batch_id.exists' => 'Batch awal tidak ditemukan. Pilih ulang batch awal.',
+            'parent_batch_id.required_if' => 'Pilih input awal yang dilanjutkan.',
+            'parent_batch_id.exists' => 'Input awal tidak ditemukan. Pilih ulang input awal.',
             'process_status.required' => 'Pilih status proses: selesai atau belum selesai.',
             'process_status.in' => 'Status proses tidak dikenal. Pilih selesai atau belum selesai.',
             'ink_weight.required' => 'Isi berat Tinta X dalam kg.',

@@ -177,9 +177,10 @@ class WasteFlowTest extends TestCase
         $filling = B3Pallet::where('status', 'filling')->value('id');
 
         $this->as('HSE-3001');
-        // Bukti, berat, dan pallet wajib
-        $this->postJson('/api/surat-jalan', $this->suratJalan(['file' => null, 'weight_kg' => null, 'pallet_ids' => []]))
-            ->assertUnprocessable()->assertJsonValidationErrors(['file', 'weight_kg', 'pallet_ids']);
+        // Petugas vendor, berat, dan pallet wajib; bukti opsional
+        $this->postJson('/api/surat-jalan', $this->suratJalan(['file' => null, 'vendor_officer_name' => '', 'weight_kg' => null, 'pallet_ids' => []]))
+            ->assertUnprocessable()->assertJsonValidationErrors(['vendor_officer_name', 'weight_kg', 'pallet_ids'])
+            ->assertJsonMissingValidationErrors(['file']);
         // Bukti harus PDF, JPG, atau PNG
         $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps], 'file' => UploadedFile::fake()->create('bukti.docx', 10)]))
             ->assertUnprocessable()->assertJsonValidationErrors(['file']);
@@ -193,7 +194,10 @@ class WasteFlowTest extends TestCase
         $this->assertDatabaseCount('surat_jalan', 0);
         $this->assertEmpty(Storage::disk('local')->allFiles('surat-jalan'));
 
-        $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps]]))->assertCreated();
+        // Tanpa bukti tetap tersimpan; unduhan bukti menjawab 404
+        $id = $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps], 'file' => null]))->assertCreated()->json('data.id');
+        $this->assertDatabaseHas('surat_jalan', ['id' => $id, 'file_path_surat_jalan' => null, 'vendor_officer_name' => 'Petugas PPLI']);
+        $this->getJson("/api/surat-jalan/{$id}/file")->assertNotFound();
         // Nomor surat jalan unik
         $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps]]))
             ->assertUnprocessable()->assertJsonValidationErrors(['surat_jalan_number']);

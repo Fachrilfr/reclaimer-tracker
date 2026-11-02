@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\B3Pallet;
 use App\Models\Shift;
+use App\Models\SuratJalan;
 use App\Models\User;
+use App\Models\Vendor;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
@@ -77,6 +79,85 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.breakdown.unit', 'month')
             ->assertJsonCount(10, 'data.breakdown.rows')
             ->assertJsonPath('data.breakdown.rows.9.batch_count', 3);
+    }
+
+    public function test_weekly_period_runs_from_the_chosen_start_with_daily_breakdown(): void
+    {
+        // Tanpa tanggal akhir: 7 hari termasuk tanggal awal
+        $this->getJson('/api/dashboard?period=week&date=2026-10-14')->assertOk()
+            ->assertJsonPath('data.start', '2026-10-14')
+            ->assertJsonPath('data.end', '2026-10-20')
+            ->assertJsonPath('data.totals.batch_count', 2)
+            ->assertJsonPath('data.breakdown.unit', 'day')
+            ->assertJsonCount(7, 'data.breakdown.rows')
+            ->assertJsonPath('data.trend.unit', 'day')
+            ->assertJsonCount(7, 'data.trend.points');
+
+        $this->getJson('/api/dashboard?period=week&date=2026-10-01&end=2026-10-05')->assertOk()
+            ->assertJsonPath('data.end', '2026-10-05')
+            ->assertJsonPath('data.totals.batch_count', 1)
+            ->assertJsonCount(5, 'data.breakdown.rows');
+    }
+
+    public function test_hse_dashboard_shows_residue_estimate_vendor_weight_and_tps_pallets(): void
+    {
+        $hse = User::where('nik', 'HSE-3001')->first();
+        SuratJalan::create([
+            'surat_jalan_number' => 'SJ-UJI-001', 'vendor_id' => Vendor::orderBy('id')->value('id'), 'handover_date' => '2026-10-20',
+            'total_pallets' => 0, 'weight_kg' => 450.5, 'vendor_officer_name' => 'Petugas', 'created_by' => $hse->id,
+        ]);
+        B3Pallet::create([
+            'pallet_number' => 'PLT-202610-002', 'start_date' => '2026-10-10', 'max_storage_days' => 90, 'drum_count' => 4,
+            'sent_to_tps_at' => '2026-10-12', 'expiry_date' => '2027-01-10', 'status' => 'full',
+        ]);
+
+        $this->app['auth']->forgetGuards();
+        $this->actingAs($hse, 'sanctum');
+
+        $this->getJson('/api/dashboard/hse?period=month&date=2026-10-20')->assertOk()
+            // Residu estimasi = Tinta X - hasil solvent: (1000 - 370) + (500 - 200)
+            ->assertJsonPath('data.totals.residue', 930)
+            ->assertJsonPath('data.totals.chain_count', 3)
+            ->assertJsonPath('data.totals.vendor_weight', 450.5)
+            ->assertJsonPath('data.totals.surat_jalan_count', 1)
+            ->assertJsonPath('data.totals.tps_pallet_count', 1)
+            ->assertJsonCount(3, 'data.inputs')
+            // Terbaru dulu
+            ->assertJsonPath('data.inputs.2.date', '2026-10-03')
+            ->assertJsonPath('data.inputs.2.residue', 300)
+            ->assertJsonPath('data.breakdown.unit', 'week')
+            ->assertJsonPath('data.breakdown.rows.3.vendor_weight', 450.5);
+
+        // Laporan residu memakai angka berat residu yang sama
+        $this->getJson('/api/reports/b3?period=month&date=2026-10-20')->assertOk()
+            ->assertJsonPath('data.summary.residue', 930)
+            ->assertJsonPath('data.summary.residue_chain_count', 3)
+            ->assertJsonPath('data.residue_breakdown.unit', 'week')
+            ->assertJsonCount(3, 'data.residue_inputs');
+
+        $this->getJson('/api/dashboard/hse?period=day&date=2026-10-20')->assertOk()
+            ->assertJsonPath('data.totals.residue', 630)
+            ->assertJsonPath('data.breakdown', null);
+
+        // Khusus akun HSE
+        $this->app['auth']->forgetGuards();
+        $this->actingAs(User::where('nik', 'SPV-2001')->first(), 'sanctum');
+        $this->getJson('/api/dashboard/hse')->assertForbidden();
+    }
+
+    public function test_notifications_carry_the_pallet_being_filled_for_the_banner(): void
+    {
+        $this->getJson('/api/notifications')->assertOk()->assertJsonPath('data.filling_pallet', null);
+
+        B3Pallet::create([
+            'pallet_number' => 'PLT-202610-003', 'start_date' => '2026-10-19', 'max_storage_days' => 90, 'drum_count' => 2,
+            'status' => 'filling',
+        ]);
+
+        $this->getJson('/api/notifications')->assertOk()
+            ->assertJsonPath('data.filling_pallet.pallet_number', 'PLT-202610-003')
+            ->assertJsonPath('data.filling_pallet.drum_count', 2)
+            ->assertJsonPath('data.filling_pallet.start_date', '2026-10-19');
     }
 
     public function test_action_items_list_low_recovery_and_urgent_pallets(): void

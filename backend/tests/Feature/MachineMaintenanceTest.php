@@ -48,7 +48,6 @@ class MachineMaintenanceTest extends TestCase
     {
         $this->as('OP-1001')->postJson('/api/machine/maintenance', [
             'reason' => 'Pompa vakum bocor',
-            'expected_end_at' => '2026-10-20 15:00:00',
         ])->assertOk()
             ->assertJsonPath('data.status', 'maintenance')
             ->assertJsonPath('data.maintenance_reason', 'Pompa vakum bocor')
@@ -79,7 +78,7 @@ class MachineMaintenanceTest extends TestCase
 
         $this->as('OP-1001')->batch()
             ->assertUnprocessable()
-            ->assertJsonPath('errors.machine.0', 'Mesin IRAC-01 sedang maintenance. Batch tidak bisa disimpan sampai mesin kembali beroperasi.');
+            ->assertJsonPath('errors.machine.0', 'Mesin IRAC-01 sedang maintenance. Input tidak bisa disimpan sampai mesin kembali beroperasi.');
         $this->assertDatabaseCount('reclaimer_batches', 0);
         $this->assertDatabaseCount('solvent_ledger', 1);
 
@@ -174,5 +173,17 @@ class MachineMaintenanceTest extends TestCase
         // Pallet yang tepat waktu tidak diberi keterangan
         $pallet->update(['sent_to_tps_at' => '2026-10-16']);
         $this->getJson('/api/pallets')->assertJsonPath('data.recent.0.tps.delay', null);
+    }
+
+    public function test_report_documents_show_maintenance_duration_in_minutes(): void
+    {
+        Carbon::setTestNow('2026-10-20 08:00:00');
+        $this->as('OP-1001')->postJson('/api/machine/maintenance', ['reason' => 'Pompa vakum bocor'])->assertOk();
+        Carbon::setTestNow('2026-10-20 10:35:00');
+        $this->postJson('/api/machine/operating', ['note' => 'Seal diganti'])->assertOk();
+
+        $html = $this->as('MGT-4001')->getJson('/api/reports/reclaimer/document?period=day&date=2026-10-20')->assertOk()->json('data.html');
+        $this->assertStringContainsString('155 menit', $html);
+        $this->assertStringNotContainsString(' jam</td>', $html);
     }
 }

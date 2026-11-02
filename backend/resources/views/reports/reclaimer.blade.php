@@ -17,24 +17,25 @@
     <img src="{{ $logo }}" alt="Indofood CBP">
     <div class="title">Material Balance &amp; B3 Tracker<br>Laporan Reclaimer {{ $report['period_label'] }} · {{ $period }}</div>
 </header>
-<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian batch yang sudah selesai, dihitung pada tanggal dan shift batch awalnya.</footer>
+<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian input yang sudah selesai, dihitung pada tanggal dan shift input awalnya.</footer>
 
 <div>
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} batch)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
+<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
 
-<table class="kpi"><tr>
-    <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div><div class="muted">Bahan masuk ke mesin reclaimer</div></div></td>
-    <td><div class="box"><div class="label">Hasil solvent</div><div class="value">{{ $kg($s['recovery']) }} kg</div><div class="muted">Residu estimasi {{ $kg($s['residue']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div><div class="muted">Toleransi {{ $pct($report['target_recovery_rate']) }} · {{ $s['below_target_count'] }} rangkaian di bawah toleransi</div></div></td>
-    <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div><div class="muted">Saldo awal {{ $kg($report['solvent']['opening']) }} kg</div></div></td>
+<table class="kpi kpi-5"><tr>
+    <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Hasil solvent</div><div class="value">{{ $kg($s['recovery']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Berat residu</div><div class="value">{{ $kg($s['residue']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Persentase solvent</div><div class="value {{ $s['chain_count'] && $s['recovery_rate'] < $report['target_recovery_rate'] ? 'bad' : '' }}">{{ $s['chain_count'] ? $pct($s['recovery_rate']) : '–' }}</div></div></td>
+    <td><div class="box"><div class="label">{{ $report['solvent']['closing_is_current'] ? 'Saldo solvent saat ini' : 'Saldo solvent akhir' }}</div><div class="value">{{ $kg($report['solvent']['closing']) }} kg</div></div></td>
 </tr></table>
 </div>
 
 <table class="two"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
-    <div class="muted">Bertambah dari hasil solvent tiap batch (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
+    <div class="muted">Bertambah dari hasil solvent tiap input (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
     <table>
         <tr><td>Saldo awal</td><td class="num">{{ $kg($report['solvent']['opening']) }} kg</td></tr>
         <tr><td>Hasil solvent masuk</td><td class="num">+{{ $kg($report['solvent']['recovered']) }} kg</td></tr>
@@ -51,10 +52,10 @@
         <table>
             <thead><tr><th>Mulai</th><th>Alasan</th><th class="num">Durasi</th></tr></thead>
             @foreach ($report['maintenance']['rows'] as $m)
-                <tr><td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['reason'] }}</td><td class="num">{{ number_format($m['minutes_in_period'] / 60, 1, ',', '.') }} jam</td></tr>
+                <tr><td>{{ Fmt::dateTime($m['start']) }}</td><td>{{ $m['reason'] }}</td><td class="num">{{ number_format($m['minutes_in_period'], 0, ',', '.') }} menit</td></tr>
             @endforeach
         </table>
-        <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'] / 60, 1, ',', '.') }} jam.</div>
+        <div class="muted">Total downtime di periode: {{ number_format($report['maintenance']['total_minutes'], 0, ',', '.') }} menit.</div>
     @else
         <div class="empty">Tidak ada maintenance di periode ini.</div>
     @endif
@@ -64,7 +65,7 @@
 <div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
-    <thead><tr><th>Shift</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
+    <thead><tr><th>Shift</th><th class="num">Total proses</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Berat residu (kg)</th><th class="num">Persentase solvent</th></tr></thead>
     @foreach ($report['by_shift'] as $row)
         <tr>
             <td>{{ $row['shift'] }}</td><td class="num">{{ $row['chain_count'] }}</td><td class="num">{{ $kg($row['input']) }}</td>
@@ -80,7 +81,7 @@
 <div class="keep">
     <h2>Rincian per {{ strtolower($unitLabel) }}</h2>
     <table>
-        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Rangkaian</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Residu estimasi (kg)</th><th class="num">Persentase solvent</th></tr></thead>
+        <thead><tr><th>{{ $unitLabel }}</th><th class="num">Total proses</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Berat residu (kg)</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
@@ -114,9 +115,9 @@
 
 @if (count($report['temp_abnormal']))
 <div>
-    <h2>Batch dengan suhu di luar normal</h2>
+    <h2>Input dengan suhu di luar normal</h2>
     <table>
-        <thead><tr><th>No. batch</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
+        <thead><tr><th>No. input</th><th>Tanggal</th><th>Shift</th><th class="num">Suhu oli</th><th class="num">Suhu uap</th></tr></thead>
         @foreach ($report['temp_abnormal'] as $b)
             <tr><td>{{ $b['batch_number'] }}</td><td>{{ Fmt::date($b['date']) }}</td><td>{{ $b['shift'] }}</td><td class="num">{{ number_format($b['oil_temp'], 1, ',', '.') }} °C</td><td class="num">{{ number_format($b['vapour_temp'], 1, ',', '.') }} °C</td></tr>
         @endforeach
@@ -138,10 +139,10 @@
 @endif
 
 <div class="page-break">
-<h2>Rincian rangkaian batch</h2>
+<h2>Rincian rangkaian input</h2>
 @if (count($report['chains']))
     <table>
-        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Residu est.</th><th class="num">Persentase solvent</th></tr></thead>
+        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Berat residu</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['chains'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
@@ -154,7 +155,7 @@
     </table>
     <div class="muted">Berat dalam kg.</div>
 @else
-    <div class="empty">Belum ada batch di periode ini.</div>
+    <div class="empty">Belum ada input di periode ini.</div>
 @endif
 </div>
 

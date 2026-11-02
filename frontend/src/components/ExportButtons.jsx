@@ -3,8 +3,8 @@ import { FileSpreadsheet, FileText, LoaderCircle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import Alert from './Alert.jsx';
 
-/** Tombol unduh Excel dan PDF untuk laporan. `path` contoh: /reports/b3/export */
-export default function ExportButtons({ path, period, anchor }) {
+/** Tombol unduh Excel dan PDF untuk laporan. `path` contoh: /reports/b3/export; `query` dari usePeriodParams */
+export default function ExportButtons({ path, query }) {
   const { download } = useAuth();
   const [busy, setBusy] = useState(null);
   const [error, setError] = useState('');
@@ -15,7 +15,7 @@ export default function ExportButtons({ path, period, anchor }) {
     setError('');
     setStarted('');
     try {
-      await download(`${path}?format=${format}&period=${period}&date=${anchor}`);
+      await download(`${path}?format=${format}&${query}`);
       setStarted(`Laporan ${format === 'pdf' ? 'PDF' : 'Excel'} diunduh. Cek folder unduhan browser.`);
     } catch (err) {
       setError(err.message);

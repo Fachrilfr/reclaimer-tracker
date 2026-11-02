@@ -21,9 +21,10 @@ class RecordSuratJalan
 {
     public const DISK = 'local';
 
-    public function handle(Request $request, array $data, UploadedFile $file): SuratJalan
+    /** Bukti surat jalan opsional (meeting 30 Okt 2026). */
+    public function handle(Request $request, array $data, ?UploadedFile $file): SuratJalan
     {
-        $path = $file->storeAs('surat-jalan', Str::uuid() . '.' . strtolower($file->getClientOriginalExtension()), self::DISK);
+        $path = $file?->storeAs('surat-jalan', Str::uuid() . '.' . strtolower($file->getClientOriginalExtension()), self::DISK);
 
         try {
             return DB::transaction(function () use ($request, $data, $file, $path) {
@@ -36,10 +37,10 @@ class RecordSuratJalan
                     'handover_date' => $data['handover_date'],
                     'total_pallets' => $pallets->count(),
                     'weight_kg' => round((float) $data['weight_kg'], 2),
-                    'vendor_officer_name' => filled($data['vendor_officer_name'] ?? null) ? trim($data['vendor_officer_name']) : null,
+                    'vendor_officer_name' => trim($data['vendor_officer_name']),
                     'file_path_surat_jalan' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_mime' => $file->getMimeType(),
+                    'file_name' => $file?->getClientOriginalName(),
+                    'file_mime' => $file?->getMimeType(),
                     'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
                     'created_by' => $request->user()->id,
                 ]);
@@ -53,7 +54,9 @@ class RecordSuratJalan
                 return $suratJalan;
             });
         } catch (\Throwable $e) {
-            Storage::disk(self::DISK)->delete($path);
+            if ($path) {
+                Storage::disk(self::DISK)->delete($path);
+            }
             throw $e;
         }
     }

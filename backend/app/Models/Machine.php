@@ -54,7 +54,6 @@ class Machine extends Model
             'status' => $this->status,
             'maintenance_reason' => $this->maintenance_reason,
             'maintenance_started_at' => $this->maintenance_started_at?->toIso8601String(),
-            'maintenance_expected_end_at' => $this->maintenance_expected_end_at?->toIso8601String(),
             'maintenance_reported_by' => $this->reporter?->name,
         ];
     }

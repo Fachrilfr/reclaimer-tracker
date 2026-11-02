@@ -34,7 +34,7 @@ class MachineStatusChanged extends Notification
                 ? "Mesin {$this->machine->code} sedang maintenance"
                 : "Mesin {$this->machine->code} kembali beroperasi",
             'message' => $started
-                ? "Alasan: {$this->reason}. Proses batch dan pengiriman residu ke TPS terhenti. Dilaporkan oleh {$this->actor}."
+                ? "Alasan: {$this->reason}. Input reclaimer dan pengiriman residu ke TPS terhenti. Dilaporkan oleh {$this->actor}."
                 : "Catatan perbaikan: {$this->reason}. Dicatat oleh {$this->actor}.",
             'duration_minutes' => $this->durationMinutes,
             'url' => '/mesin',

@@ -25,12 +25,10 @@ export default function MaintenanceBanner() {
             <p>
               Alasan: {machine.maintenance_reason}
               {machine.maintenance_reported_by && ` · Dilaporkan oleh ${machine.maintenance_reported_by}`}
-              {machine.maintenance_expected_end_at &&
-                ` · Perkiraan selesai ${formatDateTime(machine.maintenance_expected_end_at)}`}
               .
             </p>
             <p className="mt-1">
-              Batch reclaimer tidak bisa dicatat dan pengiriman residu ke TPS ikut terhenti. Batas kirim pallet ke TPS
+              Input reclaimer tidak bisa dicatat dan pengiriman residu ke TPS ikut terhenti. Batas kirim pallet ke TPS
               tetap berjalan.
             </p>
           </div>

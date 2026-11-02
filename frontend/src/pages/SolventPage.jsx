@@ -96,7 +96,7 @@ function UsageForm({ meta, onSaved }) {
           Ambil solvent dari saldo
         </h2>
         <p className="mt-1 text-body text-gray-600">
-          Solvent ini tidak masuk ke mesin reclaimer dan tidak dihitung sebagai bahan masuk batch. Saldo langsung
+          Solvent ini tidak masuk ke mesin reclaimer dan tidak dihitung sebagai bahan masuk. Saldo langsung
           berkurang.
         </p>
 
@@ -170,7 +170,7 @@ function UsageForm({ meta, onSaved }) {
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil solvent setiap batch.</p>
+          <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil solvent setiap input.</p>
 
           {/* Pesan umum hilang setelah semua isian yang ditandai diperbaiki */}
           {formError && (Object.values(errors).some(Boolean) || !Object.keys(errors).length) && (
@@ -298,7 +298,7 @@ export default function SolventPage() {
         title="Pemakaian solvent"
         description={
           canFill
-            ? 'Catat solvent yang diambil dari saldo hasil solvent. Tidak terkait batch dan tidak dihitung sebagai bahan masuk.'
+            ? 'Catat solvent yang diambil dari saldo hasil solvent. Tidak terkait Input reclaimer dan tidak dihitung sebagai bahan masuk.'
             : 'Solvent yang diambil operator dari saldo hasil solvent.'
         }
       />

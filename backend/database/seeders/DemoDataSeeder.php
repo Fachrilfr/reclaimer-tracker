@@ -50,7 +50,7 @@ class DemoDataSeeder extends Seeder
             throw new RuntimeException('DemoDataSeeder tidak boleh dijalankan di production.');
         }
         if (ReclaimerBatch::exists() || B3Pallet::exists()) {
-            throw new RuntimeException('Database sudah berisi batch atau pallet. Jalankan php artisan migrate:fresh --seed dulu.');
+            throw new RuntimeException('Database sudah berisi input atau pallet. Jalankan php artisan migrate:fresh --seed dulu.');
         }
 
         $operator = User::where('nik', 'OP-1001')->firstOrFail();
@@ -79,7 +79,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $this->command?->info(sprintf(
-            'Data dummy dibuat: %d batch, %d pallet. Login sebagai OP-1001 / password123.',
+            'Data dummy dibuat: %d input, %d pallet. Login sebagai OP-1001 / password123.',
             ReclaimerBatch::count(),
             B3Pallet::count(),
         ));

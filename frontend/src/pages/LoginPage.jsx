@@ -51,7 +51,7 @@ export default function LoginPage() {
           <div className="card p-4 sm:p-8">
             <PageHeader
               title="Masuk"
-              description="Catat proses reclaimer, cek material balance, dan pantau masa simpan limbah B3."
+              description="Catat proses reclaimer, cek material balance, dan pantau masa simpan residu."
             />
 
             {formError ? (

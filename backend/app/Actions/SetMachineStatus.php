@@ -8,7 +8,6 @@ use App\Models\MachineMaintenanceLog;
 use App\Models\User;
 use App\Notifications\MachineStatusChanged;
 use Illuminate\Http\Request;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
@@ -19,9 +18,9 @@ use Illuminate\Validation\ValidationException;
  */
 class SetMachineStatus
 {
-    public function startMaintenance(Request $request, string $reason, ?string $expectedEnd): Machine
+    public function startMaintenance(Request $request, string $reason): Machine
     {
-        $machine = DB::transaction(function () use ($request, $reason, $expectedEnd) {
+        $machine = DB::transaction(function () use ($request, $reason) {
             $machine = Machine::orderBy('id')->lockForUpdate()->firstOrFail();
 
             if ($machine->isUnderMaintenance()) {
@@ -35,14 +34,12 @@ class SetMachineStatus
                 'status' => 'maintenance',
                 'maintenance_reason' => $reason,
                 'maintenance_started_at' => now(),
-                'maintenance_expected_end_at' => $expectedEnd ? Carbon::parse($expectedEnd) : null,
+                // Perkiraan selesai dihapus (meeting 30 Okt 2026); kolomnya tetap kosong
+                'maintenance_expected_end_at' => null,
                 'maintenance_reported_by' => $request->user()->id,
             ]);
             $this->log($request, $machine, 'start', $reason);
-            AuditLog::record($request, 'maintenance_start', $machine, [
-                'reason' => $reason,
-                'expected_end_at' => $machine->maintenance_expected_end_at?->toDateTimeString(),
-            ]);
+            AuditLog::record($request, 'maintenance_start', $machine, ['reason' => $reason]);
 
             return $machine;
         });

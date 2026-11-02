@@ -74,7 +74,7 @@ class B3ReportTest extends TestCase
     {
         $this->postJson('/api/surat-jalan', [
             'surat_jalan_number' => $number, 'vendor_id' => $vendor, 'handover_date' => $date,
-            'pallet_ids' => $pallets, 'weight_kg' => $weight,
+            'pallet_ids' => $pallets, 'weight_kg' => $weight, 'vendor_officer_name' => 'Petugas vendor',
             'file' => UploadedFile::fake()->create('bukti.pdf', 50, 'application/pdf'),
         ])->assertCreated();
     }
@@ -122,19 +122,20 @@ class B3ReportTest extends TestCase
     public function test_excel_and_pdf_exports(): void
     {
         $response = $this->get('/api/reports/b3/export?format=xlsx&period=month&date=2026-10-20')->assertOk();
-        $this->assertStringContainsString('Laporan-Limbah-B3-Bulanan-2026-10.xlsx', $response->headers->get('content-disposition'));
+        $this->assertStringContainsString('Laporan-Residu-Bulanan-2026-10.xlsx', $response->headers->get('content-disposition'));
 
         $path = tempnam(sys_get_temp_dir(), 'uji');
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
         $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Masa simpan', 'Stok akhir periode', 'Maintenance'], $book->getSheetNames());
-        $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
-        $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B9')->getValue());
+        $this->assertSame('Berat residu (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
+        $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A10')->getValue());
+        $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B10')->getValue());
         $this->assertSame('Lewat batas 6 hari', $book->getSheetByName('Masa simpan')->getCell('H6')->getValue());
 
         $pdf = $this->getJson('/api/reports/b3/export?format=pdf&period=year&date=2026-10-20')->assertOk()->json('data');
-        $this->assertSame('Laporan-Limbah-B3-Tahunan-2026.pdf', $pdf['filename']);
+        $this->assertSame('Laporan-Residu-Tahunan-2026.pdf', $pdf['filename']);
         $this->assertStringStartsWith('%PDF', base64_decode($pdf['content']));
         $this->assertDatabaseHas('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
     }
@@ -146,7 +147,8 @@ class B3ReportTest extends TestCase
 
         // Pratinjau dokumen: isi sama dengan PDF, dibaca di aplikasi tanpa mengunduh
         $html = $this->getJson('/api/reports/b3/document?period=month&date=2026-10-20')->assertOk()->json('data.html');
-        $this->assertStringContainsString('Laporan Limbah B3 Bulanan', $html);
+        $this->assertStringContainsString('Laporan Residu Bulanan', $html);
+        $this->assertStringContainsString('Residu per input', $html);
         $this->assertStringContainsString('Maintenance mesin', $html);
         $this->assertStringContainsString('SJ-001', $html);
         $this->assertDatabaseMissing('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);

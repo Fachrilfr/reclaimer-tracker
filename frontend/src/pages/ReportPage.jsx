@@ -1,9 +1,8 @@
-import { useSearchParams } from 'react-router-dom';
 import { Recycle } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatDuration, formatNumber, formatPercent } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
-import PeriodPicker, { localToday, periodLabel } from '../components/PeriodPicker.jsx';
+import PeriodPicker, { usePeriodParams } from '../components/PeriodPicker.jsx';
 import StatCard from '../components/StatCard.jsx';
 import { BREAKDOWN_LABEL, Kg, REPORT_PERIODS, Section, bucketLabel } from '../components/ReportParts.jsx';
 import DocumentPreview from '../components/DocumentPreview.jsx';
@@ -59,33 +58,31 @@ function ReportBody({ report }) {
   return (
     <div className="mt-6 space-y-6">
       <p className="text-body text-gray-600">
-        {s.chain_count} rangkaian selesai ({s.batch_count} batch)
+        {s.chain_count} rangkaian selesai ({s.batch_count} input)
         {s.open_chain_count > 0 && ` · ${s.open_chain_count} rangkaian belum selesai tidak dihitung`}. Angka sama dengan
-        dashboard: per rangkaian selesai, pada tanggal dan shift batch awalnya.
+        dashboard: per rangkaian selesai, pada tanggal dan shift input awalnya.
       </p>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" note="Bahan masuk ke mesin reclaimer" />
-        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" note={`Residu estimasi ${formatNumber(s.residue)} kg`} />
-        <StatCard
-          label="Persentase solvent"
-          value={s.chain_count ? formatPercent(s.recovery_rate) : '–'}
-          note={`Toleransi ${formatPercent(target)} · ${s.below_target_count} rangkaian di bawah toleransi`}
-          tone={!s.chain_count ? 'neutral' : s.recovery_rate >= target ? 'good' : 'bad'}
-        />
-        <StatCard
-          label={report.solvent.closing_is_current ? 'Saldo solvent saat ini' : 'Saldo solvent akhir'}
-          value={formatNumber(report.solvent.closing)}
-          unit="kg"
-          note={`Saldo awal ${formatNumber(report.solvent.opening)} kg`}
-        />
+      {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
+        <StatCard label="Tinta X masuk" value={formatNumber(s.input)} unit="kg" />
+        <StatCard label="Hasil solvent" value={formatNumber(s.recovery)} unit="kg" />
+        <StatCard label="Berat residu" value={formatNumber(s.residue)} unit="kg" />
+        <StatCard label="Persentase solvent" value={s.chain_count ? formatPercent(s.recovery_rate) : '–'} />
+        <div className="col-span-2 xl:col-span-1">
+          <StatCard
+            label={report.solvent.closing_is_current ? 'Saldo solvent saat ini' : 'Saldo solvent akhir'}
+            value={formatNumber(report.solvent.closing)}
+            unit="kg"
+          />
+        </div>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <Section
           id="lap-solvent"
           title="Saldo solvent"
-          description="Bertambah dari hasil solvent tiap batch, berkurang saat solvent diambil dari saldo."
+          description="Bertambah dari hasil solvent tiap input, berkurang saat solvent diambil dari saldo."
           padded
         >
           <dl className="divide-y divide-gray-100 text-body tabular-nums">
@@ -150,15 +147,15 @@ function ReportBody({ report }) {
         </Section>
       </div>
 
-      <Section id="lap-shift" title="Perbandingan per shift" description="Rangkaian lintas shift dihitung di shift batch awalnya.">
+      <Section id="lap-shift" title="Perbandingan per shift">
         <Table caption="Perbandingan per shift">
           <thead>
             <tr>
               <Th>Shift</Th>
-              <Th numeric>Rangkaian</Th>
+              <Th numeric>Total proses</Th>
               <Th numeric>Tinta X masuk</Th>
               <Th numeric>Hasil solvent</Th>
-              <Th numeric>Residu estimasi</Th>
+              <Th numeric>Berat residu</Th>
               <Th numeric>Persentase solvent</Th>
             </tr>
           </thead>
@@ -185,10 +182,10 @@ function ReportBody({ report }) {
             <thead>
               <tr>
                 <Th>{BREAKDOWN_LABEL[report.breakdown.unit]}</Th>
-                <Th numeric>Rangkaian</Th>
+                <Th numeric>Total proses</Th>
                 <Th numeric>Tinta X masuk</Th>
                 <Th numeric>Hasil solvent</Th>
-                <Th numeric>Residu estimasi</Th>
+                <Th numeric>Berat residu</Th>
                 <Th numeric>Persentase solvent</Th>
               </tr>
             </thead>
@@ -257,11 +254,11 @@ function ReportBody({ report }) {
       </Section>
 
       {report.temp_abnormal.length > 0 && (
-        <Section id="lap-suhu" title="Batch dengan suhu di luar normal">
-          <Table caption="Batch dengan suhu di luar normal">
+        <Section id="lap-suhu" title="Input dengan suhu di luar normal">
+          <Table caption="Input dengan suhu di luar normal">
             <thead>
               <tr>
-                <Th>No. batch</Th>
+                <Th>No. input</Th>
                 <Th>Tanggal dan shift</Th>
                 <Th numeric>Suhu oli</Th>
                 <Th numeric>Suhu uap</Th>
@@ -290,7 +287,7 @@ function ReportBody({ report }) {
             <summary className="focus-ring mx-4 mb-3 inline-flex min-h-11 cursor-pointer items-center rounded text-body font-medium text-brand-blue-700 sm:mx-5">
               Tampilkan atau sembunyikan rincian
             </summary>
-            <Table caption="Rincian rangkaian batch">
+            <Table caption="Rincian rangkaian input">
               <thead>
                 <tr>
                   <Th>Rangkaian</Th>
@@ -324,8 +321,8 @@ function ReportBody({ report }) {
             </Table>
           </details>
         ) : (
-          <EmptyState icon={Recycle} title="Belum ada batch di periode ini.">
-            Pilih periode lain, atau tunggu operator mencatat batch.
+          <EmptyState icon={Recycle} title="Belum ada input di periode ini.">
+            Pilih periode lain, atau tunggu operator mencatat input.
           </EmptyState>
         )}
       </Section>
@@ -334,26 +331,19 @@ function ReportBody({ report }) {
 }
 
 export default function ReportPage() {
-  const [params, setParams] = useSearchParams();
-  const today = localToday();
-  const period = PERIODS.includes(params.get('period')) ? params.get('period') : 'month';
-  const rawDate = params.get('date');
-  const anchor = rawDate && /^\d{4}-\d{2}-\d{2}$/.test(rawDate) && rawDate <= today ? rawDate : today;
-  const { data, error, loading, reload } = useResource(`/reports/reclaimer?period=${period}&date=${anchor}`);
-
-  const change = (nextPeriod, nextAnchor) =>
-    setParams({ period: nextPeriod, date: nextAnchor > today ? today : nextAnchor }, { replace: true });
+  const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(PERIODS, 'month');
+  const { data, error, loading, reload } = useResource(`/reports/reclaimer?${query}`);
 
   return (
     <>
       <PageHeader
         title="Laporan Reclaimer"
-        description={`Material balance, saldo solvent, dan catatan operasional, ${periodLabel(anchor, period)}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
-        actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${periodLabel(anchor, period)}`} period={period} anchor={anchor} />}
+        description={`Material balance, saldo solvent, dan catatan operasional, ${label}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
+        actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${label}`} query={query} />}
       />
 
       <div className="mt-6">
-        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} today={today} onChange={change} />
+        <PeriodPicker periods={PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
       </div>
 
       {!data ? (

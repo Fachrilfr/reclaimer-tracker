@@ -143,7 +143,7 @@ class BatchChainTest extends TestCase
         // Rangkaian yang sudah selesai tidak bisa dilanjutkan lagi
         $this->continuation($root, ['recovery_weight' => 5])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.parent_batch_id.0', 'Rangkaian BR-20261020-001 sudah selesai. Catat sebagai batch baru.');
+            ->assertJsonPath('errors.parent_batch_id.0', 'Rangkaian BR-20261020-001 sudah selesai. Catat sebagai input baru.');
         $this->getJson('/api/batches/create')->assertJsonCount(0, 'data.open_chains');
     }
 
@@ -196,7 +196,7 @@ class BatchChainTest extends TestCase
         // Keterangan wajib mencatat jam
         $this->continuation($root, ['recovery_weight' => 10, 'notes' => 'Lanjutan'])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Batch lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
+            ->assertJsonPath('errors.notes.0', 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
         $this->continuation($root, ['recovery_weight' => 10, 'notes' => 'Lanjutan Pkl 25.10'])->assertUnprocessable();
 
         // Tidak boleh sebelum batch sebelumnya

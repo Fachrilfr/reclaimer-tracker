@@ -80,6 +80,10 @@ class WasteController extends Controller
 
         return PalletController::present($pallet, $thresholds) + [
             'location' => $pallet->location(),
+            // Total hari tersimpan di TPS: sejak sampai di TPS sampai diserahkan ke vendor, atau sampai hari ini
+            'tps_days' => $pallet->sent_to_tps_at
+                ? (int) round($pallet->sent_to_tps_at->copy()->startOfDay()->diffInDays(($suratJalan?->handover_date ?? now())->copy()->startOfDay()))
+                : null,
             'surat_jalan' => $suratJalan ? [
                 'id' => $suratJalan->id,
                 'number' => $suratJalan->surat_jalan_number,

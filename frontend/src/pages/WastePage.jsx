@@ -64,11 +64,24 @@ function DateTime({ text }) {
   );
 }
 
+// Total hari tersimpan di TPS: sejak sampai di TPS sampai diserahkan ke vendor, atau sampai hari ini
+function TpsDays({ pallet }) {
+  if (pallet.tps_days === null) return <span className="text-gray-600">–</span>;
+  return (
+    <>
+      <span className="block whitespace-nowrap tabular-nums">{pallet.tps_days} hari</span>
+      <span className="block whitespace-nowrap text-caption text-gray-600">
+        {pallet.location === 'diserahkan' ? 'sampai diserahkan' : 'sampai hari ini'}
+      </span>
+    </>
+  );
+}
+
 // Kolom sama dengan tabel pallet operator (Input pallet B3), supaya mudah dibaca semua role,
 // ditambah masa simpan di TPS (tugas HSE)
 function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
   return (
-    <Table caption="Inventaris pallet limbah B3">
+    <Table caption="Inventaris pallet residu">
       <thead>
         <tr>
           {selectable && (
@@ -80,6 +93,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
           <Th>Mulai diisi</Th>
           <Th>Penuh dan terkirim ke TPS</Th>
           <Th>Total hari kirim ke TPS</Th>
+          <Th>Total hari di TPS</Th>
           <Th>Masa simpan di TPS</Th>
           <Th>Keterangan</Th>
         </tr>
@@ -110,6 +124,9 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
             <Td>{fullText(p) ? <DateTime text={fullText(p)} /> : <span className="text-gray-600">Sedang diisi</span>}</Td>
             <Td>
               <FillDays pallet={p} />
+            </Td>
+            <Td>
+              <TpsDays pallet={p} />
             </Td>
             <Td>
               <StorageBadge storage={p.storage} />
@@ -206,7 +223,7 @@ export default function WastePage() {
   return (
     <>
       <PageHeader
-        title="Limbah B3"
+        title="Residu"
         description="Pallet dari input drum operator, sejak mulai terisi di area reclaimer, sampai di TPS, hingga diserahkan ke vendor lewat surat jalan."
         actions={
           canHandOver && (
@@ -300,10 +317,10 @@ export default function WastePage() {
             <div className="px-4 pb-5 sm:px-5">
               {list.loading ? (
                 <p role="status" className="text-body text-gray-600">
-                  Memuat pallet limbah B3…
+                  Memuat pallet residu…
                 </p>
               ) : (
-                <ErrorCard title="Pallet limbah B3 belum bisa dimuat." message={list.error} onRetry={list.reload} />
+                <ErrorCard title="Pallet residu belum bisa dimuat." message={list.error} onRetry={list.reload} />
               )}
             </div>
           ) : list.data.length ? (

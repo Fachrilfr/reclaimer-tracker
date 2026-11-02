@@ -7,6 +7,7 @@ import TopBar from '../components/TopBar.jsx';
 import Sidebar from '../components/Sidebar.jsx';
 import NotificationBell from '../components/NotificationBell.jsx';
 import MaintenanceBanner from '../components/MaintenanceBanner.jsx';
+import FillingPalletBanner from '../components/FillingPalletBanner.jsx';
 import { NotificationProvider } from '../notifications/NotificationContext.jsx';
 
 const FOCUSABLE = 'a[href], button:not([disabled])';
@@ -178,6 +179,7 @@ function AppShell() {
         >
           <div className="mx-auto max-w-content">
             <MaintenanceBanner />
+            <FillingPalletBanner />
             <Outlet />
           </div>
         </main>

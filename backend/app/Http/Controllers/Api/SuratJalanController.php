@@ -92,6 +92,7 @@ class SuratJalanController extends Controller
     public function file(SuratJalan $suratJalan): JsonResponse
     {
         $disk = Storage::disk(RecordSuratJalan::DISK);
+        abort_unless($suratJalan->file_path_surat_jalan, 404, 'Surat jalan ini disimpan tanpa bukti.');
         abort_unless($disk->exists($suratJalan->file_path_surat_jalan), 404, 'Berkas bukti tidak ditemukan di server.');
 
         return response()->json(['status' => 'success', 'data' => [

@@ -13,7 +13,7 @@ import BatchHistory from './BatchHistory.jsx';
 
 // Sama dengan StoreBatchRequest::TIME_PATTERN: jam 00.00 sampai 23.59
 const TIME_PATTERN = /(?<!\d)([01]?\d|2[0-3])[.:][0-5]\d(?!\d)/;
-const CONTINUATION_NOTE_ERROR = 'Batch lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.';
+const CONTINUATION_NOTE_ERROR = 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.';
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const numberOrZero = (raw) => {
@@ -164,7 +164,7 @@ function BatchForm({ formData, onSaved }) {
 
     if (!form.date) errs.date = 'Isi tanggal proses.';
     if (!form.shift_id) errs.shift_id = 'Pilih shift.';
-    if (form.is_continuation && !form.parent_batch_id) errs.parent_batch_id = 'Pilih batch awal yang dilanjutkan.';
+    if (form.is_continuation && !form.parent_batch_id) errs.parent_batch_id = 'Pilih input awal yang dilanjutkan.';
     if (!form.is_continuation) {
       numberField('ink_weight', 'Isi berat Tinta X yang masuk ke mesin.', { positive: true });
     }
@@ -175,7 +175,7 @@ function BatchForm({ formData, onSaved }) {
 
     if (!errs.recovery_weight && summary.recoveryExceeds) {
       errs.recovery_weight = form.is_continuation
-        ? `Hasil solvent melebihi Tinta X rangkaian batch (${formatNumber(summary.chainInput)} kg). Periksa kembali angka hasil solvent.`
+        ? `Hasil solvent melebihi Tinta X rangkaian input (${formatNumber(summary.chainInput)} kg). Periksa kembali angka hasil solvent.`
         : 'Hasil solvent melebihi Tinta X yang masuk. Periksa kembali angka hasil solvent.';
     }
     return errs;
@@ -243,10 +243,10 @@ function BatchForm({ formData, onSaved }) {
           >
             <h2 id="open-chains-title" className="flex items-center gap-2 text-h3 font-semibold">
               <Hourglass className="h-5 w-5 shrink-0" aria-hidden="true" />
-              Ada batch belum selesai dari shift sebelumnya
+              Ada input belum selesai dari shift sebelumnya
             </h2>
             <p className="mt-1 text-body">
-              Bila proses ini dilanjutkan di shift Anda, catat sebagai batch lanjutan. Persentase solvent dinilai setelah
+              Bila proses ini dilanjutkan di shift Anda, catat sebagai input lanjutan. Persentase solvent dinilai setelah
               rangkaiannya selesai.
             </p>
             <ul className="mt-3 space-y-2">
@@ -338,14 +338,14 @@ function BatchForm({ formData, onSaved }) {
           </div>
 
           <fieldset className="mt-4">
-            <legend className="mb-1.5 text-label font-medium text-gray-800">Jenis batch</legend>
+            <legend className="mb-1.5 text-label font-medium text-gray-800">Jenis input</legend>
             <div className="flex flex-col gap-x-6 sm:flex-row">
               <RadioOption
                 name="is_continuation"
                 checked={!form.is_continuation}
                 onChange={() => setForm((f) => ({ ...f, is_continuation: false, parent_batch_id: '' }))}
               >
-                Batch baru
+                Input baru
               </RadioOption>
               <RadioOption
                 name="is_continuation"
@@ -361,22 +361,22 @@ function BatchForm({ formData, onSaved }) {
                   }))
                 }
               >
-                Batch lanjutan dari shift sebelumnya
+                Input lanjutan dari shift sebelumnya
               </RadioOption>
             </div>
             <p id="continuation-hint" className="mt-1 text-caption text-gray-600">
               {openChains.length
-                ? 'Batch lanjutan tidak membawa Tinta X baru. Isi hasil solvent dari sisa prosesnya.'
-                : 'Tidak ada batch belum selesai yang bisa dilanjutkan.'}
+                ? 'Input lanjutan tidak membawa Tinta X baru. Isi hasil solvent dari sisa prosesnya.'
+                : 'Tidak ada input belum selesai yang bisa dilanjutkan.'}
             </p>
           </fieldset>
 
           {form.is_continuation && (
             <div className="mt-4 space-y-3">
-              <Field id="parent_batch_id" label="Lanjutan dari batch" required error={errors.parent_batch_id}>
+              <Field id="parent_batch_id" label="Lanjutan dari input" required error={errors.parent_batch_id}>
                 {(props) => (
                   <select {...props} value={form.parent_batch_id} onChange={set('parent_batch_id')} className="field">
-                    <option value="">Pilih batch yang belum selesai</option>
+                    <option value="">Pilih input yang belum selesai</option>
                     {openChains.map((c) => (
                       <option key={c.root_id} value={c.root_id}>
                         {chainLabel(c)} · mulai {formatDate(c.date)} · {c.shift}
@@ -388,11 +388,11 @@ function BatchForm({ formData, onSaved }) {
               {parent && (
                 <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-gray-25 p-3 text-body sm:grid-cols-4">
                   <div>
-                    <dt className="text-caption text-gray-600">Batch awal</dt>
+                    <dt className="text-caption text-gray-600">Input awal</dt>
                     <dd className="font-mono text-gray-900">{parent.batch_number}</dd>
                   </div>
                   <div>
-                    <dt className="text-caption text-gray-600">Batch terakhir</dt>
+                    <dt className="text-caption text-gray-600">Input terakhir</dt>
                     <dd className="text-gray-900">
                       {parent.last_shift}, {formatDate(parent.last_date)}
                     </dd>
@@ -417,15 +417,6 @@ function BatchForm({ formData, onSaved }) {
           </h2>
           <p className="mt-1 text-body text-gray-600">
             Dalam kg, dari timbangan. Gunakan koma untuk desimal.
-            {can('solvent', 'isi') && (
-              <>
-                {' '}Solvent yang diambil dari saldo dicatat di{' '}
-                <Link to="/solvent" className="focus-ring rounded font-semibold text-brand-blue-700 hover:underline">
-                  Pemakaian solvent
-                </Link>
-                .
-              </>
-            )}
           </p>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -501,14 +492,14 @@ function BatchForm({ formData, onSaved }) {
               {oilWarning && !errors.oil_temp && (
                 <p id="oil_temp-warning" className="flex items-start gap-1.5 text-caption text-warning-fg">
                   <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  Suhu oli di luar rentang normal {temperature.oil.min}–{temperature.oil.max} °C. Batch tetap bisa
+                  Suhu oli di luar rentang normal {temperature.oil.min}–{temperature.oil.max} °C. Input tetap bisa
                   disimpan dan ditandai untuk ditinjau supervisor.
                 </p>
               )}
               {vapourWarning && !errors.vapour_temp && (
                 <p id="vapour_temp-warning" className="flex items-start gap-1.5 text-caption text-warning-fg">
                   <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                  Suhu uap di luar rentang normal {temperature.vapour.min}–{temperature.vapour.max} °C. Batch tetap
+                  Suhu uap di luar rentang normal {temperature.vapour.min}–{temperature.vapour.max} °C. Input tetap
                   bisa disimpan dan ditandai untuk ditinjau supervisor.
                 </p>
               )}
@@ -547,7 +538,7 @@ function BatchForm({ formData, onSaved }) {
                 ? form.is_continuation
                   ? 'Menyimpan sebagai selesai menutup rangkaian ini dan menghitung persentase solvent gabungannya.'
                   : 'Pilih belum selesai bila mesin masih berjalan saat shift berganti.'
-                : 'Batch ini belum dinilai terhadap toleransi. Shift berikutnya mencatat batch lanjutannya.'}
+                : 'Input ini belum dinilai terhadap toleransi. Shift berikutnya mencatat input lanjutannya.'}
             </p>
           </fieldset>
 
@@ -592,7 +583,7 @@ function BatchForm({ formData, onSaved }) {
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.recovery)} kg</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-gray-600">Residu estimasi (Tinta X − recovery)</dt>
+              <dt className="text-gray-600">Berat residu (Tinta X − hasil solvent)</dt>
               <dd className="whitespace-nowrap text-right font-medium text-gray-900">{formatNumber(summary.residue)} kg</dd>
             </div>
             {form.is_continuation && (
@@ -633,7 +624,7 @@ function BatchForm({ formData, onSaved }) {
           {rateBelowTarget && (
             <p className="mt-3 flex items-start gap-1.5 text-caption text-danger-fg">
               <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Di bawah toleransi solvent {formatPercent(target)}. Batch tetap bisa disimpan dan muncul di alert supervisor.
+              Di bawah toleransi solvent {formatPercent(target)}. Input tetap bisa disimpan dan muncul di alert supervisor.
             </p>
           )}
 
@@ -643,7 +634,7 @@ function BatchForm({ formData, onSaved }) {
             </Alert>
           )}
           {saved && (
-            <Alert tone="success" className="mt-4" title={`Batch ${saved.batch_number} tersimpan.`}>
+            <Alert tone="success" className="mt-4" title={`Input ${saved.batch_number} tersimpan.`}>
               {saved.chain_complete
                 ? `Rangkaian selesai, persentase solvent ${saved.chain_batch_count > 1 ? 'gabungan ' : ''}${formatPercent(
                     saved.chain_recovery_rate,
@@ -656,7 +647,7 @@ function BatchForm({ formData, onSaved }) {
           {isMaintenance && (
             <p id="maintenance-block" className="mt-4 flex items-start gap-1.5 text-caption text-warning-fg">
               <Wrench className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-              Mesin sedang maintenance. Batch bisa disimpan lagi setelah mesin dinyatakan beroperasi.
+              Mesin sedang maintenance. Input bisa disimpan lagi setelah mesin dinyatakan beroperasi.
             </p>
           )}
           <button
@@ -673,7 +664,7 @@ function BatchForm({ formData, onSaved }) {
                 Menyimpan…
               </>
             ) : isFinishing ? (
-              'Simpan batch'
+              'Simpan input'
             ) : (
               'Simpan sebagai belum selesai'
             )}
@@ -701,8 +692,8 @@ export default function BatchPage() {
         title="Input reclaimer"
         description={
           canFill
-            ? 'Catat satu batch reclaimer. Residu, persentase solvent, dan saldo solvent dihitung otomatis dari Tinta X dan hasil solvent.'
-            : 'Batch reclaimer yang dicatat operator, dengan hasil material balance-nya.'
+            ? 'Catat satu input reclaimer. Residu, persentase solvent, dan saldo solvent dihitung otomatis dari Tinta X dan hasil solvent.'
+            : 'Input reclaimer yang dicatat operator, dengan hasil material balance-nya.'
         }
       />
 
@@ -712,9 +703,9 @@ export default function BatchPage() {
         ) : (
           <div className="mt-6">
             {formData.loading ? (
-              <LoadingCard label="Memuat form batch…" />
+              <LoadingCard label="Memuat form input…" />
             ) : (
-              <ErrorCard title="Form batch belum bisa dimuat." message={formData.error} onRetry={formData.reload} />
+              <ErrorCard title="Form input belum bisa dimuat." message={formData.error} onRetry={formData.reload} />
             )}
           </div>
         ))}
