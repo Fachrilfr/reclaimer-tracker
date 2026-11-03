@@ -11,6 +11,11 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), in
 export default function Modal({ title, onClose, children }) {
   const panelRef = useRef(null);
   const titleId = useId();
+  // onClose dari pemanggil sering fungsi baru di setiap render; disimpan di ref supaya efek di
+  // bawah hanya jalan sekali saat dialog dibuka (kalau tidak, fokus melompat ke input pertama
+  // setiap kali pengguna mengetik)
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
 
   useEffect(() => {
     const trigger = document.activeElement;
@@ -19,7 +24,7 @@ export default function Modal({ title, onClose, children }) {
 
     const onKey = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -43,7 +48,7 @@ export default function Modal({ title, onClose, children }) {
       document.body.style.overflow = previousOverflow;
       if (trigger instanceof HTMLElement && document.contains(trigger)) trigger.focus();
     };
-  }, [onClose]);
+  }, []);
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
