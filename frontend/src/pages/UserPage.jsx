@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { KeyRound, LoaderCircle, Pencil, Plus, Users } from 'lucide-react';
+import { Eye, KeyRound, LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDateTime } from '../lib/format.js';
@@ -11,6 +11,7 @@ import Modal from '../components/Modal.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
+import RoleAccessPanel from './RoleAccessPanel.jsx';
 
 const MIN_PASSWORD = 8;
 
@@ -210,7 +211,94 @@ function PasswordDialog({ user, onClose, onSaved }) {
   );
 }
 
-export default function UserPage() {
+// Kartu detail satu pengguna. Password tersimpan sebagai hash, jadi tidak bisa ditampilkan;
+// yang bisa dilakukan adalah mengganti dengan password baru.
+function DetailDialog({ user, isSelf, onClose, onAction }) {
+  const rows = [
+    ['NIK', <span key="nik" className="font-mono">{user.nik}</span>],
+    ['Nama', user.name],
+    ['Role', roleLabel(user.role)],
+    ['Status', <ActiveBadge key="status" active={user.is_active} />],
+    ['Dibuat', user.created_at ? formatDateTime(user.created_at) : '–'],
+    ['Terakhir aktif', user.last_active_at ? formatDateTime(user.last_active_at) : 'Belum pernah login'],
+  ];
+
+  return (
+    <Modal title={`Pengguna ${user.nik}`} onClose={onClose}>
+      <dl className="divide-y divide-gray-100 text-body">
+        {rows.map(([label, value]) => (
+          <div key={label} className="flex justify-between gap-4 py-2">
+            <dt className="text-gray-600">{label}</dt>
+            <dd className="text-right text-gray-900">{value}</dd>
+          </div>
+        ))}
+        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
+          <dt className="text-gray-600">Password</dt>
+          <dd className="flex items-center gap-3">
+            <span className="text-caption text-gray-600">Tersimpan terenkripsi, tidak bisa ditampilkan</span>
+            <button type="button" onClick={() => onAction('password')} className="btn-secondary h-11 whitespace-nowrap px-3 text-body">
+              <KeyRound className="h-4 w-4" aria-hidden="true" />
+              Ganti password
+            </button>
+          </dd>
+        </div>
+      </dl>
+      {isSelf && <p className="mt-3 text-caption text-gray-600">Ini akun Anda: role, status, dan hapus akun tidak bisa diubah dari sini.</p>}
+      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
+        <button
+          type="button"
+          onClick={() => onAction('delete')}
+          disabled={isSelf}
+          className="btn-secondary h-11 px-4 text-body text-danger-fg"
+        >
+          <Trash2 className="h-4 w-4" aria-hidden="true" />
+          Hapus akun
+        </button>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row">
+          <button type="button" onClick={onClose} className="btn-secondary h-11 px-4 text-body">
+            Tutup
+          </button>
+          <button type="button" onClick={() => onAction('edit')} className="btn-primary h-11 px-4 text-body">
+            <Pencil className="h-4 w-4" aria-hidden="true" />
+            Ubah data
+          </button>
+        </div>
+      </div>
+    </Modal>
+  );
+}
+
+function DeleteDialog({ user, onClose, onSaved }) {
+  const { request } = useAuth();
+  const { errors, formError, busy, submit } = useSubmit(() => request(`/users/${user.id}`, { method: 'DELETE' }), onSaved);
+  const problem = errors.user ?? formError;
+
+  return (
+    <Modal title={`Hapus akun ${user.nik}?`} onClose={() => !busy && onClose()}>
+      <p className="text-body text-gray-800">
+        {user.name} langsung keluar dan tidak bisa login lagi. Namanya tetap tampil di riwayat input, surat jalan, dan laporan lama.
+        NIK {user.nik} tidak bisa dipakai untuk akun baru.
+      </p>
+      <p className="mt-2 text-caption text-gray-600">Bila hanya ingin menahan akses sementara, nonaktifkan lewat Ubah data.</p>
+      {problem && (
+        <Alert tone="danger" className="mt-4">
+          {problem}
+        </Alert>
+      )}
+      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} disabled={busy} className="btn-secondary h-11 px-4 text-body">
+          Batal
+        </button>
+        <button type="button" onClick={() => submit({})} disabled={busy} className="btn-danger h-11 px-4 text-body">
+          {busy && <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />}
+          {busy ? 'Menghapus…' : 'Ya, hapus akun'}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
+function UserList() {
   const { user: me } = useAuth();
   const { data, error, loading, reload } = useResource('/users');
   const [q, setQ] = useState('');
@@ -242,16 +330,13 @@ export default function UserPage() {
 
   return (
     <>
-      <PageHeader
-        title="Pengguna"
-        description="Akun login per NIK. Pengguna tidak dihapus supaya namanya tetap tercatat di riwayat; cukup dinonaktifkan."
-        actions={
-          <button type="button" onClick={() => open({ type: 'add' })} className="btn-primary h-11 px-4 text-body">
-            <Plus className="h-5 w-5" aria-hidden="true" />
-            Tambah pengguna
-          </button>
-        }
-      />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-body text-gray-600">Buka Lihat untuk melihat data, mengubah, mengganti password, atau menghapus akun.</p>
+        <button type="button" onClick={() => open({ type: 'add' })} className="btn-primary h-11 shrink-0 px-4 text-body">
+          <Plus className="h-5 w-5" aria-hidden="true" />
+          Tambah pengguna
+        </button>
+      </div>
       {message && (
         <Alert tone="success" className="mt-6">
           {message}
@@ -328,22 +413,11 @@ export default function UserPage() {
                       <ActiveBadge active={u.is_active} />
                     </Td>
                     <Td className="whitespace-nowrap">{u.last_active_at ? formatDateTime(u.last_active_at) : <span className="text-gray-600">Belum pernah login</span>}</Td>
-                    <Td>
-                      <div className="flex justify-end gap-2">
-                        <button type="button" onClick={() => open({ type: 'edit', user: u })} aria-label={`Ubah ${u.nik}`} className="btn-secondary h-11 px-3 text-body">
-                          <Pencil className="h-4 w-4" aria-hidden="true" />
-                          Ubah
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => open({ type: 'password', user: u })}
-                          aria-label={`Reset password ${u.nik}`}
-                          className="btn-secondary h-11 whitespace-nowrap px-3 text-body"
-                        >
-                          <KeyRound className="h-4 w-4" aria-hidden="true" />
-                          Reset password
-                        </button>
-                      </div>
+                    <Td className="text-right">
+                      <button type="button" onClick={() => open({ type: 'view', user: u })} aria-label={`Lihat ${u.nik}`} className="btn-secondary h-11 px-3 text-body">
+                        <Eye className="h-4 w-4" aria-hidden="true" />
+                        Lihat
+                      </button>
                     </Td>
                   </tr>
                 ))}
@@ -358,8 +432,55 @@ export default function UserPage() {
       )}
 
       {dialog?.type === 'add' && <AddDialog onClose={() => setDialog(null)} onSaved={saved} />}
-      {dialog?.type === 'edit' && <EditDialog user={dialog.user} isSelf={dialog.user.id === me.id} onClose={() => setDialog(null)} onSaved={saved} />}
-      {dialog?.type === 'password' && <PasswordDialog user={dialog.user} onClose={() => setDialog(null)} onSaved={saved} />}
+      {dialog?.type === 'view' && (
+        <DetailDialog
+          user={dialog.user}
+          isSelf={dialog.user.id === me.id}
+          onClose={() => setDialog(null)}
+          onAction={(type) => setDialog({ type, user: dialog.user })}
+        />
+      )}
+      {/* Tutup dialog ubah, reset, atau hapus kembali ke kartu detail pengguna */}
+      {dialog?.type === 'edit' && (
+        <EditDialog user={dialog.user} isSelf={dialog.user.id === me.id} onClose={() => setDialog({ type: 'view', user: dialog.user })} onSaved={saved} />
+      )}
+      {dialog?.type === 'password' && (
+        <PasswordDialog user={dialog.user} onClose={() => setDialog({ type: 'view', user: dialog.user })} onSaved={saved} />
+      )}
+      {dialog?.type === 'delete' && (
+        <DeleteDialog user={dialog.user} onClose={() => setDialog({ type: 'view', user: dialog.user })} onSaved={saved} />
+      )}
+    </>
+  );
+}
+
+export default function UserPage() {
+  const [tab, setTab] = useState('users');
+  const tabs = [
+    { key: 'users', label: 'Daftar pengguna' },
+    { key: 'access', label: 'Hak akses role' },
+  ];
+
+  return (
+    <>
+      <PageHeader title="Pengguna" description="Akun login per NIK, dan menu serta tindakan yang boleh dibuka setiap role." />
+      <div role="tablist" aria-label="Bagian pengguna" className="my-6 inline-flex rounded-lg border border-gray-200 bg-white p-1">
+        {tabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.key}
+            onClick={() => setTab(t.key)}
+            className={`focus-ring h-11 rounded-md px-4 text-body font-semibold transition-colors ${
+              tab === t.key ? 'bg-brand-blue-600 text-white' : 'text-gray-800 hover:bg-gray-25'
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'users' ? <UserList /> : <RoleAccessPanel />}
     </>
   );
 }

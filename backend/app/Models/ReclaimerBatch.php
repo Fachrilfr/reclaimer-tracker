@@ -55,7 +55,7 @@ class ReclaimerBatch extends Model
 
     public function operator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'operator_id');
+        return $this->belongsTo(User::class, 'operator_id')->withTrashed();
     }
 
     public function parent(): BelongsTo
@@ -65,7 +65,7 @@ class ReclaimerBatch extends Model
 
     public function reviewer(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'supervisor_reviewed_by');
+        return $this->belongsTo(User::class, 'supervisor_reviewed_by')->withTrashed();
     }
 
     /** Tinjauan supervisor atas rangkaian ini (disimpan di batch awal), atau null. */

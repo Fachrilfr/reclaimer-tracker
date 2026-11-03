@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\MasterDataController;
 use App\Http\Controllers\Api\ParameterController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\RoleAccessController;
 use App\Http\Controllers\Api\PalletController;
 use App\Http\Controllers\Api\SolventUsageController;
 use App\Http\Controllers\Api\SuratJalanController;
@@ -63,6 +64,9 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::post('/users', [UserController::class, 'store'])->middleware('akses:pengguna,kelola');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('akses:pengguna,kelola');
     Route::post('/users/{user}/password', [UserController::class, 'resetPassword'])->middleware('akses:pengguna,kelola');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('akses:pengguna,kelola');
+    Route::get('/role-access', [RoleAccessController::class, 'index'])->middleware('akses:pengguna,kelola');
+    Route::put('/role-access/{role}', [RoleAccessController::class, 'update'])->middleware('akses:pengguna,kelola');
 
     // Data master: shift dan vendor. Shift yang sudah dipakai hanya bisa dinonaktifkan.
     Route::get('/master', [MasterDataController::class, 'index'])->middleware('akses:data_master');

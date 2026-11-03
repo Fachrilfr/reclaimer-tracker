@@ -13,9 +13,9 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Pengguna (Super Admin): tambah, ubah nama dan role, nonaktifkan, dan reset password.
+ * Pengguna (Super Admin): tambah, ubah nama dan role, nonaktifkan, reset password, dan hapus.
  *
- * Tidak ada hapus: nama operator dan petugas tetap muncul di riwayat dan laporan lama.
+ * Hapus bersifat lunak, jadi nama operator dan petugas tetap muncul di riwayat dan laporan lama.
  * NIK tidak bisa diubah karena dipakai login dan tercatat di audit. Super Admin tidak bisa
  * menonaktifkan atau menurunkan role dirinya sendiri, dan harus selalu ada satu Super Admin aktif.
  */
@@ -51,6 +51,7 @@ class UserController extends Controller
                     'name' => $u->name,
                     'role' => $u->role,
                     'is_active' => $u->is_active,
+                    'created_at' => $u->created_at?->toIso8601String(),
                     'last_active_at' => isset($lastUsed[$u->id]) ? Carbon::parse($lastUsed[$u->id])->toIso8601String() : null,
                 ]),
         ]);
@@ -123,6 +124,26 @@ class UserController extends Controller
         AuditLog::record($request, 'reset_password', $user, ['nik' => $user->nik]);
 
         return response()->json(['status' => 'success', 'message' => "Password {$user->nik} sudah diganti. Berikan password baru ke pengguna."]);
+    }
+
+    /**
+     * Hapus akun (lunak): tidak bisa login lagi dan hilang dari daftar, tapi namanya tetap
+     * tampil di riwayat input, surat jalan, dan audit. NIK-nya tidak bisa dipakai ulang.
+     */
+    public function destroy(Request $request, User $user): JsonResponse
+    {
+        if ($request->user()->is($user)) {
+            throw ValidationException::withMessages(['user' => 'Akun Anda sendiri tidak bisa dihapus.']);
+        }
+        if ($user->role === 'admin' && $user->is_active && User::where('role', 'admin')->where('is_active', true)->count() === 1) {
+            throw ValidationException::withMessages(['user' => 'Harus ada minimal satu Super Admin yang aktif.']);
+        }
+
+        $user->tokens()->delete();
+        AuditLog::record($request, 'delete', $user, [], $user->only(['nik', 'name', 'role']));
+        $user->delete();
+
+        return response()->json(['status' => 'success', 'message' => "Akun {$user->nik} dihapus."]);
     }
 
     private function messages(): array

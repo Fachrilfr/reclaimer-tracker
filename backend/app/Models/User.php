@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\AccessMatrix;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -48,7 +49,7 @@ class User extends Authenticatable
             throw new InvalidArgumentException("Fitur [{$feature}] tidak ada di config/access.php.");
         }
 
-        return $features[$feature][$this->role] ?? null;
+        return app(AccessMatrix::class)->level($this->role, $feature);
     }
 
     public function hasAccess(string $feature, string $level = 'lihat'): bool
@@ -71,14 +72,15 @@ class User extends Authenticatable
      */
     public function permissions(): array
     {
-        return collect(config('access.features'))
-            ->map(fn (array $roles) => $roles[$this->role] ?? null)
-            ->filter()
-            ->all();
+        return array_filter(app(AccessMatrix::class)->forRole($this->role));
     }
 
+    /** Halaman awal role ini; bila aksesnya dicabut Super Admin, fitur pertama yang masih bisa dibuka. */
     public function homeFeature(): ?string
     {
-        return config("access.home.{$this->role}");
+        $permissions = $this->permissions();
+        $home = config("access.home.{$this->role}");
+
+        return isset($permissions[$home]) ? $home : array_key_first($permissions);
     }
 }
