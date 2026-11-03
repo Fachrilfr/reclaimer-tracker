@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 // Grafik tren satu seri (FR-48). Mengikuti spesifikasi dataviz: garis 2px, kolom maksimal
 // 24px dengan ujung atas membulat 4px, gridline hairline solid, satu sumbu. Satu seri, jadi
@@ -82,19 +82,26 @@ function monotonePath(pts) {
  * @param {'line'|'column'} kind
  */
 export default function TrendChart({ title, points, kind, color, format, axisFormat, reference, emptyText, flagLabel }) {
-  const containerRef = useRef(null);
+  const observerRef = useRef(null);
   const [width, setWidth] = useState(640);
   const [active, setActive] = useState(null);
   const tableId = useId();
   const gradientId = `area-${useId().replace(/:/g, '')}`;
 
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return undefined;
+  // Ref callback: lebar diukur ulang setiap kali wadah grafik muncul. Wadah ini tidak ada
+  // selama periode kosong, jadi pengukur yang dipasang sekali saat mount akan memakai
+  // lebar lama dan grafik tampil mengecil atau berdempet setelah periode berganti.
+  const containerRef = useCallback((el) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!el) return;
+    setWidth(Math.max(280, el.clientWidth));
     const observer = new ResizeObserver(([entry]) => setWidth(Math.max(280, entry.contentRect.width)));
     observer.observe(el);
-    return () => observer.disconnect();
+    observerRef.current = observer;
   }, []);
+
+  useEffect(() => () => observerRef.current?.disconnect(), []);
 
   const hasData = points.some((p) => p.value !== null);
   const n = points.length;
@@ -175,7 +182,7 @@ export default function TrendChart({ title, points, kind, color, format, axisFor
           width={width}
           height={HEIGHT}
           viewBox={`0 0 ${width} ${HEIGHT}`}
-          className="block max-w-full touch-pan-y"
+          className="block w-full touch-pan-y"
           aria-hidden="true"
           onPointerMove={handlePointer}
           onPointerDown={handlePointer}
