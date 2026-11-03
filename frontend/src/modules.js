@@ -27,6 +27,7 @@ import B3ReportPage from './pages/B3ReportPage.jsx';
 import HseDashboardPage from './pages/HseDashboardPage.jsx';
 import ParameterPage from './pages/ParameterPage.jsx';
 import MasterDataPage from './pages/MasterDataPage.jsx';
+import UserPage from './pages/UserPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -163,7 +164,7 @@ export const MODULE_GROUPS = [
         path: '/pengguna',
         icon: Users,
         summary: 'Akun pengguna, role, dan status aktif.',
-        page: null,
+        page: UserPage,
       },
     ],
   },
