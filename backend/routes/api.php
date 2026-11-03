@@ -6,6 +6,8 @@ use App\Http\Controllers\Api\ChainReviewController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HseDashboardController;
 use App\Http\Controllers\Api\MachineController;
+use App\Http\Controllers\Api\MasterDataController;
+use App\Http\Controllers\Api\ParameterController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\PalletController;
@@ -51,6 +53,17 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/solvent-usages', [SolventUsageController::class, 'index'])->middleware('akses:solvent');
     Route::post('/solvent-usages', [SolventUsageController::class, 'store'])->middleware('akses:solvent,isi');
+
+    Route::get('/parameters', [ParameterController::class, 'index'])->middleware('akses:parameter');
+    Route::put('/parameters', [ParameterController::class, 'update'])->middleware('akses:parameter,kelola');
+
+    // Data master: shift, bahan, vendor. Tidak ada hapus permanen, cukup nonaktifkan.
+    Route::get('/master', [MasterDataController::class, 'index'])->middleware('akses:data_master');
+    Route::post('/master/shifts', [MasterDataController::class, 'storeShift'])->middleware('akses:data_master,kelola');
+    Route::put('/master/shifts/{shift}', [MasterDataController::class, 'updateShift'])->middleware('akses:data_master,kelola');
+    Route::put('/master/materials/{material}', [MasterDataController::class, 'updateMaterial'])->middleware('akses:data_master,kelola');
+    Route::post('/master/vendors', [MasterDataController::class, 'storeVendor'])->middleware('akses:data_master,kelola');
+    Route::put('/master/vendors/{vendor}', [MasterDataController::class, 'updateVendor'])->middleware('akses:data_master,kelola');
 
     // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
     Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');
