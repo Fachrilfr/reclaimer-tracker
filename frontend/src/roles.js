@@ -11,14 +11,14 @@ export function roleLabel(role) {
 }
 
 // Kartu alert di dashboard per role, sesuai bagian masing-masing:
-//   tps      = pallet yang harus dikirim dari area reclaimer ke TPS (bagian reclaimer)
-//   storage  = masa simpan limbah B3 di TPS sampai diserahkan ke vendor (bagian HSE)
+//   storage  = masa simpan residu di TPS sampai diserahkan ke vendor (bagian HSE); null = tidak ada
+//              kartu residu (tidak ada lagi batas kirim ke TPS untuk dipantau bagian reclaimer)
 //   recovery = rangkaian di bawah toleransi solvent (bagian reclaimer)
 // Supervisor reclaimer tidak memantau TPS (sudah ada di Limbah B3 milik HSE), dan HSE
 // tidak memantau toleransi solvent.
 export const DASHBOARD_ALERTS = {
-  operator: { b3: 'tps', recovery: true },
-  supervisor: { b3: 'tps', recovery: true },
+  operator: { b3: null, recovery: true },
+  supervisor: { b3: null, recovery: true },
   hse: { b3: 'storage', recovery: false },
   management: { b3: 'storage', recovery: true },
 };

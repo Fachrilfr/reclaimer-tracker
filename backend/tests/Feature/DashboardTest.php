@@ -181,7 +181,7 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.action_items.pallets.0.storage.days_remaining', 10)
             ->assertJsonPath('data.action_items.pallets.0.storage.level', 'mendesak')
             ->assertJsonCount(1, 'data.active_pallets')
-            ->assertJsonCount(1, 'data.tps_pallets');
+            ->assertJsonMissingPath('data.tps_pallets');
     }
 
     public function test_dashboard_access_follows_matrix(): void

@@ -76,7 +76,7 @@ class AuthTest extends TestCase
         $this->withToken($token)->getJson('/api/auth/me')
             ->assertOk()
             ->assertJsonPath('data.user.role', 'hse')
-            ->assertJsonPath('data.permissions.limbah_b3', 'kelola');
+            ->assertJsonPath('data.permissions.data_master', 'kelola');
 
         $this->withToken($token)->postJson('/api/auth/logout')->assertOk();
 

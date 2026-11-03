@@ -22,10 +22,7 @@ export default function FillingPalletBanner() {
             <p className="font-semibold">
               Pallet <span className="font-mono">{pallet.pallet_number}</span> sedang diisi, belum ditandai penuh.
             </p>
-            <p>
-              Mulai diisi {pallet.started_at ? formatDateTime(pallet.started_at) : formatDate(pallet.start_date)} · {pallet.drum_count} drum
-              tercatat.
-            </p>
+            <p>Mulai diisi {pallet.started_at ? formatDateTime(pallet.started_at) : formatDate(pallet.start_date)}.</p>
           </div>
         </div>
         {can('drum_b3') && pathname !== '/drum-b3' && (

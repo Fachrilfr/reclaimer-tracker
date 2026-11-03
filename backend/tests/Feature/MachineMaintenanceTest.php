@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\B3Pallet;
 use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -144,36 +143,6 @@ class MachineMaintenanceTest extends TestCase
         $this->postJson("/api/notifications/{$id}/read")->assertNotFound();
     }
 
-    public function test_late_pallet_shows_maintenance_as_reason(): void
-    {
-        // Pallet mulai 10 Okt, batas kirim ke TPS 17 Okt
-        $pallet = B3Pallet::create([
-            'pallet_number' => 'PLT-202610-001', 'start_date' => '2026-10-10', 'max_storage_days' => 90,
-            'expiry_date' => '2027-01-08', 'tps_due_date' => '2026-10-17', 'status' => 'filling',
-        ]);
-
-        Carbon::setTestNow('2026-10-15 08:00:00');
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', ['reason' => 'Kondensor tersumbat'])->assertOk();
-        Carbon::setTestNow('2026-10-18 13:00:00');
-        $this->postJson('/api/machine/operating', ['note' => 'Kondensor dibersihkan'])->assertOk();
-
-        // Belum dikirim dan lewat batas: keterangan penyebab ikut tampil
-        Carbon::setTestNow('2026-10-20 09:00:00');
-        $this->getJson('/api/pallets')->assertOk()
-            ->assertJsonPath('data.filling.tps.level', 'kritis')
-            ->assertJsonPath('data.filling.tps.delay.type', 'machine_maintenance')
-            ->assertJsonPath('data.filling.tps.delay.reason', 'Kondensor tersumbat');
-
-        // Setelah dikirim terlambat, keterangan tetap tersimpan di riwayat
-        $pallet->update(['drum_count' => 3, 'status' => 'full', 'full_date' => '2026-10-19', 'sent_to_tps_at' => '2026-10-19']);
-        $this->getJson('/api/pallets')
-            ->assertJsonPath('data.recent.0.tps.late_days', 2)
-            ->assertJsonPath('data.recent.0.tps.delay.end_note', 'Kondensor dibersihkan');
-
-        // Pallet yang tepat waktu tidak diberi keterangan
-        $pallet->update(['sent_to_tps_at' => '2026-10-16']);
-        $this->getJson('/api/pallets')->assertJsonPath('data.recent.0.tps.delay', null);
-    }
 
     public function test_report_documents_show_maintenance_duration_in_minutes(): void
     {

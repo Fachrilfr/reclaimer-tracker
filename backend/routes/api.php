@@ -6,11 +6,15 @@ use App\Http\Controllers\Api\ChainReviewController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HseDashboardController;
 use App\Http\Controllers\Api\MachineController;
+use App\Http\Controllers\Api\MasterDataController;
+use App\Http\Controllers\Api\ParameterController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\RoleAccessController;
 use App\Http\Controllers\Api\PalletController;
 use App\Http\Controllers\Api\SolventUsageController;
 use App\Http\Controllers\Api\SuratJalanController;
+use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\WasteController;
 use Illuminate\Support\Facades\Route;
 
@@ -51,6 +55,28 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/solvent-usages', [SolventUsageController::class, 'index'])->middleware('akses:solvent');
     Route::post('/solvent-usages', [SolventUsageController::class, 'store'])->middleware('akses:solvent,isi');
+
+    Route::get('/parameters', [ParameterController::class, 'index'])->middleware('akses:parameter');
+    Route::put('/parameters', [ParameterController::class, 'update'])->middleware('akses:parameter,kelola');
+
+    // Pengguna (Super Admin): tanpa hapus, cukup nonaktifkan
+    Route::get('/users', [UserController::class, 'index'])->middleware('akses:pengguna');
+    Route::post('/users', [UserController::class, 'store'])->middleware('akses:pengguna,kelola');
+    Route::put('/users/{user}', [UserController::class, 'update'])->middleware('akses:pengguna,kelola');
+    Route::get('/users/{user}/password', [UserController::class, 'showPassword'])->middleware('akses:pengguna,kelola');
+    Route::post('/users/{user}/password', [UserController::class, 'resetPassword'])->middleware('akses:pengguna,kelola');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('akses:pengguna,kelola');
+    Route::get('/role-access', [RoleAccessController::class, 'index'])->middleware('akses:pengguna,kelola');
+    Route::put('/role-access/{role}', [RoleAccessController::class, 'update'])->middleware('akses:pengguna,kelola');
+
+    // Data master: shift dan vendor. Shift yang sudah dipakai hanya bisa dinonaktifkan.
+    Route::get('/master', [MasterDataController::class, 'index'])->middleware('akses:data_master');
+    Route::post('/master/shifts', [MasterDataController::class, 'storeShift'])->middleware('akses:data_master,kelola');
+    Route::put('/master/shifts/{shift}', [MasterDataController::class, 'updateShift'])->middleware('akses:data_master,kelola');
+    Route::delete('/master/shifts/{shift}', [MasterDataController::class, 'destroyShift'])->middleware('akses:data_master,kelola');
+    Route::post('/master/vendors', [MasterDataController::class, 'storeVendor'])->middleware('akses:data_master,kelola');
+    Route::put('/master/vendors/{vendor}', [MasterDataController::class, 'updateVendor'])->middleware('akses:data_master,kelola');
+    Route::delete('/master/vendors/{vendor}', [MasterDataController::class, 'destroyVendor'])->middleware('akses:data_master,kelola');
 
     // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
     Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');

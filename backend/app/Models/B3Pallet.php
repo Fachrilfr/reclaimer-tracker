@@ -3,8 +3,6 @@
 namespace App\Models;
 
 use App\Support\StorageStatus;
-use App\Support\TpsDeliveryStatus;
-use Illuminate\Support\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -25,7 +23,6 @@ class B3Pallet extends Model
             'full_date' => 'date',
             'full_at' => 'datetime',
             'expiry_date' => 'date',
-            'tps_due_date' => 'date',
             'sent_to_tps_at' => 'date',
         ];
     }
@@ -59,9 +56,4 @@ class B3Pallet extends Model
         return StorageStatus::forPallet($this, null, $thresholds);
     }
 
-    /** Pengiriman dari area reclaimer ke TPS (operator). */
-    public function tpsStatus(?array $thresholds = null, ?Collection $maintenance = null): TpsDeliveryStatus
-    {
-        return TpsDeliveryStatus::forPallet($this, null, $thresholds, $maintenance);
-    }
 }

@@ -72,6 +72,29 @@ export function AuthProvider({ children }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Hak akses role bisa diubah Super Admin kapan saja: ambil ulang diam-diam (tanpa layar
+  // memuat) setiap 60 detik dan saat tab kembali aktif, supaya menu ikut berubah
+  const refreshSession = useCallback(async () => {
+    if (!token) return;
+    try {
+      const { data } = await api('/auth/me', { token });
+      setSession(data);
+    } catch (err) {
+      if (err.status === 401) signOutLocally(err.message);
+    }
+  }, [token, signOutLocally]);
+
+  useEffect(() => {
+    if (status !== 'signed-in') return undefined;
+    const timer = setInterval(refreshSession, 60_000);
+    const onVisible = () => document.visibilityState === 'visible' && refreshSession();
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [status, refreshSession]);
+
   const login = useCallback(async (nik, password) => {
     const { data } = await api('/auth/login', { method: 'POST', body: { nik, password } });
     const { token: newToken, ...sessionData } = data;
@@ -148,8 +171,9 @@ export function AuthProvider({ children }) {
       download,
       can,
       retry: () => loadSession(token),
+      refreshSession,
     }),
-    [status, error, notice, signedOutManually, session, login, logout, request, download, can, loadSession, token],
+    [status, error, notice, signedOutManually, session, login, logout, request, download, can, loadSession, refreshSession, token],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

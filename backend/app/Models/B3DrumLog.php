@@ -20,6 +20,6 @@ class B3DrumLog extends Model
 
     public function operator(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'operator_id');
+        return $this->belongsTo(User::class, 'operator_id')->withTrashed();
     }
 }

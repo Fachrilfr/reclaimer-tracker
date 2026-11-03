@@ -29,7 +29,7 @@ class SolventUsage extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'used_by');
+        return $this->belongsTo(User::class, 'used_by')->withTrashed();
     }
 
     public function present(): array

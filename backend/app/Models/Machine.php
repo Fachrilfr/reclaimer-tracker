@@ -37,7 +37,7 @@ class Machine extends Model
 
     public function reporter(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'maintenance_reported_by');
+        return $this->belongsTo(User::class, 'maintenance_reported_by')->withTrashed();
     }
 
     public function maintenanceLogs(): HasMany

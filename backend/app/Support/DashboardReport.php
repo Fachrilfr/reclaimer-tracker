@@ -43,9 +43,6 @@ final class DashboardReport
         // Masa simpan di TPS sampai diserahkan ke vendor (HSE); pallet di area reclaimer belum terhitung
         $activePallets = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
             ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
-        // Pallet yang masih di area reclaimer, belum dikirim ke TPS (operator)
-        $tpsPallets = B3Pallet::whereNull('sent_to_tps_at')->orderBy('tps_due_date')->get()
-            ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
 
         // Saldo pada akhir periode; untuk periode yang masih berjalan, saldo saat ini
         $balanceAt = $this->end->isFuture() ? now() : $this->end;
@@ -73,13 +70,10 @@ final class DashboardReport
             'trend' => $this->trend(),
             'action_items' => [
                 'pallets' => $activePallets->filter(fn ($pallet) => $pallet['storage']['needs_action'])->values(),
-                'tps_pallets' => $tpsPallets->filter(fn ($pallet) => $pallet['tps']['needs_action'])->values(),
                 'low_recovery_chains' => $this->lowRecoveryChains(),
             ],
             'active_pallets' => $activePallets,
-            // Saat maintenance, pengiriman residu ke TPS ikut terhenti (batas kirim tetap berjalan)
             'machine' => Machine::main()?->load('reporter')->summary(),
-            'tps_pallets' => $tpsPallets,
         ];
     }
 

@@ -6,7 +6,6 @@ import {
   Database,
   Droplets,
   FileChartColumn,
-  History,
   LayoutDashboard,
   Recycle,
   Scale,
@@ -26,6 +25,9 @@ import SuratJalanPage from './pages/SuratJalanPage.jsx';
 import ArchivePage from './pages/ArchivePage.jsx';
 import B3ReportPage from './pages/B3ReportPage.jsx';
 import HseDashboardPage from './pages/HseDashboardPage.jsx';
+import ParameterPage from './pages/ParameterPage.jsx';
+import MasterDataPage from './pages/MasterDataPage.jsx';
+import UserPage from './pages/UserPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -135,14 +137,6 @@ export const MODULE_GROUPS = [
         summary: 'Berat yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, dan stok, dengan ekspor Excel dan PDF.',
         page: B3ReportPage,
       },
-      {
-        key: 'audit',
-        label: 'Jejak audit',
-        path: '/audit',
-        icon: History,
-        summary: 'Riwayat perubahan dari input reclaimer sampai surat jalan dan dokumen penutup.',
-        page: null,
-      },
     ],
   },
   {
@@ -153,16 +147,16 @@ export const MODULE_GROUPS = [
         label: 'Parameter',
         path: '/parameter',
         icon: SlidersHorizontal,
-        summary: 'Toleransi solvent, isi pallet, batas masa simpan, jenjang pengingat, dan penerimanya.',
-        page: null,
+        summary: 'Toleransi solvent, batas masa simpan di TPS, jenjang pengingat, dan minimal pallet per surat jalan.',
+        page: ParameterPage,
       },
       {
         key: 'data_master',
         label: 'Data master',
         path: '/data-master',
         icon: Database,
-        summary: 'Bahan, jenis residu, shift, dan vendor.',
-        page: null,
+        summary: 'Shift dan vendor.',
+        page: MasterDataPage,
       },
       {
         key: 'pengguna',
@@ -170,7 +164,7 @@ export const MODULE_GROUPS = [
         path: '/pengguna',
         icon: Users,
         summary: 'Akun pengguna, role, dan status aktif.',
-        page: null,
+        page: UserPage,
       },
     ],
   },

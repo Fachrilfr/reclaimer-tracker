@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Biohazard, ChevronRight, CircleCheck, Recycle, TriangleAlert, Wrench } from 'lucide-react';
+import { Biohazard, ChevronRight, CircleCheck, Recycle, TriangleAlert } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import {
@@ -18,7 +18,7 @@ import TrendChart, { FLAG_COLOR, FLAG_TRIANGLE } from '../components/TrendChart.
 import { BREAKDOWN_LABEL, bucketLabel } from '../components/ReportParts.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import StorageBadge, { StorageMeter, TpsBadge } from '../components/StorageBadge.jsx';
+import StorageBadge, { StorageMeter } from '../components/StorageBadge.jsx';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { DASHBOARD_ALERTS } from '../roles.js';
 import Alert from '../components/Alert.jsx';
@@ -202,23 +202,9 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
   );
 }
 
-// FR-45 bagian limbah B3: pallet mendesak dan kritis
-// Dua tahap limbah B3. Bagian reclaimer: dari area reclaimer ke TPS (batas kirim). HSE dan
-// manajemen: masa simpan di TPS sampai diserahkan ke vendor. Pilihan per role di DASHBOARD_ALERTS.
+// FR-45 bagian residu: pallet mendesak dan kritis. Satu-satunya batas waktu adalah masa simpan
+// di TPS (90 hari) sampai diserahkan ke vendor; tidak ada batas kirim ke TPS. Per role di DASHBOARD_ALERTS.
 export const B3_VIEWS = {
-  tps: {
-    title: 'Kirim ke TPS',
-    status: (p) => p.tps,
-    badge: (p) => <TpsBadge tps={p.tps} />,
-    due: (p) => `Batas kirim ${formatDate(p.tps_due_date)}`,
-    since: (p) => `mulai ${formatDate(p.start_date)}`,
-    actionNoun: 'perlu dikirim',
-    noAction: 'Tidak ada pallet yang mendesak atau lewat batas kirim ke TPS.',
-    listTitle: 'Pallet belum dikirim ke TPS',
-    listDescription: 'Masih di area reclaimer, urut dari batas kirim terdekat.',
-    meterLabel: 'Batas kirim ke TPS',
-    empty: 'Semua pallet sudah dikirim ke TPS.',
-  },
   storage: {
     title: 'Limbah B3 di TPS',
     status: (p) => p.storage,
@@ -248,7 +234,7 @@ function AlertItemLink({ to, children }) {
   );
 }
 
-export function B3AlertCard({ pallets, view, linkFor, machine }) {
+export function B3AlertCard({ pallets, view, linkFor }) {
   const urgent = pallets.length > 0;
   const hasCritical = pallets.some((p) => view.status(p).level === 'kritis');
 
@@ -263,13 +249,6 @@ export function B3AlertCard({ pallets, view, linkFor, machine }) {
       more={pallets.length - PREVIEW_LIMIT}
       link={{ href: '#pallets-title', label: 'Lihat semua pallet' }}
     >
-      {machine?.status === 'maintenance' && (
-        <p className="mb-3 flex items-start gap-1.5 rounded-lg bg-warning-bg px-3 py-2 text-caption text-warning-fg">
-          <Wrench className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-          Mesin {machine.code} sedang maintenance: pengiriman residu ke TPS ikut terhenti. Batas kirim pallet tetap
-          berjalan.
-        </p>
-      )}
       {urgent ? (
         <ul className="divide-y divide-gray-100">
           {pallets.slice(0, PREVIEW_LIMIT).map((p) => (
@@ -588,8 +567,9 @@ export function ActivePallets({ pallets, view, sorot }) {
 
 export default function DashboardPage() {
   const { can, user } = useAuth();
-  const alerts = DASHBOARD_ALERTS[user.role] ?? { b3: 'tps', recovery: true };
-  const b3View = B3_VIEWS[alerts.b3];
+  const alerts = DASHBOARD_ALERTS[user.role] ?? { b3: null, recovery: true };
+  // Operator dan supervisor tidak memantau TPS: pallet yang sedang diisi sudah ada di banner
+  const b3View = alerts.b3 ? B3_VIEWS[alerts.b3] : null;
   const { period, anchor, end, today, isCurrent, label, query, change } = usePeriodParams(PERIODS, 'day');
 
   const { data, error, loading, reload } = useResource(`/dashboard?${query}`);
@@ -630,19 +610,16 @@ export default function DashboardPage() {
             </p>
           )}
 
-          <div className={`grid grid-cols-1 gap-6 ${alerts.recovery ? 'lg:grid-cols-2' : ''}`}>
-            <B3AlertCard
-              view={b3View}
-              machine={data.machine}
-              pallets={b3View === B3_VIEWS.tps ? data.action_items.tps_pallets : data.action_items.pallets}
-              linkFor={(p) =>
-                b3View === B3_VIEWS.tps && can('drum_b3')
-                  ? `/drum-b3?sorot=pallet-${p.id}`
-                  : b3View === B3_VIEWS.storage && can('limbah_b3')
-                    ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}`
-                    : `/dashboard?${query}&sorot=pallet-${p.id}`
-              }
-            />
+          <div className={`grid grid-cols-1 gap-6 ${b3View && alerts.recovery ? 'lg:grid-cols-2' : ''}`}>
+            {b3View && (
+              <B3AlertCard
+                view={b3View}
+                pallets={data.action_items.pallets}
+                linkFor={(p) =>
+                  can('limbah_b3') ? `/limbah-b3?lokasi=semua&sorot=pallet-${p.id}` : `/dashboard?${query}&sorot=pallet-${p.id}`
+                }
+              />
+            )}
             {alerts.recovery && (
               <RecoveryAlertCard
                 tolerance={data.tolerance}
@@ -765,11 +742,7 @@ export default function DashboardPage() {
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />
           </section>
 
-          <ActivePallets
-            view={b3View}
-            sorot={sorot}
-            pallets={b3View === B3_VIEWS.tps ? data.tps_pallets : data.active_pallets}
-          />
+          {b3View && <ActivePallets view={b3View} sorot={sorot} pallets={data.active_pallets} />}
         </div>
       )}
     </>

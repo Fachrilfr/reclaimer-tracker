@@ -40,6 +40,11 @@
     @apply btn border border-gray-200 bg-white text-gray-800 hover:bg-gray-25;
   }
 
+  /* Tindakan yang menghapus data; hanya di dialog konfirmasi */
+  .btn-danger {
+    @apply btn bg-danger-fg text-white hover:brightness-90;
+  }
+
   .card {
     @apply rounded-card border border-gray-200 bg-white shadow-card;
   }

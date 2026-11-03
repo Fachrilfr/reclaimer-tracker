@@ -42,7 +42,7 @@ function PalletPicker({ pallets, drumsPerPallet, selected, onToggle, error, read
               <span className="min-w-0 flex-1">
                 <span className="block font-mono font-medium text-gray-900">{p.pallet_number}</span>
                 <span className="block text-caption text-gray-600">
-                  {p.drum_count}/{drumsPerPallet} drum · sampai di TPS {formatDate(p.tps.sent_at)} · batas simpan{' '}
+                  {p.drum_count}/{drumsPerPallet} drum · sampai di TPS {formatDate(p.sent_to_tps_at)} · batas simpan{' '}
                   {formatDate(p.expiry_date)}
                 </span>
               </span>

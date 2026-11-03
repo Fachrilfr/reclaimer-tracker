@@ -165,7 +165,7 @@
 
 <div class="keep">
 <h2>Maintenance mesin</h2>
-<div class="muted">Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.</div>
+<div class="muted">Selama maintenance, pengiriman residu ke TPS ikut terhenti.</div>
 @if ($report['maintenance']['count'])
     <table>
         <thead><tr><th>Mulai</th><th>Selesai</th><th>Alasan</th><th>Catatan perbaikan</th><th class="num">Durasi di periode</th></tr></thead>

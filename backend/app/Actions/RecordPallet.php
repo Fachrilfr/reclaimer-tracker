@@ -44,14 +44,13 @@ class RecordPallet
                 'start_date' => $start,
                 'max_storage_days' => $maxDays,
                 'expiry_date' => null,
-                'tps_due_date' => $start->copy()->addDays((int) Parameter::number('tps_delivery_days')),
                 'status' => 'filling',
                 'notes' => $notes,
                 'created_by' => $request->user()->id,
             ]);
 
             AuditLog::record($request, 'create', $pallet, $pallet->only([
-                'pallet_number', 'start_date', 'max_storage_days', 'expiry_date', 'tps_due_date',
+                'pallet_number', 'start_date', 'max_storage_days', 'expiry_date',
             ]) + ['started_at' => $pallet->created_at->toDateTimeString()]);
 
             return $pallet;

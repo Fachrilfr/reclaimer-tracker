@@ -84,7 +84,7 @@ class WasteFlowTest extends TestCase
             ->assertJsonPath('data.0.id', $atTps)
             ->assertJsonPath('data.0.location', 'tps')
             ->assertJsonPath('data.0.drum_count', 3)
-            ->assertJsonPath('data.0.tps.sent_at', '2026-08-01')
+            ->assertJsonPath('data.0.sent_to_tps_at', '2026-08-01')
             // Masa simpan 90 hari sejak sampai di TPS 1 Agustus: 30 Okt, sisa 10 hari
             ->assertJsonPath('data.0.storage.days_remaining', 10)
             ->assertJsonPath('data.0.storage.level', 'mendesak')

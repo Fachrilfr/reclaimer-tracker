@@ -3,11 +3,17 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use RuntimeException;
 
 class Parameter extends Model
 {
     protected $fillable = ['param_key', 'param_value', 'unit', 'description', 'updated_by'];
+
+    public function updater(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by')->withTrashed();
+    }
 
     /**
      * Nilai parameter PRD §8 (FR-59). Parameter wajib ada karena diisi ParameterSeeder;

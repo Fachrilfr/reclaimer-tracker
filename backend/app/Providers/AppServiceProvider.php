@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Support\AccessMatrix;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -11,7 +12,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Hak akses per role dimuat sekali per request (scoped: dibuang setiap request baru)
+        $this->app->scoped(AccessMatrix::class);
     }
 
     /**
