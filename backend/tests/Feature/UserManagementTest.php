@@ -76,6 +76,24 @@ class UserManagementTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'reset_password', 'entity_id' => $operator->id]);
     }
 
+    public function test_super_admin_can_see_password_and_view_is_audited(): void
+    {
+        $this->as('ADM-5001')->postJson('/api/users', ['nik' => 'OP-1003', 'name' => 'Operator Citra', 'role' => 'operator', 'password' => 'citra2026'])->assertCreated();
+        $user = User::where('nik', 'OP-1003')->first();
+
+        // Tersimpan terenkripsi, tidak sebagai teks biasa
+        $this->assertNotSame('citra2026', $user->getRawOriginal('password_encrypted'));
+        $this->getJson("/api/users/{$user->id}/password")->assertOk()->assertJsonPath('data.password', 'citra2026');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'view_password', 'entity_id' => $user->id]);
+
+        $this->postJson("/api/users/{$user->id}/password", ['password' => 'baru2026x'])->assertOk();
+        $this->getJson("/api/users/{$user->id}/password")->assertJsonPath('data.password', 'baru2026x');
+        // Tidak ikut terkirim di daftar pengguna
+        $this->assertArrayNotHasKey('password_encrypted', $this->getJson('/api/users')->json('data.0'));
+
+        $this->as('SPV-2001')->getJson("/api/users/{$user->id}/password")->assertForbidden();
+    }
+
     public function test_admin_cannot_lock_themselves_out(): void
     {
         $admin = User::where('nik', 'ADM-5001')->first();

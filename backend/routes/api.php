@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->middleware('akses:pengguna');
     Route::post('/users', [UserController::class, 'store'])->middleware('akses:pengguna,kelola');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('akses:pengguna,kelola');
+    Route::get('/users/{user}/password', [UserController::class, 'showPassword'])->middleware('akses:pengguna,kelola');
     Route::post('/users/{user}/password', [UserController::class, 'resetPassword'])->middleware('akses:pengguna,kelola');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('akses:pengguna,kelola');
     Route::get('/role-access', [RoleAccessController::class, 'index'])->middleware('akses:pengguna,kelola');

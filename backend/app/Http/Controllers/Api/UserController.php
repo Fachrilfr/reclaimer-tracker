@@ -71,6 +71,7 @@ class UserController extends Controller
             'name' => trim($data['name']),
             'role' => $data['role'],
             'password' => $data['password'],
+            'password_encrypted' => $data['password'],
             'is_active' => true,
         ]);
         AuditLog::record($request, 'create', $user, $user->only(['nik', 'name', 'role']));
@@ -112,12 +113,23 @@ class UserController extends Controller
         return response()->json(['status' => 'success', 'message' => "Pengguna {$user->nik} tersimpan."]);
     }
 
+    /**
+     * Password pengguna untuk Super Admin (pengguna yang lupa password). Setiap kali dibuka
+     * dicatat di audit log. Null untuk akun yang passwordnya belum pernah diganti sejak fitur ini ada.
+     */
+    public function showPassword(Request $request, User $user): JsonResponse
+    {
+        AuditLog::record($request, 'view_password', $user, ['nik' => $user->nik]);
+
+        return response()->json(['status' => 'success', 'data' => ['password' => $user->password_encrypted]]);
+    }
+
     /** Password sementara dari Super Admin; semua sesi pengguna itu keluar. */
     public function resetPassword(Request $request, User $user): JsonResponse
     {
         $data = $request->validate(['password' => ['required', 'string', 'min:8', 'max:100']], $this->messages());
 
-        $user->update(['password' => $data['password']]);
+        $user->update(['password' => $data['password'], 'password_encrypted' => $data['password']]);
         if (! $request->user()->is($user)) {
             $user->tokens()->delete();
         }

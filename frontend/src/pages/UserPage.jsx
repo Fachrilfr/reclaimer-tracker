@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, KeyRound, LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDateTime } from '../lib/format.js';
@@ -213,6 +213,68 @@ function PasswordDialog({ user, onClose, onSaved }) {
 
 // Kartu detail satu pengguna. Password tersimpan sebagai hash, jadi tidak bisa ditampilkan;
 // yang bisa dilakukan adalah mengganti dengan password baru.
+// Password diambil dari server hanya saat tombol Tampilkan ditekan (dicatat di audit log),
+// dan tidak disimpan setelah kartu ditutup
+function PasswordRow({ user, onChange }) {
+  const { request } = useAuth();
+  const [state, setState] = useState({ shown: false, value: null, loading: false, error: '' });
+
+  const reveal = async () => {
+    if (state.shown) return setState((s) => ({ ...s, shown: false }));
+    setState({ shown: false, value: null, loading: true, error: '' });
+    try {
+      const { data } = await request(`/users/${user.id}/password`);
+      setState({ shown: true, value: data.password, loading: false, error: '' });
+    } catch (err) {
+      setState({ shown: false, value: null, loading: false, error: err.message });
+    }
+  };
+
+  return (
+    <div className="py-2">
+      <div className="flex items-center justify-between gap-4">
+        <dt className="text-gray-600">Password</dt>
+        <dd className="min-w-0 text-right">
+          {state.shown ? (
+            state.value ? (
+              <span className="break-all font-mono text-gray-900">{state.value}</span>
+            ) : (
+              <span className="text-caption text-gray-600">Belum tersimpan</span>
+            )
+          ) : (
+            <span className="font-mono tracking-widest text-gray-600" aria-label="Disembunyikan">
+              ••••••••
+            </span>
+          )}
+        </dd>
+      </div>
+      {state.shown && !state.value && (
+        <p className="mt-1 text-caption text-gray-600">
+          Password akun ini dibuat sebelum fitur lihat password ada, jadi tidak bisa dibaca. Ganti password sekali, setelah itu bisa dilihat di
+          sini.
+        </p>
+      )}
+      {state.error && <p className="mt-1 text-caption text-danger-fg">{state.error}</p>}
+      <div className="mt-2 flex flex-wrap justify-end gap-2">
+        <button type="button" onClick={reveal} disabled={state.loading} aria-pressed={state.shown} className="btn-secondary h-11 px-3 text-body">
+          {state.loading ? (
+            <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
+          ) : state.shown ? (
+            <EyeOff className="h-4 w-4" aria-hidden="true" />
+          ) : (
+            <Eye className="h-4 w-4" aria-hidden="true" />
+          )}
+          {state.shown ? 'Sembunyikan' : 'Tampilkan'}
+        </button>
+        <button type="button" onClick={onChange} className="btn-secondary h-11 px-3 text-body">
+          <KeyRound className="h-4 w-4" aria-hidden="true" />
+          Ganti password
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function DetailDialog({ user, isSelf, onClose, onAction }) {
   const rows = [
     ['NIK', <span key="nik" className="font-mono">{user.nik}</span>],
@@ -232,16 +294,7 @@ function DetailDialog({ user, isSelf, onClose, onAction }) {
             <dd className="text-right text-gray-900">{value}</dd>
           </div>
         ))}
-        <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 py-2">
-          <dt className="text-gray-600">Password</dt>
-          <dd className="flex items-center gap-3">
-            <span className="text-caption text-gray-600">Tersimpan terenkripsi, tidak bisa ditampilkan</span>
-            <button type="button" onClick={() => onAction('password')} className="btn-secondary h-11 whitespace-nowrap px-3 text-body">
-              <KeyRound className="h-4 w-4" aria-hidden="true" />
-              Ganti password
-            </button>
-          </dd>
-        </div>
+        <PasswordRow user={user} onChange={() => onAction('password')} />
       </dl>
       {isSelf && <p className="mt-3 text-caption text-gray-600">Ini akun Anda: role, status, dan hapus akun tidak bisa diubah dari sini.</p>}
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
