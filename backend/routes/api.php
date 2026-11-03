@@ -57,13 +57,14 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/parameters', [ParameterController::class, 'index'])->middleware('akses:parameter');
     Route::put('/parameters', [ParameterController::class, 'update'])->middleware('akses:parameter,kelola');
 
-    // Data master: shift, bahan, vendor. Tidak ada hapus permanen, cukup nonaktifkan.
+    // Data master: shift dan vendor. Shift yang sudah dipakai hanya bisa dinonaktifkan.
     Route::get('/master', [MasterDataController::class, 'index'])->middleware('akses:data_master');
     Route::post('/master/shifts', [MasterDataController::class, 'storeShift'])->middleware('akses:data_master,kelola');
     Route::put('/master/shifts/{shift}', [MasterDataController::class, 'updateShift'])->middleware('akses:data_master,kelola');
-    Route::put('/master/materials/{material}', [MasterDataController::class, 'updateMaterial'])->middleware('akses:data_master,kelola');
+    Route::delete('/master/shifts/{shift}', [MasterDataController::class, 'destroyShift'])->middleware('akses:data_master,kelola');
     Route::post('/master/vendors', [MasterDataController::class, 'storeVendor'])->middleware('akses:data_master,kelola');
     Route::put('/master/vendors/{vendor}', [MasterDataController::class, 'updateVendor'])->middleware('akses:data_master,kelola');
+    Route::delete('/master/vendors/{vendor}', [MasterDataController::class, 'destroyVendor'])->middleware('akses:data_master,kelola');
 
     // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
     Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');

@@ -3,14 +3,12 @@ import { Cylinder, LoaderCircle, PackageCheck, PackagePlus } from 'lucide-react'
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
-import { formatDate } from '../lib/format.js';
 import { fullText, startedText } from '../lib/pallet.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import Modal from '../components/Modal.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import { StorageMeter, TpsBadge, tpsDelayText } from '../components/StorageBadge.jsx';
 import FillDays from '../components/FillDays.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
@@ -40,7 +38,7 @@ function SubmitButton({ busy, icon: Icon, children, ...props }) {
   );
 }
 
-function StartPallet({ deliveryDays, onSubmit }) {
+function StartPallet({ onSubmit }) {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -63,8 +61,7 @@ function StartPallet({ deliveryDays, onSubmit }) {
         Mulai isi pallet baru
       </h2>
       <p className="mt-1 text-body text-gray-600">
-        Tekan saat pallet mulai diisi residu. Tanggal dan jam dicatat otomatis. Batas kirim ke TPS {deliveryDays} hari sejak
-        saat itu.
+        Tekan saat pallet mulai diisi residu. Tanggal dan jam dicatat otomatis.
       </p>
       <div className="mt-4 max-w-md">
         <NotesField id="start-notes" value={notes} onChange={setNotes} />
@@ -110,24 +107,10 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
             Pallet <span className="font-mono">{pallet.pallet_number}</span> sedang diisi
           </h2>
           <p className="mt-1 text-body text-gray-600">
-            Mulai diisi {startedText(pallet)}. Batas kirim ke TPS {formatDate(pallet.tps_due_date)}.
+            Mulai diisi {startedText(pallet)}.
           </p>
           {pallet.notes && <p className="mt-1 text-body text-gray-800">Keterangan: {pallet.notes}</p>}
         </div>
-        <TpsBadge tps={pallet.tps} />
-      </div>
-
-      <div className="mt-3">
-        <StorageMeter storage={pallet.tps} label={`Batas kirim ke TPS pallet ${pallet.pallet_number}`} />
-        <p className="mt-1 text-caption text-gray-600">
-          {pallet.tps.days_elapsed} dari {pallet.tps.max_days} hari batas kirim ke TPS terpakai.
-        </p>
-        {pallet.tps.level === 'kritis' && (
-          <Alert tone="danger" className="mt-3">
-            Pallet ini sudah lewat batas kirim ke TPS. Tandai penuh dan serahkan ke HSE secepatnya.
-            {tpsDelayText(pallet.tps) && <span className="mt-1 block">{tpsDelayText(pallet.tps)}</span>}
-          </Alert>
-        )}
       </div>
 
       {canFill && (
@@ -197,7 +180,7 @@ export default function DrumPage() {
         title="Input pallet B3"
         description={
           data
-            ? `Catat pallet residu di area reclaimer dengan dua tombol: mulai diisi dan penuh. Pallet penuh langsung tercatat terkirim ke TPS, paling lambat ${data.tps_delivery_days} hari sejak mulai diisi.`
+            ? `Catat pallet residu di area reclaimer dengan dua tombol: mulai diisi dan penuh. Satu pallet berisi ${data.drums_per_pallet} drum, dan pallet penuh langsung tercatat terkirim ke TPS.`
             : 'Catat pallet residu di area reclaimer sampai terkirim ke TPS.'
         }
       />
@@ -217,7 +200,7 @@ export default function DrumPage() {
           {data.filling ? (
             <FillingPallet key={data.filling.id} pallet={data.filling} canFill={canFill} onSubmit={submit} />
           ) : canFill ? (
-            <StartPallet deliveryDays={data.tps_delivery_days} onSubmit={submit} />
+            <StartPallet onSubmit={submit} />
           ) : (
             <div className="card">
               <EmptyState icon={Cylinder} title="Tidak ada pallet yang sedang diisi.">
@@ -269,7 +252,7 @@ export default function DrumPage() {
               </Table>
             ) : (
               <EmptyState icon={Cylinder} title="Belum ada pallet tercatat.">
-                Pallet yang dimulai akan muncul di sini dengan hitung mundur batas kirim ke TPS.
+                Pallet yang dimulai akan muncul di sini.
               </EmptyState>
             )}
           </section>

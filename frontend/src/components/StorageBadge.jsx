@@ -1,5 +1,4 @@
 import { Clock, OctagonAlert, ShieldCheck, TriangleAlert, Truck } from 'lucide-react';
-import { formatDate, formatDateTime } from '../lib/format.js';
 
 // Status limbah B3 (design.md §2.4). Sisa hari selalu ditulis dalam angka;
 // warna dan ikon hanya penguat, bukan satu-satunya penanda.
@@ -9,7 +8,6 @@ const LEVELS = {
   mendesak: { label: 'Mendesak', icon: TriangleAlert, className: 'border-urgent-border bg-urgent-bg text-urgent-fg' },
   kritis: { label: 'Kritis', icon: OctagonAlert, className: 'border-danger-border bg-danger-bg text-danger-fg' },
   diserahkan: { label: 'Diserahkan', icon: Truck, className: 'border-info-border bg-info-bg text-info-fg' },
-  terkirim: { label: 'Sudah dikirim', icon: Truck, className: 'border-info-border bg-info-bg text-info-fg' },
 };
 
 export const STORAGE_FILL = {
@@ -18,7 +16,6 @@ export const STORAGE_FILL = {
   mendesak: 'bg-urgent-fg',
   kritis: 'bg-danger-fg',
   diserahkan: 'bg-info-fg',
-  terkirim: 'bg-info-fg',
 };
 
 function countdownText({ level, days_remaining: days }) {
@@ -34,20 +31,6 @@ export function storageText(storage) {
   return countdownText(storage);
 }
 
-/** Pengiriman dari area reclaimer ke TPS (operator). */
-export function tpsText(tps) {
-  if (tps.level !== 'terkirim') return countdownText(tps);
-  const late = tps.late_days > 0 ? ` · terlambat ${tps.late_days} hari` : '';
-  return `Sudah dikirim ${formatDate(tps.sent_at)}${late}`;
-}
-
-/** Keterangan keterlambatan kirim ke TPS, misalnya karena mesin maintenance. */
-export function tpsDelayText(tps) {
-  const delay = tps.delay;
-  if (!delay || delay.type !== 'machine_maintenance') return null;
-  const period = `${formatDateTime(delay.start)} – ${delay.end ? formatDateTime(delay.end) : 'sekarang'}`;
-  return `${tps.level === 'terkirim' ? 'Terlambat' : 'Lewat batas'} karena mesin maintenance (${period}): ${delay.reason}.`;
-}
 
 function Pill({ level, children }) {
   const { icon: Icon, className } = LEVELS[level];
@@ -67,17 +50,10 @@ export default function StorageBadge({ storage }) {
   return <Pill level={storage.level}>{storageText(storage)}</Pill>;
 }
 
-/** compact: tanpa tanggal kirim, untuk tabel yang sudah punya kolom "Sampai di TPS". */
-export function TpsBadge({ tps, compact = false }) {
-  if (compact && tps.level === 'terkirim') {
-    return <Pill level="terkirim">{tps.late_days > 0 ? `Terlambat ${tps.late_days} hari` : 'Tepat waktu'}</Pill>;
-  }
-  return <Pill level={tps.level}>{tpsText(tps)}</Pill>;
-}
 
-/** Meter hari yang sudah terpakai dari batas (FR-50), untuk masa simpan maupun batas kirim TPS. */
+/** Meter hari yang sudah terpakai dari batas (FR-50), untuk masa simpan di TPS. */
 export function StorageMeter({ storage, label }) {
-  if (['diserahkan', 'terkirim', 'reclaimer'].includes(storage.level)) return null;
+  if (['diserahkan', 'reclaimer'].includes(storage.level)) return null;
   const used = Math.min(storage.days_elapsed, storage.max_days);
   const percent = Math.round((used / storage.max_days) * 100);
 

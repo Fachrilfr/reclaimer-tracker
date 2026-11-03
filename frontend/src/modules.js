@@ -146,7 +146,7 @@ export const MODULE_GROUPS = [
         label: 'Parameter',
         path: '/parameter',
         icon: SlidersHorizontal,
-        summary: 'Toleransi solvent, isi pallet, batas kirim ke TPS, batas masa simpan, dan jenjang pengingat.',
+        summary: 'Toleransi solvent, batas masa simpan di TPS, jenjang pengingat, dan minimal pallet per surat jalan.',
         page: ParameterPage,
       },
       {
@@ -154,7 +154,7 @@ export const MODULE_GROUPS = [
         label: 'Data master',
         path: '/data-master',
         icon: Database,
-        summary: 'Shift, bahan, dan vendor.',
+        summary: 'Shift dan vendor.',
         page: MasterDataPage,
       },
       {

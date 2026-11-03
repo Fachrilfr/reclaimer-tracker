@@ -9,7 +9,7 @@ import PageHeader from '../components/PageHeader.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
-import StorageBadge, { tpsDelayText } from '../components/StorageBadge.jsx';
+import StorageBadge from '../components/StorageBadge.jsx';
 import FillDays from '../components/FillDays.jsx';
 import { fullText, startedText } from '../lib/pallet.js';
 import { ErrorCard } from '../components/LoadState.jsx';
@@ -28,7 +28,7 @@ const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: '
 // Keterangan: surat jalan bila sudah diserahkan, lalu catatan operator dan keterangan
 // otomatis sistem
 function Keterangan({ pallet }) {
-  const hasNotes = pallet.notes || pallet.drum_notes.length > 0 || tpsDelayText(pallet.tps);
+  const hasNotes = pallet.notes || pallet.drum_notes.length > 0;
   if (!pallet.surat_jalan && !hasNotes) return <span className="text-gray-600">–</span>;
 
   return (

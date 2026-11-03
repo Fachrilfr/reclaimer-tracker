@@ -4,8 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
-use App\Models\Material;
+use App\Models\ReclaimerBatch;
 use App\Models\Shift;
+use App\Models\SolventUsage;
 use App\Models\Vendor;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,16 +14,14 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Data master: shift, bahan, dan vendor penerima residu.
+ * Data master: shift dan vendor penerima residu. Bahan tidak ditampilkan karena hanya ada
+ * Tinta X (keputusan 3 Nov 2026).
  *
- * Tidak ada hapus permanen: shift dan vendor dipakai di riwayat input dan surat jalan,
- * jadi cukup dinonaktifkan. Bahan hanya bisa diganti nama dan satuannya, karena kode
- * TINTA-X dan SOLVENT dibaca langsung oleh perhitungan material balance.
+ * Shift yang sudah dipakai tidak bisa dihapus (riwayat input merujuk ke sana), cukup
+ * dinonaktifkan. Vendor dihapus lunak, jadi surat jalan lama tetap menampilkan namanya.
  */
 class MasterDataController extends Controller
 {
-    private const TYPE_LABELS = ['ink' => 'Tinta', 'solvent' => 'Solvent', 'other' => 'Lainnya'];
-
     public function index(): JsonResponse
     {
         return response()->json(['status' => 'success', 'data' => self::all()]);
@@ -50,22 +49,31 @@ class MasterDataController extends Controller
         return $this->saved("Shift {$shift->name} tersimpan.");
     }
 
-    public function updateMaterial(Request $request, Material $material): JsonResponse
+    /** Shift yang sudah dipakai di input atau pemakaian solvent tidak bisa dihapus, hanya dinonaktifkan. */
+    public function destroyShift(Request $request, Shift $shift): JsonResponse
     {
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:100'],
-            'unit' => ['required', 'string', 'max:20'],
-        ], [
-            'name.required' => 'Isi nama bahan.',
-            'name.max' => 'Nama bahan paling panjang 100 karakter.',
-            'unit.required' => 'Isi satuan, misalnya kg.',
-            'unit.max' => 'Satuan paling panjang 20 karakter.',
-        ]);
-        $before = $material->only(['name', 'unit']);
-        $material->update(['name' => trim($data['name']), 'unit' => trim($data['unit'])]);
-        AuditLog::record($request, 'update', $material, $material->only(['name', 'unit']), $before);
+        $used = ReclaimerBatch::where('shift_id', $shift->id)->count() + SolventUsage::where('shift_id', $shift->id)->count();
+        if ($used) {
+            throw ValidationException::withMessages([
+                'shift' => "Shift {$shift->name} sudah dipakai di {$used} catatan, jadi tidak bisa dihapus. Nonaktifkan saja supaya tidak muncul di form.",
+            ]);
+        }
+        if ($shift->is_active && Shift::where('is_active', true)->count() === 1) {
+            throw ValidationException::withMessages(['shift' => 'Minimal satu shift harus aktif.']);
+        }
+        AuditLog::record($request, 'delete', $shift, [], $shift->only(['code', 'name', 'start_time', 'end_time']));
+        $shift->delete();
 
-        return $this->saved("Bahan {$material->name} tersimpan.");
+        return $this->saved("Shift {$shift->name} dihapus.");
+    }
+
+    /** Vendor dihapus lunak: surat jalan lama tetap menampilkan namanya. */
+    public function destroyVendor(Request $request, Vendor $vendor): JsonResponse
+    {
+        AuditLog::record($request, 'delete', $vendor, [], $vendor->only(['name', 'pic_name', 'contact', 'address']));
+        $vendor->delete();
+
+        return $this->saved("Vendor {$vendor->name} dihapus.");
     }
 
     public function storeVendor(Request $request): JsonResponse
@@ -154,13 +162,6 @@ class MasterDataController extends Controller
                 'start_time' => substr($s->start_time, 0, 5),
                 'end_time' => substr($s->end_time, 0, 5),
                 'is_active' => $s->is_active,
-            ]),
-            'materials' => Material::orderBy('id')->get()->map(fn (Material $m) => [
-                'id' => $m->id,
-                'code' => $m->code,
-                'name' => $m->name,
-                'type' => self::TYPE_LABELS[$m->type] ?? $m->type,
-                'unit' => $m->unit,
             ]),
             'vendors' => Vendor::orderByDesc('is_active')->orderBy('name')->get()->map(fn (Vendor $v) => [
                 'id' => $v->id,

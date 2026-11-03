@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { LoaderCircle, Pencil, Plus } from 'lucide-react';
+import { LoaderCircle, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import PageHeader from '../components/PageHeader.jsx';
@@ -23,16 +23,7 @@ const KINDS = {
       { key: 'end_time', label: 'Jam selesai', required: true, type: 'time', hint: 'Shift malam boleh selesai keesokan hari.' },
     ],
     empty: { code: '', name: '', start_time: '', end_time: '' },
-  },
-  material: {
-    noun: 'bahan',
-    path: '/master/materials',
-    canCreate: false,
-    canToggle: false,
-    fields: [
-      { key: 'name', label: 'Nama bahan', required: true },
-      { key: 'unit', label: 'Satuan', required: true, hint: 'Contoh kg.' },
-    ],
+    deleteNote: 'Shift yang sudah dipakai di input atau pemakaian solvent tidak bisa dihapus. Untuk shift itu, nonaktifkan saja lewat Ubah.',
   },
   vendor: {
     noun: 'vendor',
@@ -46,6 +37,7 @@ const KINDS = {
       { key: 'address', label: 'Alamat', hint: 'Opsional.', multiline: true },
     ],
     empty: { name: '', pic_name: '', contact: '', address: '' },
+    deleteNote: 'Vendor hilang dari daftar dan tidak bisa dipilih lagi. Surat jalan lama tetap menampilkan nama vendor ini.',
   },
 };
 
@@ -158,6 +150,56 @@ function EditButton({ label, onClick }) {
   );
 }
 
+function DeleteButton({ label, onClick }) {
+  return (
+    <button type="button" onClick={onClick} aria-label={label} className="btn-secondary h-11 px-3 text-body text-danger-fg">
+      <Trash2 className="h-4 w-4" aria-hidden="true" />
+      Hapus
+    </button>
+  );
+}
+
+// Konfirmasi hapus. Shift yang sudah dipakai ditolak server dengan pesan untuk menonaktifkannya.
+function DeleteDialog({ kind, item, onClose, onDeleted }) {
+  const { request } = useAuth();
+  const config = KINDS[kind];
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  const remove = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const response = await request(`${config.path}/${item.id}`, { method: 'DELETE' });
+      onDeleted(response.message, response.data);
+    } catch (err) {
+      setError(Object.values(fieldErrorsFrom(err))[0] ?? err.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Modal title={`Hapus ${config.noun} ${item.name}?`} onClose={() => !busy && onClose()}>
+      <p className="text-body text-gray-800">{config.deleteNote}</p>
+      {error && (
+        <Alert tone="danger" className="mt-4">
+          {error}
+        </Alert>
+      )}
+      <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+        <button type="button" onClick={onClose} disabled={busy} className="btn-secondary h-11 px-4 text-body">
+          Batal
+        </button>
+        <button type="button" onClick={remove} disabled={busy} className="btn-danger h-11 px-4 text-body">
+          {busy && <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />}
+          {busy ? 'Menghapus…' : `Ya, hapus ${config.noun}`}
+        </button>
+      </div>
+    </Modal>
+  );
+}
+
 function AddButton({ noun, onClick }) {
   return (
     <button type="button" onClick={onClick} className="btn-primary h-11 shrink-0 px-4 text-body">
@@ -188,6 +230,7 @@ export default function MasterDataPage() {
   const [saved, setSaved] = useState(null);
   const [message, setMessage] = useState('');
   const [editing, setEditing] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const master = saved ?? data;
 
   const open = (kind, item) => {
@@ -199,7 +242,7 @@ export default function MasterDataPage() {
     <>
       <PageHeader
         title="Data master"
-        description="Shift, bahan, dan vendor yang dipilih di form. Data yang sudah dipakai tidak dihapus, cukup dinonaktifkan."
+        description="Shift dan vendor yang dipilih di form. Tambah, ubah, nonaktifkan, atau hapus di setiap kartu."
       />
       {message && (
         <Alert tone="success" className="mt-6">
@@ -243,41 +286,10 @@ export default function MasterDataPage() {
                     </Td>
                     {canEdit && (
                       <Td className="text-right">
-                        <EditButton label={`Ubah ${s.name}`} onClick={() => open('shift', s)} />
-                      </Td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </Table>
-          </section>
-
-          <section aria-labelledby="master-bahan" className="card">
-            <SectionHeader
-              id="master-bahan"
-              title="Bahan"
-              description="Kode dan jenis bahan dipakai perhitungan material balance, jadi hanya nama dan satuan yang bisa diubah."
-            />
-            <Table caption="Daftar bahan">
-              <thead>
-                <tr>
-                  <Th>Kode</Th>
-                  <Th>Nama</Th>
-                  <Th>Jenis</Th>
-                  <Th>Satuan</Th>
-                  {canEdit && <Th><span className="sr-only">Aksi</span></Th>}
-                </tr>
-              </thead>
-              <tbody>
-                {master.materials.map((m) => (
-                  <tr key={m.id}>
-                    <Td className="whitespace-nowrap font-mono text-gray-900">{m.code}</Td>
-                    <Td>{m.name}</Td>
-                    <Td>{m.type}</Td>
-                    <Td>{m.unit}</Td>
-                    {canEdit && (
-                      <Td className="text-right">
-                        <EditButton label={`Ubah ${m.name}`} onClick={() => open('material', m)} />
+                        <div className="flex justify-end gap-2">
+                          <EditButton label={`Ubah ${s.name}`} onClick={() => open('shift', s)} />
+                          <DeleteButton label={`Hapus ${s.name}`} onClick={() => setDeleting({ kind: 'shift', item: s })} />
+                        </div>
                       </Td>
                     )}
                   </tr>
@@ -317,7 +329,10 @@ export default function MasterDataPage() {
                     </Td>
                     {canEdit && (
                       <Td className="text-right">
-                        <EditButton label={`Ubah ${v.name}`} onClick={() => open('vendor', v)} />
+                        <div className="flex justify-end gap-2">
+                          <EditButton label={`Ubah ${v.name}`} onClick={() => open('vendor', v)} />
+                          <DeleteButton label={`Hapus ${v.name}`} onClick={() => setDeleting({ kind: 'vendor', item: v })} />
+                        </div>
                       </Td>
                     )}
                   </tr>
@@ -328,6 +343,18 @@ export default function MasterDataPage() {
         </div>
       )}
 
+      {deleting && (
+        <DeleteDialog
+          kind={deleting.kind}
+          item={deleting.item}
+          onClose={() => setDeleting(null)}
+          onDeleted={(msg, next) => {
+            setDeleting(null);
+            setMessage(msg);
+            setSaved(next);
+          }}
+        />
+      )}
       {editing && (
         <EditDialog
           kind={editing.kind}

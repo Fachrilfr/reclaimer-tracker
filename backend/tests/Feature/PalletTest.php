@@ -58,9 +58,7 @@ class PalletTest extends TestCase
             ->assertJsonPath('data.drum_count', 3)
             // Lama pengisian: 1 Okt sampai 5 Okt = 4 hari
             ->assertJsonPath('data.fill_days', 4)
-            ->assertJsonPath('data.tps.level', 'terkirim')
-            ->assertJsonPath('data.tps.sent_at', '2026-10-05')
-            ->assertJsonPath('data.tps.late_days', 0)
+            ->assertJsonPath('data.sent_to_tps_at', '2026-10-05')
             ->assertJsonPath('data.notes', "Pallet kayu baru\nTutup drum diganti")
             // Masa simpan mulai dihitung saat sampai di TPS: 5 Okt + 90 hari = 3 Jan
             ->assertJsonPath('data.expiry_date', '2027-01-03')
@@ -75,72 +73,20 @@ class PalletTest extends TestCase
         $this->getJson('/api/pallets')->assertOk()->assertJsonPath('data.filling', null);
     }
 
-    public function test_filling_pallet_counts_down_to_tps_deadline(): void
+    public function test_pallet_has_no_tps_deadline_only_storage_limit(): void
     {
         Carbon::setTestNow('2026-10-15 09:00:00');
         $pallet = $this->postJson('/api/pallets')->assertCreated()->json('data');
+        $this->assertArrayNotHasKey('tps', $pallet);
+        $this->assertArrayNotHasKey('tps_due_date', $pallet);
+        $this->assertNull(B3Pallet::find($pallet['id'])->tps_due_date);
 
-        // Batas kirim ke TPS 7 hari sejak mulai diisi: 22 Okt, sisa 2 hari per 20 Okt
-        Carbon::setTestNow('2026-10-20 10:00:00');
-        $this->getJson('/api/pallets')->assertOk()
-            ->assertJsonPath('data.filling.tps_due_date', '2026-10-22')
-            ->assertJsonPath('data.filling.tps.level', 'perhatian')
-            ->assertJsonPath('data.filling.tps.days_remaining', 2)
-            ->assertJsonPath('data.filling.tps.sent_at', null);
-
-        // Penuh setelah batas kirim: tercatat terlambat
+        // Berapa lama pun diisi, tidak ada peringatan kirim ke TPS; masa simpan 90 hari sejak sampai di TPS
         Carbon::setTestNow('2026-10-24 11:00:00');
+        $this->getJson('/api/dashboard')->assertOk()->assertJsonMissingPath('data.tps_pallets');
         $this->postJson("/api/pallets/{$pallet['id']}/full")->assertOk()
-            ->assertJsonPath('data.tps.late_days', 2)
-            // Masa simpan TPS ke vendor (HSE) 90 hari sejak sampai di TPS (24 Okt)
+            ->assertJsonPath('data.drum_count', 3)
             ->assertJsonPath('data.expiry_date', '2027-01-22');
-    }
-
-    public function test_tps_level_follows_delivery_deadline(): void
-    {
-        $cases = [
-            '2026-10-19' => [6, 'aman'],
-            '2026-10-16' => [3, 'perhatian'],
-            '2026-10-14' => [1, 'mendesak'],
-            '2026-10-13' => [0, 'mendesak'],  // batas hari ini
-            '2026-10-10' => [-3, 'kritis'],   // lewat 3 hari
-        ];
-
-        foreach ($cases as $start => [$days, $level]) {
-            $pallet = B3Pallet::create([
-                'pallet_number' => "PLT-TPS-{$start}",
-                'start_date' => $start,
-                'max_storage_days' => 90,
-                'expiry_date' => Carbon::parse($start)->addDays(90),
-                'tps_due_date' => Carbon::parse($start)->addDays(7),
-                'status' => 'filling',
-            ]);
-
-            $status = $pallet->tpsStatus();
-            $this->assertSame($days, $status->daysRemaining, "start {$start}");
-            $this->assertSame($level, $status->level, "start {$start}");
-        }
-
-        // Dikirim terlambat tetap tercatat berapa hari lewatnya
-        $late = B3Pallet::create([
-            'pallet_number' => 'PLT-TPS-LATE', 'start_date' => '2026-10-01', 'max_storage_days' => 90,
-            'expiry_date' => '2026-12-30', 'tps_due_date' => '2026-10-08', 'sent_to_tps_at' => '2026-10-11', 'status' => 'full',
-        ]);
-        $this->assertSame('terkirim', $late->tpsStatus()->level);
-        $this->assertSame(3, $late->tpsStatus()->lateDays);
-    }
-
-    public function test_dashboard_lists_pallets_late_for_tps(): void
-    {
-        Carbon::setTestNow('2026-10-10 08:00:00');
-        $this->postJson('/api/pallets')->assertCreated();
-        Carbon::setTestNow('2026-10-20 10:00:00');
-
-        $this->getJson('/api/dashboard')->assertOk()
-            ->assertJsonCount(1, 'data.tps_pallets')
-            ->assertJsonCount(1, 'data.action_items.tps_pallets')
-            ->assertJsonPath('data.action_items.tps_pallets.0.tps.level', 'kritis')
-            ->assertJsonPath('data.action_items.tps_pallets.0.tps.days_remaining', -3);
     }
 
     public function test_only_one_pallet_can_be_filling(): void

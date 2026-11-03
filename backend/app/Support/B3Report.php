@@ -67,7 +67,7 @@ final class B3Report
             // Sama dengan Dashboard HSE: berat residu per periode dan per input
             'residue_breakdown' => $hse['breakdown'],
             'residue_inputs' => $hse['inputs'],
-            // Maintenance menghentikan pengiriman residu ke TPS (batas kirim tetap berjalan)
+            // Maintenance menghentikan pengiriman residu ke TPS
             'maintenance' => MaintenanceHistory::forPeriod($this->start, $this->end),
         ];
     }

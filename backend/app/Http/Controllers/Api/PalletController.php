@@ -8,8 +8,6 @@ use App\Models\B3Pallet;
 use App\Models\Machine;
 use App\Models\Parameter;
 use App\Support\StorageStatus;
-use App\Support\MaintenanceHistory;
-use App\Support\TpsDeliveryStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -30,7 +28,6 @@ class PalletController extends Controller
                 'machine' => Machine::main()?->load('reporter')->summary(),
                 'drums_per_pallet' => (int) Parameter::number('drums_per_pallet'),
                 'max_storage_days' => (int) Parameter::number('b3_max_storage_days'),
-                'tps_delivery_days' => (int) Parameter::number('tps_delivery_days'),
                 'filling' => $filling ? self::present($filling, $thresholds, withDrums: true) : null,
                 'recent' => $recent->map(fn (B3Pallet $pallet) => self::present($pallet, $thresholds)),
             ],
@@ -71,13 +68,11 @@ class PalletController extends Controller
         return filled($notes) ? trim($notes) : null;
     }
 
-    /** Ambang kedua status dan periode maintenance, diambil sekali per request. */
+    /** Ambang masa simpan, diambil sekali per request. */
     public static function thresholds(): array
     {
         return [
             'storage' => StorageStatus::thresholds(),
-            'tps' => TpsDeliveryStatus::thresholds(),
-            'maintenance' => MaintenanceHistory::windows(),
         ];
     }
 
@@ -101,9 +96,7 @@ class PalletController extends Controller
             'sent_to_tps_at' => $pallet->sent_to_tps_at?->toDateString(),
             // Batas simpan baru ada setelah pallet sampai di TPS
             'expiry_date' => $pallet->expiry_date?->toDateString(),
-            'tps_due_date' => $pallet->tps_due_date?->toDateString(),
-            // Operator: kirim ke TPS. HSE: masa simpan di TPS sampai ke vendor.
-            'tps' => $pallet->tpsStatus($thresholds['tps'], $thresholds['maintenance'] ?? null)->toArray(),
+            // Masa simpan di TPS sampai ke vendor (90 hari); tidak ada batas kirim ke TPS
             'storage' => $pallet->storageStatus($thresholds['storage'])->toArray(),
             // Keterangan saat mulai pallet dan saat mencatat drum, untuk riwayat pallet
             'notes' => $pallet->notes,

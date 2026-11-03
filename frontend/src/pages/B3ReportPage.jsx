@@ -249,8 +249,8 @@ function ReportBody({ report }) {
         title="Maintenance mesin"
         description={
           report.maintenance.count
-            ? `${report.maintenance.count} kali, total downtime ${formatDuration(report.maintenance.total_minutes)}. Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.`
-            : 'Selama maintenance, pengiriman residu ke TPS ikut terhenti; batas kirim tetap berjalan.'
+            ? `${report.maintenance.count} kali, total downtime ${formatDuration(report.maintenance.total_minutes)}. Selama maintenance, pengiriman residu ke TPS ikut terhenti.`
+            : 'Selama maintenance, pengiriman residu ke TPS ikut terhenti.'
         }
       >
         {report.maintenance.count ? (
