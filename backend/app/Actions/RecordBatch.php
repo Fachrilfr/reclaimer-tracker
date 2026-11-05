@@ -148,7 +148,7 @@ class RecordBatch
 
         if ($chain->isComplete()) {
             throw ValidationException::withMessages([
-                'parent_batch_id' => "Rangkaian {$root->batch_number} sudah selesai. Catat sebagai input baru.",
+                'parent_batch_id' => "Proses {$root->batch_number} sudah selesai. Catat sebagai input baru.",
             ]);
         }
 
@@ -168,7 +168,7 @@ class RecordBatch
             throw ValidationException::withMessages([
                 'recovery_weight' => $isContinuation
                     ? sprintf(
-                        'Hasil solvent melebihi Tinta X rangkaian input (%s kg). Periksa kembali angka hasil solvent.',
+                        'Hasil solvent melebihi Tinta X proses (%s kg). Periksa kembali angka hasil solvent.',
                         number_format($balance->chainInput(), 2, ',', '.'),
                     )
                     : 'Hasil solvent melebihi Tinta X yang masuk. Periksa kembali angka hasil solvent.',

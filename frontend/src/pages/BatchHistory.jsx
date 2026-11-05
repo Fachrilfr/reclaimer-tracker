@@ -235,7 +235,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
           Riwayat input
         </h2>
         <p className="mt-1 text-body text-gray-600">
-          Terbaru di atas. Input awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah rangkaian selesai.
+          Terbaru di atas. Input awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah proses selesai.
         </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat input">
@@ -349,7 +349,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
             <span>
               {meta
                 ? meta.total_chains
-                  ? `${meta.total_chains} rangkaian (${meta.total_batches} input)`
+                  ? `${meta.total_chains} proses (${meta.total_batches} input)`
                   : 'Tidak ada hasil'
                 : ''}
               {filterSummary && ` · ${filterSummary}`}
@@ -389,7 +389,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
               className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-4 py-3 text-body text-gray-600 sm:px-5"
             >
               <span>
-                Rangkaian {meta.from}–{meta.to} dari {meta.total_chains} · halaman {meta.page} dari {meta.last_page}
+                Proses {meta.from}–{meta.to} dari {meta.total_chains} · halaman {meta.page} dari {meta.last_page}
               </span>
               <span className="flex gap-2">
                 <button

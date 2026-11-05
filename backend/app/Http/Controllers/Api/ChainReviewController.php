@@ -30,9 +30,9 @@ class ChainReviewController extends Controller
             $root = ReclaimerBatch::lockForUpdate()->findOrFail($batch->root()->id);
 
             $problem = match (true) {
-                $root->chain_completed_at === null => 'Rangkaian ini belum selesai, jadi belum dinilai terhadap toleransi.',
-                ! $root->is_recovery_low => 'Rangkaian ini memenuhi toleransi solvent, tidak perlu ditinjau.',
-                (bool) $root->supervisor_reviewed => "Rangkaian {$root->batch_number} sudah ditinjau.",
+                $root->chain_completed_at === null => 'Proses ini belum selesai, jadi belum dinilai terhadap toleransi.',
+                ! $root->is_recovery_low => 'Proses ini memenuhi toleransi solvent, tidak perlu ditinjau.',
+                (bool) $root->supervisor_reviewed => "Proses {$root->batch_number} sudah ditinjau.",
                 default => null,
             };
             if ($problem) {
@@ -56,7 +56,7 @@ class ChainReviewController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => "Rangkaian {$root->batch_number} sudah ditinjau.",
+            'message' => "Proses {$root->batch_number} sudah ditinjau.",
             'data' => $root->load('reviewer')->reviewSummary(),
         ]);
     }

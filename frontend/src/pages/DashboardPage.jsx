@@ -51,7 +51,7 @@ function trendPoints(trend, valueOf, detailOf, flagOf = () => false) {
     longLabel: trend.unit === 'month' ? formatMonth(p.start) : formatDate(p.start),
     value: p.chain_count ? valueOf(p) : null,
     flagged: Boolean(p.chain_count) && flagOf(p),
-    note: p.chain_count ? `${detailOf(p)} · ${p.chain_count} rangkaian` : 'Belum ada rangkaian selesai',
+    note: p.chain_count ? `${detailOf(p)} · ${p.chain_count} proses` : 'Belum ada proses selesai',
   }));
 }
 
@@ -151,7 +151,7 @@ function TrendCharts({ trend, period, anchor, label }) {
         format={formatPercent}
         axisFormat={(v) => `${formatNumber(v, 0)}%`}
         reference={isSolvent ? { value: target, label: `Toleransi ${formatNumber(target, 0)}%` } : undefined}
-        emptyText="Belum ada rangkaian input yang selesai di rentang ini."
+        emptyText="Belum ada proses yang selesai di rentang ini."
       />
     </section>
   );
@@ -288,7 +288,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
         below
           ? 'Di bawah toleransi'
           : chains.length
-            ? `${chains.length} rangkaian perlu ditinjau`
+            ? `${chains.length} proses perlu ditinjau`
             : tolerance.has_data
               ? 'Memenuhi toleransi'
               : 'Belum ada data'
@@ -309,16 +309,16 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
             {below && <> (kurang {formatNumber(Math.abs(tolerance.gap), 1)} poin)</>}.
           </>
         ) : (
-          <>Belum ada rangkaian input selesai di {label}.</>
+          <>Belum ada proses selesai di {label}.</>
         )}
         {openCount > 0 && (
           <span className="block text-caption text-gray-600">
-            {openCount} rangkaian belum selesai, belum dihitung.
+            {openCount} proses belum selesai, belum dihitung.
           </span>
         )}
       </p>
 
-      <h3 className="mt-3 text-label font-medium text-gray-600">Rangkaian di bawah toleransi, 14 hari terakhir</h3>
+      <h3 className="mt-3 text-label font-medium text-gray-600">Proses di bawah toleransi, 14 hari terakhir</h3>
       {chains.length ? (
         <ul className="mt-1 divide-y divide-gray-100">
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (
@@ -395,17 +395,17 @@ function Breakdown({ breakdown, target, sorot }) {
       <EmptyState icon={Recycle} title="Belum ada input di periode ini.">
         {unit === 'chain'
           ? 'Input yang dicatat operator di periode ini akan muncul di sini.'
-          : 'Belum ada rangkaian input yang selesai di periode ini.'}
+          : 'Belum ada proses yang selesai di periode ini.'}
       </EmptyState>
     );
   }
 
   if (unit === 'chain') {
     return (
-      <Table caption="Rincian per rangkaian input">
+      <Table caption="Rincian per proses">
         <thead>
           <tr>
-            <Th>Rangkaian input</Th>
+            <Th>Proses</Th>
             <Th>Shift awal</Th>
             <Th numeric>Tinta X masuk</Th>
             <Th numeric>Hasil solvent</Th>
@@ -646,8 +646,8 @@ export default function DashboardPage() {
                 unit="kg"
                 note={
                   data.totals.chain_count
-                    ? `${data.totals.chain_count} rangkaian (${data.totals.batch_count} input)`
-                    : 'Belum ada rangkaian input selesai di periode ini'
+                    ? `${data.totals.chain_count} proses (${data.totals.batch_count} input)`
+                    : 'Belum ada proses selesai di periode ini'
                 }
               />
               <StatCard
@@ -735,7 +735,7 @@ export default function DashboardPage() {
               </h2>
               {data.breakdown.unit === 'chain' && (
                 <p className="mt-1 text-body text-gray-600">
-                  Rangkaian dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah rangkaian selesai.
+                  Proses dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah proses selesai.
                 </p>
               )}
             </div>

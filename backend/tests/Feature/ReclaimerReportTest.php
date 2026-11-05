@@ -117,7 +117,7 @@ class ReclaimerReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Rangkaian', 'Pemakaian solvent', 'Di bawah toleransi', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Proses', 'Pemakaian solvent', 'Di bawah toleransi', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
         $summary = $book->getSheetByName('Ringkasan');
         $this->assertSame('Tinta X masuk (kg)', $summary->getCell('A9')->getValue());
         $this->assertEquals(1000, $summary->getCell('B9')->getValue());
