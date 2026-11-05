@@ -271,7 +271,7 @@ export function B3AlertCard({ pallets, view, linkFor }) {
 }
 
 // Alert toleransi recovery: persentase solvent gabungan periode dibanding target, dan rangkaian
-// di bawah toleransi dalam 14 hari terakhir (FR-45)
+// di bawah toleransi dalam 7 hari terakhir (FR-45)
 function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onReviewed }) {
   const { can } = useAuth();
   const canReview = can('dashboard', 'tinjau');
@@ -318,7 +318,7 @@ function RecoveryAlertCard({ tolerance, target, chains, openCount, label, onRevi
         )}
       </p>
 
-      <h3 className="mt-3 text-label font-medium text-gray-600">Proses di bawah toleransi, 14 hari terakhir</h3>
+      <h3 className="mt-3 text-label font-medium text-gray-600">Proses di bawah toleransi, 7 hari terakhir</h3>
       {chains.length ? (
         <ul className="mt-1 divide-y divide-gray-100">
           {chains.slice(0, PREVIEW_LIMIT).map((c) => (

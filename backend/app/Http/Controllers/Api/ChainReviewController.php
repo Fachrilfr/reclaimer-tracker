@@ -15,7 +15,7 @@ class ChainReviewController extends Controller
     /**
      * Supervisor meninjau rangkaian di bawah toleransi (hak Tinjau dashboard, PRD §5.1).
      * Rangkaian yang sudah ditinjau hilang dari "Perlu ditindak"; yang tidak ditinjau
-     * tetap hilang sendiri 14 hari setelah selesai.
+     * tetap hilang sendiri 7 hari setelah selesai.
      */
     public function store(Request $request, ReclaimerBatch $batch): JsonResponse
     {
