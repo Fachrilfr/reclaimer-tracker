@@ -80,8 +80,11 @@ class BatchController extends Controller
         $rows = $page->getCollection()->flatMap(function (ReclaimerBatch $root) {
             $chainSize = $root->continuations->count() + 1;
             $batches = collect([$root])->concat($root->continuations->each->setRelation('parent', $root));
+            // Residu per baris lanjutan bisa negatif (tanpa Tinta X baru), jadi yang tampil residu rangkaian
+            $chain = BatchChain::of($root);
+            $extra = ['chain_root_id' => $root->id, 'chain_residue' => $chain->isComplete() ? $chain->residue() : null];
 
-            return $batches->map(fn (ReclaimerBatch $batch) => self::present($batch, $chainSize) + ['chain_root_id' => $root->id]);
+            return $batches->map(fn (ReclaimerBatch $batch) => self::present($batch, $chainSize) + $extra);
         });
 
         return response()->json([

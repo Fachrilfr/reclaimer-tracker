@@ -64,6 +64,7 @@ function BatchRows({ batches, sorot }) {
           <Th>Tanggal dan shift</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
+          <Th numeric>Hasil residu</Th>
           <Th numeric>Persentase solvent</Th>
           <Th numeric>Saldo solvent</Th>
           <Th>Catatan</Th>
@@ -102,6 +103,18 @@ function BatchRows({ batches, sorot }) {
               </Td>
               <Td numeric className="whitespace-nowrap">
                 {formatNumber(b.recovery_weight)} <span className="text-gray-600">kg</span>
+              </Td>
+              <Td numeric className="whitespace-nowrap">
+                {b.chain_complete ? (
+                  <>
+                    {formatNumber(b.chain_residue)} <span className="text-gray-600">kg</span>
+                    {b.chain_batch_count > 1 && (
+                      <span className="block text-caption text-gray-600">gabungan {b.chain_batch_count} input</span>
+                    )}
+                  </>
+                ) : (
+                  <span className="text-caption text-gray-600">menunggu lanjutan</span>
+                )}
               </Td>
               <Td numeric className={`whitespace-nowrap ${b.is_recovery_low ? 'font-semibold text-danger-fg' : ''}`}>
                 {b.chain_complete ? (
