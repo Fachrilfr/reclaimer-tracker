@@ -38,10 +38,10 @@ export default function ReviewDialog({ chain, label, onClose, onReviewed }) {
   };
 
   return (
-    <Modal title="Tinjau rangkaian di bawah toleransi" onClose={onClose}>
+    <Modal title="Tinjau proses di bawah toleransi" onClose={onClose}>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 rounded-lg bg-gray-25 p-3 text-body">
         <div className="col-span-2">
-          <dt className="text-caption text-gray-600">Rangkaian</dt>
+          <dt className="text-caption text-gray-600">Proses</dt>
           <dd className="font-mono text-gray-900">{label}</dd>
         </div>
         <div>
@@ -65,7 +65,7 @@ export default function ReviewDialog({ chain, label, onClose, onReviewed }) {
           id="review-notes"
           label="Catatan tindak lanjut"
           required
-          hint="Penyebab dan tindakan yang diambil. Setelah disimpan, rangkaian ini hilang dari Perlu ditindak."
+          hint="Penyebab dan tindakan yang diambil. Setelah disimpan, proses ini hilang dari Perlu ditindak."
           error={error}
         >
           {(props) => (

@@ -17,11 +17,11 @@
     <img src="{{ $logo }}" alt="Indofood CBP">
     <div class="title">Material Balance &amp; B3 Tracker<br>Laporan Reclaimer {{ $report['period_label'] }} · {{ $period }}</div>
 </header>
-<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari rangkaian input yang sudah selesai, dihitung pada tanggal dan shift input awalnya.</footer>
+<footer>Dibuat {{ Fmt::dateTime($report['generated_at']) }} WIB oleh {{ $generatedBy }} · Angka dari proses yang sudah selesai, dihitung pada tanggal dan shift input awalnya.</footer>
 
 <div>
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} rangkaian selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} rangkaian belum selesai tidak dihitung @endif</div>
+<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} proses selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} proses belum selesai tidak dihitung @endif</div>
 
 <table class="kpi kpi-5"><tr>
     <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div></div></td>
@@ -35,7 +35,7 @@
 <table class="two"><tr>
 <td class="col">
     <h2>Saldo solvent</h2>
-    <div class="muted">Bertambah dari hasil solvent tiap input (termasuk rangkaian yang belum selesai), berkurang saat solvent diambil.</div>
+    <div class="muted">Bertambah dari hasil solvent tiap input (termasuk proses yang belum selesai), berkurang saat solvent diambil.</div>
     <table>
         <tr><td>Saldo awal</td><td class="num">{{ $kg($report['solvent']['opening']) }} kg</td></tr>
         <tr><td>Hasil solvent masuk</td><td class="num">+{{ $kg($report['solvent']['recovered']) }} kg</td></tr>
@@ -95,10 +95,10 @@
 @endif
 
 <div>
-<h2>Rangkaian di bawah toleransi dan tinjauan supervisor</h2>
+<h2>Proses di bawah toleransi dan tinjauan supervisor</h2>
 @if (count($report['below_target']))
     <table>
-        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th class="num">Solvent</th><th class="num">Toleransi</th><th>Tinjauan supervisor</th></tr></thead>
+        <thead><tr><th>Proses</th><th>Tanggal</th><th>Shift awal</th><th class="num">Solvent</th><th class="num">Toleransi</th><th>Tinjauan supervisor</th></tr></thead>
         @foreach ($report['below_target'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
@@ -109,7 +109,7 @@
         @endforeach
     </table>
 @else
-    <div class="empty">Tidak ada rangkaian di bawah toleransi di periode ini.</div>
+    <div class="empty">Tidak ada proses di bawah toleransi di periode ini.</div>
 @endif
 </div>
 
@@ -139,10 +139,10 @@
 @endif
 
 <div class="page-break">
-<h2>Rincian rangkaian input</h2>
+<h2>Rincian proses</h2>
 @if (count($report['chains']))
     <table>
-        <thead><tr><th>Rangkaian</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Berat residu</th><th class="num">Persentase solvent</th></tr></thead>
+        <thead><tr><th>Proses</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Berat residu</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['chains'] as $c)
             <tr>
                 <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>

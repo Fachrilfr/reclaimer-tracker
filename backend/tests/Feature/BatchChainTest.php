@@ -140,10 +140,16 @@ class BatchChainTest extends TestCase
             ->assertJsonPath('data.totals.input', 600)
             ->assertJsonPath('data.totals.chain_count', 1);
 
+        // Riwayat input: hasil residu rangkaian (600 − 240) di setiap barisnya
+        $this->getJson('/api/batches')->assertOk()
+            ->assertJsonCount(3, 'data')
+            ->assertJsonPath('data.0.chain_residue', 360)
+            ->assertJsonPath('data.2.chain_residue', 360);
+
         // Rangkaian yang sudah selesai tidak bisa dilanjutkan lagi
         $this->continuation($root, ['recovery_weight' => 5])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.parent_batch_id.0', 'Rangkaian BR-20261020-001 sudah selesai. Catat sebagai input baru.');
+            ->assertJsonPath('errors.parent_batch_id.0', 'Proses BR-20261020-001 sudah selesai. Catat sebagai input baru.');
         $this->getJson('/api/batches/create')->assertJsonCount(0, 'data.open_chains');
     }
 

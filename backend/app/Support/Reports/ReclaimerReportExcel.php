@@ -23,13 +23,13 @@ final class ReclaimerReportExcel extends ReportWorkbook
 
         $this->summarySheet($book->getActiveSheet());
 
-        $this->table($book->createSheet(), 'Per shift', 'Material balance per shift awal rangkaian',
+        $this->table($book->createSheet(), 'Per shift', 'Material balance per shift awal proses',
             ['Shift', 'Total proses', 'Input', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Berat residu (kg)', 'Persentase solvent'],
             array_map(fn ($x) => [$x['shift'], $x['chain_count'], $x['batch_count'], $x['input'], $x['recovery'], $x['residue'], $x['chain_count'] ? $x['recovery_rate'] : null], $r['by_shift']),
             formats: [4 => self::KG, 5 => self::KG, 6 => self::KG, 7 => self::PERCENT],
             tones: [7 => fn ($row) => $belowTarget($row[6])],
             total: ['Total', $s['chain_count'], $s['batch_count'], $s['input'], $s['recovery'], $s['residue'], $s['chain_count'] ? $s['recovery_rate'] : null],
-            empty: 'Belum ada rangkaian selesai di periode ini.');
+            empty: 'Belum ada proses selesai di periode ini.');
 
         if ($breakdown = $r['breakdown']) {
             $label = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$breakdown['unit']];
@@ -42,12 +42,12 @@ final class ReclaimerReportExcel extends ReportWorkbook
                 formats: [3 => self::KG, 4 => self::KG, 5 => self::KG, 6 => self::PERCENT],
                 tones: [6 => fn ($row) => $belowTarget($row[5])],
                 total: ['Total', $s['chain_count'], $s['input'], $s['recovery'], $s['residue'], $s['chain_count'] ? $s['recovery_rate'] : null],
-                empty: 'Belum ada rangkaian selesai di periode ini.');
+                empty: 'Belum ada proses selesai di periode ini.');
         }
 
         $status = fn ($c) => ! $c['is_complete'] ? 'Belum selesai' : ($c['is_below_target'] ? 'Di bawah toleransi' : 'Memenuhi toleransi');
         $statusTone = ['Belum selesai' => 'warning', 'Di bawah toleransi' => 'danger', 'Memenuhi toleransi' => null];
-        $this->table($book->createSheet(), 'Rangkaian', 'Semua rangkaian input yang dimulai di periode ini',
+        $this->table($book->createSheet(), 'Proses', 'Semua proses yang dimulai di periode ini',
             ['No. input awal', 'Input lanjutan', 'Tanggal', 'Shift awal', 'Regu', 'Operator', 'Status', 'Tinta X masuk (kg)', 'Hasil solvent (kg)', 'Berat residu (kg)', 'Persentase solvent', 'Toleransi saat selesai', 'Catatan tinjauan'],
             array_map(fn ($c) => [
                 $c['batch_number'], implode(', ', array_slice($c['batch_numbers'], 1)) ?: null, self::date($c['date']), $c['shift'], $c['regu'], $c['operator'],
@@ -57,7 +57,7 @@ final class ReclaimerReportExcel extends ReportWorkbook
             formats: [8 => self::KG, 9 => self::KG, 10 => self::KG, 11 => self::PERCENT, 12 => self::PERCENT],
             tones: [7 => fn ($row) => $statusTone[$row[6]], 11 => fn ($row) => $row[6] === 'Di bawah toleransi' ? 'danger' : null],
             wrap: [2 => 24, 13 => 40],
-            empty: 'Belum ada rangkaian input di periode ini.');
+            empty: 'Belum ada proses di periode ini.');
 
         $usages = $r['solvent_usages'];
         $this->table($book->createSheet(), 'Pemakaian solvent', 'Solvent yang diambil dari saldo hasil solvent',
@@ -68,13 +68,13 @@ final class ReclaimerReportExcel extends ReportWorkbook
             total: $usages ? ['Total', null, round(array_sum(array_column($usages, 'weight')), 2), null, null, null, null] : null,
             empty: 'Tidak ada solvent yang diambil dari saldo di periode ini.');
 
-        $this->table($book->createSheet(), 'Di bawah toleransi', 'Rangkaian selesai dengan persentase solvent di bawah toleransi',
+        $this->table($book->createSheet(), 'Di bawah toleransi', 'Proses selesai dengan persentase solvent di bawah toleransi',
             ['No. input awal', 'Tanggal', 'Shift awal', 'Persentase solvent', 'Toleransi saat selesai', 'Ditinjau oleh', 'Catatan tinjauan'],
             array_map(fn ($c) => [$c['batch_number'], self::date($c['date']), $c['shift'], $c['recovery_rate'], $c['target_recovery_rate'], $c['review']['by'] ?? 'Belum ditinjau', $c['review']['notes'] ?? null], $r['below_target']),
             formats: [4 => self::PERCENT, 5 => self::PERCENT],
             tones: [4 => fn () => 'danger', 6 => fn ($row) => $row[5] === 'Belum ditinjau' ? 'warning' : null],
             wrap: [7 => 48],
-            empty: 'Semua rangkaian di periode ini memenuhi toleransi solvent.',
+            empty: 'Semua proses di periode ini memenuhi toleransi solvent.',
             tab: $r['below_target'] ? self::TONES['danger'][0] : null);
 
         $this->table($book->createSheet(), 'Suhu tidak normal', 'Input dengan suhu di luar batas normal',
@@ -104,16 +104,16 @@ final class ReclaimerReportExcel extends ReportWorkbook
         $usageCount = count($r['solvent_usages']);
 
         $at = $this->sectionsSheet($sheet, 'Ringkasan', 'Ringkasan material balance, saldo solvent, dan maintenance', [
-            ['Material balance (rangkaian selesai)', [
-                ['chains', 'Rangkaian selesai', $s['chain_count'], null, null],
+            ['Material balance (proses selesai)', [
+                ['chains', 'Proses selesai', $s['chain_count'], null, null],
                 ['batches', 'Jumlah input', $s['batch_count'], null, null],
-                ['open', 'Rangkaian belum selesai', $s['open_chain_count'], 'Tidak dihitung sampai input terakhirnya disimpan selesai', null],
+                ['open', 'Proses belum selesai', $s['open_chain_count'], 'Tidak dihitung sampai input terakhirnya disimpan selesai', null],
                 ['input', 'Tinta X masuk (kg)', $s['input'], 'Bahan masuk ke mesin reclaimer', self::KG],
                 ['recovery', 'Hasil solvent (kg)', $s['recovery'], 'Solvent yang dihasilkan dari Tinta X', self::KG],
                 ['residue', 'Berat residu (kg)', $s['residue'], 'Tinta X − hasil solvent', self::KG],
-                ['rate', 'Persentase solvent', $rate, $rate === null ? 'Belum ada rangkaian selesai' : ($isBelow ? 'Di bawah toleransi' : 'Memenuhi toleransi') . ' · hasil solvent ÷ Tinta X', self::PERCENT],
+                ['rate', 'Persentase solvent', $rate, $rate === null ? 'Belum ada proses selesai' : ($isBelow ? 'Di bawah toleransi' : 'Memenuhi toleransi') . ' · hasil solvent ÷ Tinta X', self::PERCENT],
                 ['target', 'Toleransi solvent', $r['target_recovery_rate'], null, self::PERCENT],
-                ['below', 'Rangkaian di bawah toleransi', $s['below_target_count'], $s['below_target_count'] ? 'Rincian di sheet "Di bawah toleransi"' : null, null],
+                ['below', 'Proses di bawah toleransi', $s['below_target_count'], $s['below_target_count'] ? 'Rincian di sheet "Di bawah toleransi"' : null, null],
             ]],
             ['Saldo solvent', [
                 ['opening', 'Saldo awal (kg)', $r['solvent']['opening'], null, self::KG],

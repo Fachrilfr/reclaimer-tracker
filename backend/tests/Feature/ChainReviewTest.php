@@ -62,7 +62,7 @@ class ChainReviewTest extends TestCase
 
         $this->postJson("/api/batch-chains/{$this->root}/review", ['notes' => 'Suhu uap terlalu rendah, operator sudah diarahkan'])
             ->assertOk()
-            ->assertJsonPath('message', 'Rangkaian BR-20261020-001 sudah ditinjau.')
+            ->assertJsonPath('message', 'Proses BR-20261020-001 sudah ditinjau.')
             ->assertJsonPath('data.by', 'Supervisor Reclaimer');
 
         $this->getJson('/api/dashboard')->assertJsonCount(0, 'data.action_items.low_recovery_chains')
@@ -79,7 +79,7 @@ class ChainReviewTest extends TestCase
 
         // Tidak bisa ditinjau dua kali
         $this->as('SPV-2001')->postJson("/api/batch-chains/{$this->root}/review", ['notes' => 'lagi'])
-            ->assertUnprocessable()->assertJsonPath('errors.notes.0', 'Rangkaian BR-20261020-001 sudah ditinjau.');
+            ->assertUnprocessable()->assertJsonPath('errors.notes.0', 'Proses BR-20261020-001 sudah ditinjau.');
     }
 
     public function test_review_via_continuation_id_targets_the_chain(): void
@@ -108,18 +108,18 @@ class ChainReviewTest extends TestCase
 
         $this->as('SPV-2001');
         $this->postJson("/api/batch-chains/{$good}/review", ['notes' => 'x'])->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Rangkaian ini memenuhi toleransi solvent, tidak perlu ditinjau.');
+            ->assertJsonPath('errors.notes.0', 'Proses ini memenuhi toleransi solvent, tidak perlu ditinjau.');
         $this->postJson("/api/batch-chains/{$open}/review", ['notes' => 'x'])->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Rangkaian ini belum selesai, jadi belum dinilai terhadap toleransi.');
+            ->assertJsonPath('errors.notes.0', 'Proses ini belum selesai, jadi belum dinilai terhadap toleransi.');
     }
 
-    public function test_unreviewed_chain_disappears_after_14_days(): void
+    public function test_unreviewed_chain_disappears_after_7_days(): void
     {
         $this->as('SPV-2001');
-        Carbon::setTestNow('2026-11-02 10:00:00'); // hari ke-14 sejak selesai
+        Carbon::setTestNow('2026-10-26 23:00:00'); // hari ke-7 sejak selesai
         $this->getJson('/api/dashboard')->assertJsonCount(1, 'data.action_items.low_recovery_chains');
 
-        Carbon::setTestNow('2026-11-03 10:00:00');
+        Carbon::setTestNow('2026-10-27 00:00:00');
         $this->getJson('/api/dashboard')->assertJsonCount(0, 'data.action_items.low_recovery_chains');
     }
 }

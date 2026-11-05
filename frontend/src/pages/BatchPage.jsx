@@ -175,7 +175,7 @@ function BatchForm({ formData, onSaved }) {
 
     if (!errs.recovery_weight && summary.recoveryExceeds) {
       errs.recovery_weight = form.is_continuation
-        ? `Hasil solvent melebihi Tinta X rangkaian input (${formatNumber(summary.chainInput)} kg). Periksa kembali angka hasil solvent.`
+        ? `Hasil solvent melebihi Tinta X proses (${formatNumber(summary.chainInput)} kg). Periksa kembali angka hasil solvent.`
         : 'Hasil solvent melebihi Tinta X yang masuk. Periksa kembali angka hasil solvent.';
     }
     return errs;
@@ -247,7 +247,7 @@ function BatchForm({ formData, onSaved }) {
             </h2>
             <p className="mt-1 text-body">
               Bila proses ini dilanjutkan di shift Anda, catat sebagai input lanjutan. Persentase solvent dinilai setelah
-              rangkaiannya selesai.
+              prosesnya selesai.
             </p>
             <ul className="mt-3 space-y-2">
               {openChains.map((chain) => (
@@ -536,7 +536,7 @@ function BatchForm({ formData, onSaved }) {
             <p id="process-status-hint" className="mt-1 text-caption text-gray-600">
               {isFinishing
                 ? form.is_continuation
-                  ? 'Menyimpan sebagai selesai menutup rangkaian ini dan menghitung persentase solvent gabungannya.'
+                  ? 'Menyimpan sebagai selesai menutup proses ini dan menghitung persentase solvent gabungannya.'
                   : 'Pilih belum selesai bila mesin masih berjalan saat shift berganti.'
                 : 'Input ini belum dinilai terhadap toleransi. Shift berikutnya mencatat input lanjutannya.'}
             </p>
@@ -588,7 +588,7 @@ function BatchForm({ formData, onSaved }) {
             </div>
             {form.is_continuation && (
               <div className="flex justify-between gap-4">
-                <dt className="text-gray-600">Rangkaian: Tinta X / hasil solvent</dt>
+                <dt className="text-gray-600">Proses: Tinta X / hasil solvent</dt>
                 <dd className="whitespace-nowrap text-right font-medium text-gray-900">
                   {formatNumber(summary.chainInput)} / {formatNumber(summary.chainRecovery)} kg
                 </dd>
@@ -618,7 +618,7 @@ function BatchForm({ formData, onSaved }) {
 
           {!isFinishing && (
             <p className="mt-3 text-caption text-gray-600">
-              Persentase solvent dinilai setelah rangkaian selesai. Saldo solvent tetap bergerak sekarang.
+              Persentase solvent dinilai setelah proses selesai. Saldo solvent tetap bergerak sekarang.
             </p>
           )}
           {rateBelowTarget && (
@@ -636,7 +636,7 @@ function BatchForm({ formData, onSaved }) {
           {saved && (
             <Alert tone="success" className="mt-4" title={`Input ${saved.batch_number} tersimpan.`}>
               {saved.chain_complete
-                ? `Rangkaian selesai, persentase solvent ${saved.chain_batch_count > 1 ? 'gabungan ' : ''}${formatPercent(
+                ? `Proses selesai, persentase solvent ${saved.chain_batch_count > 1 ? 'gabungan ' : ''}${formatPercent(
                     saved.chain_recovery_rate,
                   )}. `
                 : 'Status belum selesai, lanjutkan di shift berikutnya. '}

@@ -58,9 +58,9 @@ function ReportBody({ report }) {
   return (
     <div className="mt-6 space-y-6">
       <p className="text-body text-gray-600">
-        {s.chain_count} rangkaian selesai ({s.batch_count} input)
-        {s.open_chain_count > 0 && ` · ${s.open_chain_count} rangkaian belum selesai tidak dihitung`}. Angka sama dengan
-        dashboard: per rangkaian selesai, pada tanggal dan shift input awalnya.
+        {s.chain_count} proses selesai ({s.batch_count} input)
+        {s.open_chain_count > 0 && ` · ${s.open_chain_count} proses belum selesai tidak dihitung`}. Angka sama dengan
+        dashboard: per proses selesai, pada tanggal dan shift input awalnya.
       </p>
 
       {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
@@ -209,15 +209,15 @@ function ReportBody({ report }) {
 
       <Section
         id="lap-bawah-target"
-        title="Rangkaian di bawah toleransi"
+        title="Proses di bawah toleransi"
         description="Beserta tinjauan supervisor."
         padded={!report.below_target.length}
       >
         {report.below_target.length ? (
-          <Table caption="Rangkaian di bawah toleransi">
+          <Table caption="Proses di bawah toleransi">
             <thead>
               <tr>
-                <Th>Rangkaian</Th>
+                <Th>Proses</Th>
                 <Th>Tanggal dan shift</Th>
                 <Th numeric>Hasil solvent</Th>
                 <Th numeric>Toleransi</Th>
@@ -249,7 +249,7 @@ function ReportBody({ report }) {
             </tbody>
           </Table>
         ) : (
-          <p className="text-body text-gray-600">Tidak ada rangkaian di bawah toleransi di periode ini.</p>
+          <p className="text-body text-gray-600">Tidak ada proses di bawah toleransi di periode ini.</p>
         )}
       </Section>
 
@@ -281,16 +281,16 @@ function ReportBody({ report }) {
         </Section>
       )}
 
-      <Section id="lap-rangkaian" title={`Rincian rangkaian (${report.chains.length})`} padded={!report.chains.length}>
+      <Section id="lap-rangkaian" title={`Rincian proses (${report.chains.length})`} padded={!report.chains.length}>
         {report.chains.length ? (
           <details open={report.period === 'day' || report.period === 'week'}>
             <summary className="focus-ring mx-4 mb-3 inline-flex min-h-11 cursor-pointer items-center rounded text-body font-medium text-brand-blue-700 sm:mx-5">
               Tampilkan atau sembunyikan rincian
             </summary>
-            <Table caption="Rincian rangkaian input">
+            <Table caption="Rincian proses">
               <thead>
                 <tr>
-                  <Th>Rangkaian</Th>
+                  <Th>Proses</Th>
                   <Th>Tanggal dan shift</Th>
                   <Th>Operator</Th>
                   <Th numeric>Tinta X</Th>
