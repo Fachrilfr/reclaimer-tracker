@@ -415,9 +415,6 @@ function BatchForm({ formData, onSaved }) {
           <h2 id="weight-title" className="text-h2 font-semibold">
             Berat dan suhu
           </h2>
-          <p className="mt-1 text-body text-gray-600">
-            Dalam kg, dari timbangan. Gunakan koma untuk desimal.
-          </p>
 
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
             {form.is_continuation ? (
@@ -571,7 +568,6 @@ function BatchForm({ formData, onSaved }) {
             <Calculator className="h-5 w-5 text-gray-600" aria-hidden="true" />
             Material balance
           </h2>
-          <p className="mt-1 text-caption text-gray-600">Dihitung otomatis dari angka yang diisi.</p>
 
           <dl className="mt-4 space-y-2 text-body tabular-nums" aria-live="polite">
             <div className="flex justify-between gap-4">
@@ -616,11 +612,6 @@ function BatchForm({ formData, onSaved }) {
             </div>
           </dl>
 
-          {!isFinishing && (
-            <p className="mt-3 text-caption text-gray-600">
-              Persentase solvent dinilai setelah proses selesai. Saldo solvent tetap bergerak sekarang.
-            </p>
-          )}
           {rateBelowTarget && (
             <p className="mt-3 flex items-start gap-1.5 text-caption text-danger-fg">
               <TriangleAlert className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -690,11 +681,6 @@ export default function BatchPage() {
     <>
       <PageHeader
         title="Input reclaimer"
-        description={
-          canFill
-            ? 'Catat satu input reclaimer. Residu, persentase solvent, dan saldo solvent dihitung otomatis dari Tinta X dan hasil solvent.'
-            : 'Input reclaimer yang dicatat operator, dengan hasil material balance-nya.'
-        }
       />
 
       {canFill &&

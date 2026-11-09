@@ -383,8 +383,7 @@ function UserList() {
 
   return (
     <>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-body text-gray-600">Buka Lihat untuk melihat data, mengubah, mengganti password, atau menghapus akun.</p>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
         <button type="button" onClick={() => open({ type: 'add' })} className="btn-primary h-11 shrink-0 px-4 text-body">
           <Plus className="h-5 w-5" aria-hidden="true" />
           Tambah pengguna
@@ -516,7 +515,7 @@ export default function UserPage() {
 
   return (
     <>
-      <PageHeader title="Pengguna" description="Akun login per NIK, dan menu serta tindakan yang boleh dibuka setiap role." />
+      <PageHeader title="Pengguna" />
       <div role="tablist" aria-label="Bagian pengguna" className="my-6 inline-flex rounded-lg border border-gray-200 bg-white p-1">
         {tabs.map((t) => (
           <button

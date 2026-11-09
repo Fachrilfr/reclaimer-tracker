@@ -70,7 +70,6 @@ export default function ArchivePage() {
     <>
       <PageHeader
         title="Arsip surat jalan"
-        description="Surat jalan yang sudah tersimpan, sebagai penutup dokumen residu. Cari per nomor surat jalan, pallet, vendor, atau nama berkas."
       />
 
       <section aria-labelledby="archive-title" className="card mt-6">

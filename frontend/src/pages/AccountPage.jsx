@@ -17,7 +17,7 @@ export default function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Akun saya" description="Profil dan hak akses Anda. Perubahan data akun dilakukan oleh Super Admin." />
+      <PageHeader title="Akun saya" />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
         <section aria-labelledby="profil-title" className="card p-4 sm:p-5 lg:col-span-4">
@@ -39,9 +39,6 @@ export default function AccountPage() {
             <h2 id="akses-title" className="text-h2 font-semibold">
               Hak akses
             </h2>
-            <p className="mt-1 text-body text-gray-600">
-              Modul yang bisa Anda buka sebagai {roleLabel(user.role)}, sesuai matriks akses PRD.
-            </p>
           </div>
           <Table caption="Hak akses per modul">
             <thead>

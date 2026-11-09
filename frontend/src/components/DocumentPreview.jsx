@@ -79,7 +79,6 @@ export default function DocumentPreview({ basePath, title, query }) {
                 <h2 id="preview-title" className="text-h3 font-semibold text-gray-900">
                   {title}
                 </h2>
-                <p className="text-caption text-gray-600">Pratinjau dokumen. Unduh atau cetak hanya bila perlu.</p>
               </div>
             </div>
             <div className="flex flex-wrap items-start gap-3">

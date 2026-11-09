@@ -123,7 +123,7 @@ export default function HseDashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard HSE" description={`Berat residu dari input reclaimer dan timbangan vendor, serta pallet di TPS, ${label}.`} />
+      <PageHeader title="Dashboard HSE" />
 
       <div className="mt-6">
         <PeriodPicker periods={REPORT_PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
@@ -148,27 +148,16 @@ export default function HseDashboardPage() {
                 label="Berat residu"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
-                note={
-                  data.totals.chain_count
-                    ? `Dari ${data.totals.chain_count} proses selesai (${data.totals.batch_count} input)`
-                    : 'Belum ada proses selesai di periode ini'
-                }
               />
               <StatCard
                 label="Timbangan vendor"
                 value={formatNumber(data.totals.vendor_weight)}
                 unit="kg"
-                note={
-                  data.totals.surat_jalan_count
-                    ? `${data.totals.surat_jalan_count} surat jalan · ${data.totals.handover_pallet_count} pallet diserahkan`
-                    : 'Belum ada serah terima ke vendor di periode ini'
-                }
               />
               <StatCard
                 label="Pallet di TPS"
                 value={formatNumber(data.totals.tps_pallet_count, 0)}
                 unit="pallet"
-                note={`${data.totals.tps_drum_count} drum, belum diangkut vendor · saat ini`}
               />
             </div>
           </section>
@@ -188,7 +177,6 @@ export default function HseDashboardPage() {
           <Section
             id="hse-inputs"
             title="Residu per input"
-            description="Berat residu = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas."
           >
             <ResiduePerInput inputs={data.inputs} sorot={sorot} />
           </Section>

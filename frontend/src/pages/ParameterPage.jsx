@@ -135,11 +135,6 @@ export default function ParameterPage() {
     <>
       <PageHeader
         title="Parameter"
-        description={
-          canEdit
-            ? 'Angka yang dipakai perhitungan dan pengingat. Perubahan dicatat di audit dan berlaku untuk data baru.'
-            : 'Angka yang dipakai perhitungan dan pengingat.'
-        }
       />
       {message && (
         <Alert tone="success" className="mt-6">

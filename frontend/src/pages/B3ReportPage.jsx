@@ -28,10 +28,6 @@ function ReportBody({ report }) {
 
   return (
     <div className="mt-6 space-y-6">
-      <p className="text-body text-gray-600">
-        Penyerahan dihitung dari tanggal serah terima surat jalan. Berat resmi dari timbangan vendor, dicatat per surat jalan.
-        Batas masa simpan {report.max_storage_days} hari sejak pallet mulai terisi.
-      </p>
 
       {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
@@ -107,11 +103,11 @@ function ReportBody({ report }) {
         </Section>
       )}
 
-      <Section id="b3-residu-input" title="Residu per input" description="Berat residu = Tinta X masuk dikurangi hasil solvent, per proses yang sudah selesai. Terbaru di atas.">
+      <Section id="b3-residu-input" title="Residu per input">
         <ResiduePerInput inputs={report.residue_inputs} />
       </Section>
 
-      <Section id="b3-sj" title="Surat jalan" description="Penyerahan pallet dari TPS ke vendor di periode ini.">
+      <Section id="b3-sj" title="Surat jalan">
         {report.surat_jalan.length ? (
           <Table caption="Surat jalan di periode">
             <thead>
@@ -163,7 +159,6 @@ function ReportBody({ report }) {
       <Section
         id="b3-compliance"
         title="Kepatuhan masa simpan"
-        description="Lama simpan pallet yang diserahkan, dari sampai di TPS sampai serah terima. Yang lewat batas ada di atas."
       >
         {report.compliance.length ? (
           <Table caption="Kepatuhan masa simpan">
@@ -205,7 +200,6 @@ function ReportBody({ report }) {
       <Section
         id="b3-stock"
         title={`Stok ${stockLabel}`}
-        description="Pallet yang belum diserahkan ke vendor, dengan sisa masa simpan saat itu."
       >
         {stock.rows.length ? (
           <Table caption={`Stok ${stockLabel}`}>
@@ -247,11 +241,6 @@ function ReportBody({ report }) {
       <Section
         id="b3-maintenance"
         title="Maintenance mesin"
-        description={
-          report.maintenance.count
-            ? `${report.maintenance.count} kali, total downtime ${formatDuration(report.maintenance.total_minutes)}. Selama maintenance, pengiriman residu ke TPS ikut terhenti.`
-            : 'Selama maintenance, pengiriman residu ke TPS ikut terhenti.'
-        }
       >
         {report.maintenance.count ? (
           <Table caption="Maintenance di periode">
@@ -294,7 +283,6 @@ export default function B3ReportPage() {
     <>
       <PageHeader
         title="Laporan Residu"
-        description={`Berat residu yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, stok, dan maintenance, ${label}. Lihat dokumennya dulu; unduh hanya bila perlu disimpan.`}
         actions={<DocumentPreview basePath="/reports/b3" title={`Laporan Residu, ${label}`} query={query} />}
       />
 

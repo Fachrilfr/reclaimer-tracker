@@ -11,7 +11,7 @@ export default function ModulePlaceholderPage({ module }) {
 
   return (
     <>
-      <PageHeader title={module.label} description={module.summary} />
+      <PageHeader title={module.label} />
       <section className="card mt-6">
         <EmptyState icon={Construction} title="Modul ini belum tersedia.">
           Halaman ini sedang dibangun. Akses Anda di modul ini nanti:{' '}
