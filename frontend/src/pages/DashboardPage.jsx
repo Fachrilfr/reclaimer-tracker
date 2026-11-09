@@ -83,11 +83,6 @@ function TrendCharts({ trend, period, anchor, label }) {
           <h2 id="trend-title" className="text-h2 font-semibold">
             {current.title}
           </h2>
-          <p className="mt-1 text-body text-gray-600">
-            {isSolvent
-              ? `Hasil solvent dibanding Tinta X masuk, ${range}.`
-              : `Residu yang menjadi limbah B3 dibanding Tinta X masuk, ${range}.`}
-          </p>
           {isSolvent && (
             <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-caption text-gray-600" aria-label="Keterangan grafik">
               <li className="flex items-center gap-1.5">
@@ -215,7 +210,6 @@ export const B3_VIEWS = {
     actionNoun: 'perlu ditindak',
     noAction: 'Tidak ada pallet yang mendesak atau kritis.',
     listTitle: 'Pallet B3 di TPS',
-    listDescription: 'Belum diangkut vendor, urut dari batas simpan terdekat.',
     meterLabel: 'Masa simpan',
     empty: 'Tidak ada pallet B3 di TPS.',
   },
@@ -512,7 +506,6 @@ export function ActivePallets({ pallets, view, sorot }) {
           <h2 id="pallets-title" className="text-h2 font-semibold">
             {view.listTitle}
           </h2>
-          <p className="mt-1 text-body text-gray-600">{view.listDescription}</p>
         </div>
         <button
           type="button"
@@ -578,7 +571,7 @@ export default function DashboardPage() {
 
   return (
     <>
-      <PageHeader title="Dashboard" description={`Material balance reclaimer dan limbah B3, ${label}.`} />
+      <PageHeader title="Dashboard" />
 
       <div className="mt-6">
         <PeriodPicker periods={PERIODS} period={period} anchor={anchor} end={end} today={today} isCurrent={isCurrent} onChange={change} />
@@ -644,32 +637,20 @@ export default function DashboardPage() {
                 label="Tinta X masuk"
                 value={formatNumber(data.totals.input)}
                 unit="kg"
-                note={
-                  data.totals.chain_count
-                    ? `${data.totals.chain_count} proses (${data.totals.batch_count} input)`
-                    : 'Belum ada proses selesai di periode ini'
-                }
               />
               <StatCard
                 label="Residu (estimasi)"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
-                note={data.totals.chain_count ? `${formatPercent(data.totals.residue_rate)} dari Tinta X masuk` : undefined}
               />
               <StatCard
                 label="Hasil solvent"
                 value={formatNumber(data.totals.recovery)}
                 unit="kg"
-                note={data.totals.chain_count ? 'Masuk ke saldo solvent' : undefined}
               />
               <StatCard
                 label="Persentase solvent"
                 value={data.totals.chain_count ? formatPercent(data.totals.recovery_rate) : '–'}
-                note={
-                  data.totals.chain_count
-                    ? `${data.totals.recovery_rate >= data.target_recovery_rate ? 'Memenuhi' : 'Di bawah'} toleransi ${formatPercent(data.target_recovery_rate)}`
-                    : `Toleransi ${formatPercent(data.target_recovery_rate)}`
-                }
                 tone={
                   !data.totals.chain_count ? 'neutral' : data.totals.recovery_rate >= data.target_recovery_rate ? 'good' : 'bad'
                 }
@@ -678,7 +659,6 @@ export default function DashboardPage() {
                 label="Saldo solvent"
                 value={formatNumber(data.totals.solvent_balance)}
                 unit="kg"
-                note={isCurrent ? 'Saat ini' : `Akhir ${label}`}
               />
             </div>
           </section>
@@ -733,11 +713,6 @@ export default function DashboardPage() {
               <h2 id="breakdown-title" className="text-h2 font-semibold">
                 {data.breakdown.unit === 'chain' ? 'Rincian proses' : `Per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}
               </h2>
-              {data.breakdown.unit === 'chain' && (
-                <p className="mt-1 text-body text-gray-600">
-                  Proses dicatat pada tanggal input awalnya. Persentase solvent gabungan muncul setelah proses selesai.
-                </p>
-              )}
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />
           </section>

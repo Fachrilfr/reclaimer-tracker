@@ -57,11 +57,6 @@ function ReportBody({ report }) {
 
   return (
     <div className="mt-6 space-y-6">
-      <p className="text-body text-gray-600">
-        {s.chain_count} proses selesai ({s.batch_count} input)
-        {s.open_chain_count > 0 && ` · ${s.open_chain_count} proses belum selesai tidak dihitung`}. Angka sama dengan
-        dashboard: per proses selesai, pada tanggal dan shift input awalnya.
-      </p>
 
       {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
@@ -82,7 +77,6 @@ function ReportBody({ report }) {
         <Section
           id="lap-solvent"
           title="Saldo solvent"
-          description="Bertambah dari hasil solvent tiap input, berkurang saat solvent diambil dari saldo."
           padded
         >
           <dl className="divide-y divide-gray-100 text-body tabular-nums">
@@ -113,11 +107,6 @@ function ReportBody({ report }) {
         <Section
           id="lap-maintenance"
           title="Maintenance mesin"
-          description={
-            report.maintenance.count
-              ? `${report.maintenance.count} kali, total downtime ${formatDuration(report.maintenance.total_minutes)} di periode ini.`
-              : undefined
-          }
           padded={!report.maintenance.count}
         >
           {report.maintenance.count ? (
@@ -210,7 +199,6 @@ function ReportBody({ report }) {
       <Section
         id="lap-bawah-target"
         title="Proses di bawah toleransi"
-        description="Beserta tinjauan supervisor."
         padded={!report.below_target.length}
       >
         {report.below_target.length ? (
@@ -338,7 +326,6 @@ export default function ReportPage() {
     <>
       <PageHeader
         title="Laporan Reclaimer"
-        description={`Material balance, saldo solvent, dan catatan operasional, ${label}. Lihat dokumennya dulu; unduh Excel atau PDF hanya bila perlu disimpan.`}
         actions={<DocumentPreview basePath="/reports/reclaimer" title={`Laporan Reclaimer, ${label}`} query={query} />}
       />
 

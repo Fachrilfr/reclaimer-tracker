@@ -90,10 +90,6 @@ export default function RoleAccessPanel() {
             </button>
           ))}
         </div>
-        <p className="mt-2 text-caption text-gray-600">
-          Angka di tombol adalah jumlah akun dengan role itu. Perubahan berlaku untuk semua akun tersebut dalam satu menit, tanpa perlu
-          login ulang.
-        </p>
       </div>
 
       {message && <Alert tone="success">{message}</Alert>}
@@ -119,7 +115,6 @@ export default function RoleAccessPanel() {
                       <label htmlFor={`akses-${m.key}`} className="text-body font-semibold text-gray-900">
                         {m.label}
                       </label>
-                      <p className="text-caption text-gray-600">{m.summary}</p>
                     </div>
                     <div className="sm:col-span-5">
                       <select

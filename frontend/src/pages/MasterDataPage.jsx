@@ -242,7 +242,6 @@ export default function MasterDataPage() {
     <>
       <PageHeader
         title="Data master"
-        description="Shift dan vendor yang dipilih di form. Tambah, ubah, nonaktifkan, atau hapus di setiap kartu."
       />
       {message && (
         <Alert tone="success" className="mt-6">
@@ -260,7 +259,6 @@ export default function MasterDataPage() {
             <SectionHeader
               id="master-shift"
               title="Shift"
-              description="Shift nonaktif tidak muncul di Input reclaimer dan Pemakaian solvent."
               action={canEdit && <AddButton noun="shift" onClick={() => open('shift')} />}
             />
             <Table caption="Daftar shift">
@@ -302,7 +300,6 @@ export default function MasterDataPage() {
             <SectionHeader
               id="master-vendor"
               title="Vendor"
-              description="Penerima residu di surat jalan. Vendor nonaktif tidak bisa dipilih di surat jalan baru."
               action={canEdit && <AddButton noun="vendor" onClick={() => open('vendor')} />}
             />
             <Table caption="Daftar vendor">

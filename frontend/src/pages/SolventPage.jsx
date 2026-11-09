@@ -95,10 +95,6 @@ function UsageForm({ meta, onSaved }) {
         <h2 id="usage-title" className="text-h2 font-semibold">
           Ambil solvent dari saldo
         </h2>
-        <p className="mt-1 text-body text-gray-600">
-          Solvent ini tidak masuk ke mesin reclaimer dan tidak dihitung sebagai bahan masuk. Saldo langsung
-          berkurang.
-        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field id="date" label="Tanggal" required error={errors.date}>
@@ -170,7 +166,6 @@ function UsageForm({ meta, onSaved }) {
               </dd>
             </div>
           </dl>
-          <p className="mt-3 text-caption text-gray-600">Saldo bertambah dari hasil solvent setiap input.</p>
 
           {/* Pesan umum hilang setelah semua isian yang ditandai diperbaiki */}
           {formError && (Object.values(errors).some(Boolean) || !Object.keys(errors).length) && (
@@ -209,7 +204,6 @@ function UsageHistory({ list, page, onPage }) {
         <h2 id="history-title" className="text-h2 font-semibold">
           Riwayat pemakaian solvent
         </h2>
-        {meta && <p className="mt-1 text-body text-gray-600">{meta.total} catatan, terbaru di atas.</p>}
       </div>
 
       {!data.length ? (
@@ -296,11 +290,6 @@ export default function SolventPage() {
     <>
       <PageHeader
         title="Pemakaian solvent"
-        description={
-          canFill
-            ? 'Catat solvent yang diambil dari saldo hasil solvent. Tidak terkait Input reclaimer dan tidak dihitung sebagai bahan masuk.'
-            : 'Solvent yang diambil operator dari saldo hasil solvent.'
-        }
       />
 
       {!list.data ? (

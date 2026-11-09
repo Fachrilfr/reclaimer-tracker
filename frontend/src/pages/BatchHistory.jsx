@@ -234,9 +234,6 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
         <h2 id="recent-title" className="text-h2 font-semibold">
           Riwayat input
         </h2>
-        <p className="mt-1 text-body text-gray-600">
-          Terbaru di atas. Input awal dan lanjutannya selalu tampil bersama; persentase solvent tampil setelah proses selesai.
-        </p>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat input">
           <div className="lg:col-span-3">

@@ -60,9 +60,6 @@ function StartPallet({ onSubmit }) {
       <h2 id="start-title" className="text-h2 font-semibold">
         Mulai isi pallet baru
       </h2>
-      <p className="mt-1 text-body text-gray-600">
-        Tekan saat pallet mulai diisi residu. Tanggal dan jam dicatat otomatis.
-      </p>
       <div className="mt-4 max-w-md">
         <NotesField id="start-notes" value={notes} onChange={setNotes} />
       </div>
@@ -116,9 +113,6 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
       {canFill && (
         <div className="mt-5 border-t border-gray-100 pt-5">
           <h3 className="text-h3 font-semibold">Pallet sudah penuh?</h3>
-          <p className="mt-1 text-body text-gray-600">
-            Tekan saat pallet penuh. Tanggal dan jam dicatat otomatis, dan pallet langsung tercatat terkirim ke TPS.
-          </p>
           <div className="mt-4 max-w-md">
             <NotesField id="full-notes" value={notes} onChange={setNotes} />
           </div>
@@ -178,11 +172,6 @@ export default function DrumPage() {
     <>
       <PageHeader
         title="Input pallet B3"
-        description={
-          data
-            ? `Catat pallet residu di area reclaimer dengan dua tombol: mulai diisi dan penuh. Satu pallet berisi ${data.drums_per_pallet} drum, dan pallet penuh langsung tercatat terkirim ke TPS.`
-            : 'Catat pallet residu di area reclaimer sampai terkirim ke TPS.'
-        }
       />
 
       {!data ? (
@@ -214,9 +203,6 @@ export default function DrumPage() {
               <h2 id="pallets-title" className="text-h2 font-semibold">
                 Pallet terbaru
               </h2>
-              <p className="mt-1 text-body text-gray-600">
-                10 pallet terakhir. Pallet penuh sudah diserahkan ke HSE untuk disimpan di TPS.
-              </p>
             </div>
             {data.recent.length ? (
               <Table caption="Pallet terbaru">

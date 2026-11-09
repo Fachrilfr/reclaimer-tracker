@@ -155,10 +155,6 @@ function ReminderLog() {
           <BellRing className="h-5 w-5 text-gray-600" aria-hidden="true" />
           Log pengingat
         </h2>
-        <p className="mt-1 text-body text-gray-600">
-          Dikirim ke lonceng HSE setiap hari pukul 07.00: sekali saat sisa masa simpan 30 dan 14 hari, lalu setiap hari mulai
-          sisa 7 hari sampai pallet diserahkan.
-        </p>
       </div>
       {!data ? (
         <div className="p-4 sm:p-5">
@@ -224,7 +220,6 @@ export default function WastePage() {
     <>
       <PageHeader
         title="Residu"
-        description="Pallet dari input drum operator, sejak mulai terisi di area reclaimer, sampai di TPS, hingga diserahkan ke vendor lewat surat jalan."
         actions={
           canHandOver && (
             <Link to="/surat-jalan" className="btn-primary h-11 px-4 text-body">

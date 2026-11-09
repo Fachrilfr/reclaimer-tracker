@@ -154,9 +154,6 @@ function SuratJalanForm({ data, preselected, onSaved }) {
         <h2 id="pallet-title" className="text-h2 font-semibold">
           Pallet di TPS
         </h2>
-        <p className="mt-1 text-body text-gray-600">
-          Minimal {data.min_pallets} pallet per pengangkutan. Setelah surat jalan tersimpan, pallet berstatus diserahkan.
-        </p>
         <div className="mt-4">
           <PalletPicker
             pallets={data.pallets}
@@ -270,11 +267,6 @@ export default function SuratJalanPage() {
     <>
       <PageHeader
         title="Surat jalan"
-        description={
-          canFill
-            ? 'Serahkan pallet dari TPS ke vendor. Surat jalan menjadi penutup dokumen residu dan tersimpan di arsip.'
-            : 'Pallet di TPS yang menunggu diserahkan ke vendor. Surat jalan yang sudah tersimpan ada di arsip.'
-        }
       />
 
       {saved ? (
