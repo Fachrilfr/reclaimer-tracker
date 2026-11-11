@@ -28,6 +28,8 @@ Route::prefix('auth')->group(function () {
 Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/auth/me', [AuthController::class, 'me']);
     Route::post('/auth/logout', [AuthController::class, 'logout']);
+    // Ganti password sendiri dari Akun saya, semua role
+    Route::post('/auth/password', [AuthController::class, 'changePassword'])->middleware('throttle:10,1');
 
     // Lonceng dan banner: semua pengguna yang login
     Route::get('/notifications', [NotificationController::class, 'index']);
@@ -63,7 +65,6 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/users', [UserController::class, 'index'])->middleware('akses:pengguna');
     Route::post('/users', [UserController::class, 'store'])->middleware('akses:pengguna,kelola');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('akses:pengguna,kelola');
-    Route::get('/users/{user}/password', [UserController::class, 'showPassword'])->middleware('akses:pengguna,kelola');
     Route::post('/users/{user}/password', [UserController::class, 'resetPassword'])->middleware('akses:pengguna,kelola');
     Route::delete('/users/{user}', [UserController::class, 'destroy'])->middleware('akses:pengguna,kelola');
     Route::get('/role-access', [RoleAccessController::class, 'index'])->middleware('akses:pengguna,kelola');

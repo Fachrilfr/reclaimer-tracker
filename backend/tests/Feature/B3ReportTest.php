@@ -37,7 +37,7 @@ class B3ReportTest extends TestCase
         $this->pallet('2026-09-01', '2026-09-04');
         $this->pallet('2026-10-18', null);
 
-        $this->as('HSE-3001');
+        $this->as('30000001');
         $this->suratJalan('SJ-001', $first, '2026-10-05', [$a, $b], 600);
         $this->suratJalan('SJ-002', $second, '2026-10-15', [$c], 300);
     }
@@ -58,7 +58,7 @@ class B3ReportTest extends TestCase
     /** Operator menekan "mulai diisi" pada $start dan "penuh" pada $full (terkirim ke TPS). */
     private function pallet(string $start, ?string $full): int
     {
-        $this->as('OP-1001');
+        $this->as('10000001');
         Carbon::setTestNow("{$start} 08:00:00");
         $id = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
         if ($full) {
@@ -153,17 +153,17 @@ class B3ReportTest extends TestCase
         $this->assertStringContainsString('SJ-001', $html);
         $this->assertDatabaseMissing('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);
 
-        $this->as('SPV-2001')->getJson('/api/reports/b3/document')->assertForbidden();
+        $this->as('20000001')->getJson('/api/reports/b3/document')->assertForbidden();
         $this->getJson('/api/reports/reclaimer/document?period=month&date=2026-10-20')->assertOk()
             ->assertJsonPath('data.html', fn ($html) => str_contains($html, 'Laporan Reclaimer Bulanan'));
     }
 
     public function test_only_hse_management_and_admin(): void
     {
-        foreach (['HSE-3001', 'MGT-4001', 'ADM-5001'] as $nik) {
+        foreach (['30000001', '40000001', '50000001'] as $nik) {
             $this->as($nik)->getJson('/api/reports/b3')->assertOk();
         }
-        foreach (['SPV-2001', 'OP-1001'] as $nik) {
+        foreach (['20000001', '10000001'] as $nik) {
             $this->as($nik)->getJson('/api/reports/b3')->assertForbidden();
         }
     }

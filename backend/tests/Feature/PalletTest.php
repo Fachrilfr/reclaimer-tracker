@@ -21,7 +21,7 @@ class PalletTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 10:00:00');
-        $this->operator = User::where('nik', 'OP-1001')->first();
+        $this->operator = User::where('nik', '10000001')->first();
         $this->actingAs($this->operator, 'sanctum');
     }
 
@@ -136,18 +136,18 @@ class PalletTest extends TestCase
     public function test_access_follows_matrix(): void
     {
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'SPV-2001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '20000001')->first(), 'sanctum');
         $this->getJson('/api/pallets')->assertOk();
         $this->postJson('/api/pallets')->assertForbidden();
 
         $this->app['auth']->forgetGuards();
         // HSE tidak mencatat drum lagi; pallet dipantau dari Limbah B3
-        $this->actingAs(User::where('nik', 'HSE-3001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '30000001')->first(), 'sanctum');
         $this->postJson('/api/pallets')->assertForbidden();
         $this->getJson('/api/b3/pallets')->assertOk();
 
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'MGT-4001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '40000001')->first(), 'sanctum');
         $this->getJson('/api/pallets')->assertForbidden();
     }
 }

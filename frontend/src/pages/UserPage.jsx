@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Eye, EyeOff, KeyRound, LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
+import { Eye, KeyRound, LoaderCircle, Pencil, Plus, Trash2, Users } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
 import { formatDateTime } from '../lib/format.js';
@@ -87,7 +87,8 @@ function AddDialog({ onClose, onSaved }) {
   const onSubmit = (e) => {
     e.preventDefault();
     const errs = {};
-    if (!form.nik.trim()) errs.nik = 'Isi NIK.';
+    if (!form.nik) errs.nik = 'Isi NIK.';
+    else if (!/^\d{8}$/.test(form.nik)) errs.nik = `NIK harus 8 digit angka, baru ${form.nik.length} digit.`;
     if (!form.name.trim()) errs.name = 'Isi nama.';
     if (form.password.length < MIN_PASSWORD) errs.password = `Password paling sedikit ${MIN_PASSWORD} karakter.`;
     submit(errs);
@@ -97,8 +98,19 @@ function AddDialog({ onClose, onSaved }) {
     <Modal title="Tambah pengguna" onClose={() => !busy && onClose()}>
       <form onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert tone="danger">{formError}</Alert>}
-        <Field id="user-nik" label="NIK" required hint="Dipakai untuk login dan tidak bisa diubah. Contoh OP-1002." error={errors.nik}>
-          {(props) => <input {...props} type="text" maxLength={30} value={form.nik} onChange={(e) => set('nik')(e.target.value)} className="field font-mono uppercase" />}
+        <Field id="user-nik" label="NIK" required hint="8 digit angka. Dipakai untuk login dan tidak bisa diubah." error={errors.nik}>
+          {(props) => (
+            <input
+              {...props}
+              type="text"
+              inputMode="numeric"
+              autoComplete="off"
+              maxLength={8}
+              value={form.nik}
+              onChange={(e) => set('nik')(e.target.value.replace(/\D/g, '').slice(0, 8))}
+              className="field font-mono"
+            />
+          )}
         </Field>
         <Field id="user-name" label="Nama" required error={errors.name}>
           {(props) => <input {...props} type="text" maxLength={100} value={form.name} onChange={(e) => set('name')(e.target.value)} className="field" />}
@@ -212,69 +224,7 @@ function PasswordDialog({ user, onClose, onSaved }) {
 }
 
 // Kartu detail satu pengguna. Password tersimpan sebagai hash, jadi tidak bisa ditampilkan;
-// yang bisa dilakukan adalah mengganti dengan password baru.
-// Password diambil dari server hanya saat tombol Tampilkan ditekan (dicatat di audit log),
-// dan tidak disimpan setelah kartu ditutup
-function PasswordRow({ user, onChange }) {
-  const { request } = useAuth();
-  const [state, setState] = useState({ shown: false, value: null, loading: false, error: '' });
-
-  const reveal = async () => {
-    if (state.shown) return setState((s) => ({ ...s, shown: false }));
-    setState({ shown: false, value: null, loading: true, error: '' });
-    try {
-      const { data } = await request(`/users/${user.id}/password`);
-      setState({ shown: true, value: data.password, loading: false, error: '' });
-    } catch (err) {
-      setState({ shown: false, value: null, loading: false, error: err.message });
-    }
-  };
-
-  return (
-    <div className="py-2">
-      <div className="flex items-center justify-between gap-4">
-        <dt className="text-gray-600">Password</dt>
-        <dd className="min-w-0 text-right">
-          {state.shown ? (
-            state.value ? (
-              <span className="break-all font-mono text-gray-900">{state.value}</span>
-            ) : (
-              <span className="text-caption text-gray-600">Belum tersimpan</span>
-            )
-          ) : (
-            <span className="font-mono tracking-widest text-gray-600" aria-label="Disembunyikan">
-              ••••••••
-            </span>
-          )}
-        </dd>
-      </div>
-      {state.shown && !state.value && (
-        <p className="mt-1 text-caption text-gray-600">
-          Password akun ini dibuat sebelum fitur lihat password ada, jadi tidak bisa dibaca. Ganti password sekali, setelah itu bisa dilihat di
-          sini.
-        </p>
-      )}
-      {state.error && <p className="mt-1 text-caption text-danger-fg">{state.error}</p>}
-      <div className="mt-2 flex flex-wrap justify-end gap-2">
-        <button type="button" onClick={reveal} disabled={state.loading} aria-pressed={state.shown} className="btn-secondary h-11 px-3 text-body">
-          {state.loading ? (
-            <LoaderCircle className="h-4 w-4 motion-safe:animate-spin" aria-hidden="true" />
-          ) : state.shown ? (
-            <EyeOff className="h-4 w-4" aria-hidden="true" />
-          ) : (
-            <Eye className="h-4 w-4" aria-hidden="true" />
-          )}
-          {state.shown ? 'Sembunyikan' : 'Tampilkan'}
-        </button>
-        <button type="button" onClick={onChange} className="btn-secondary h-11 px-3 text-body">
-          <KeyRound className="h-4 w-4" aria-hidden="true" />
-          Ganti password
-        </button>
-      </div>
-    </div>
-  );
-}
-
+// yang bisa dilakukan Super Admin hanya mengganti dengan password baru.
 function DetailDialog({ user, isSelf, onClose, onAction }) {
   const rows = [
     ['NIK', <span key="nik" className="font-mono">{user.nik}</span>],
@@ -286,7 +236,7 @@ function DetailDialog({ user, isSelf, onClose, onAction }) {
   ];
 
   return (
-    <Modal title={`Pengguna ${user.nik}`} onClose={onClose}>
+    <Modal title={user.name} onClose={onClose}>
       <dl className="divide-y divide-gray-100 text-body">
         {rows.map(([label, value]) => (
           <div key={label} className="flex justify-between gap-4 py-2">
@@ -294,7 +244,6 @@ function DetailDialog({ user, isSelf, onClose, onAction }) {
             <dd className="text-right text-gray-900">{value}</dd>
           </div>
         ))}
-        <PasswordRow user={user} onChange={() => onAction('password')} />
       </dl>
       {isSelf && <p className="mt-3 text-caption text-gray-600">Ini akun Anda: role, status, dan hapus akun tidak bisa diubah dari sini.</p>}
       <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-between">
@@ -310,6 +259,10 @@ function DetailDialog({ user, isSelf, onClose, onAction }) {
         <div className="flex flex-col-reverse gap-3 sm:flex-row">
           <button type="button" onClick={onClose} className="btn-secondary h-11 px-4 text-body">
             Tutup
+          </button>
+          <button type="button" onClick={() => onAction('password')} className="btn-secondary h-11 px-4 text-body">
+            <KeyRound className="h-4 w-4" aria-hidden="true" />
+            Ganti password
           </button>
           <button type="button" onClick={() => onAction('edit')} className="btn-primary h-11 px-4 text-body">
             <Pencil className="h-4 w-4" aria-hidden="true" />

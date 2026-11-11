@@ -22,7 +22,7 @@ class BatchTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 09:30:00');
-        $this->operator = User::where('nik', 'OP-1001')->first();
+        $this->operator = User::where('nik', '10000001')->first();
     }
 
     protected function tearDown(): void
@@ -130,13 +130,13 @@ class BatchTest extends TestCase
 
     public function test_only_roles_with_isi_can_save(): void
     {
-        $this->storeAs(User::where('nik', 'SPV-2001')->first())->assertForbidden();
-        $this->storeAs(User::where('nik', 'HSE-3001')->first())->assertForbidden();
+        $this->storeAs(User::where('nik', '20000001')->first())->assertForbidden();
+        $this->storeAs(User::where('nik', '30000001')->first())->assertForbidden();
 
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'SPV-2001')->first(), 'sanctum')->getJson('/api/batches')->assertOk();
+        $this->actingAs(User::where('nik', '20000001')->first(), 'sanctum')->getJson('/api/batches')->assertOk();
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'MGT-4001')->first(), 'sanctum')->getJson('/api/batches')->assertForbidden();
+        $this->actingAs(User::where('nik', '40000001')->first(), 'sanctum')->getJson('/api/batches')->assertForbidden();
     }
 
     public function test_form_data_contains_balance_shift_and_candidates(): void

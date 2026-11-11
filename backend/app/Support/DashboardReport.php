@@ -101,7 +101,13 @@ final class DashboardReport
     private function breakdown(Collection $chains, Collection $completed): array
     {
         if ($this->period === 'day') {
-            return ['unit' => 'chain', 'rows' => $chains->map(fn (BatchChain $c) => $c->toArray())->values()->all()];
+            // Rincian proses per shift: urut shift awal, lalu urutan input di dalam shift
+            $rows = $chains->sortBy([
+                fn (BatchChain $a, BatchChain $b) => $a->root->shift_id <=> $b->root->shift_id,
+                fn (BatchChain $a, BatchChain $b) => $a->root->id <=> $b->root->id,
+            ]);
+
+            return ['unit' => 'chain', 'rows' => $rows->map(fn (BatchChain $c) => $c->toArray())->values()->all()];
         }
 
         $unit = ReportPeriod::BREAKDOWN[$this->period];

@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+import { KeyRound } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { ACCESS_LEVELS, roleLabel } from '../roles.js';
 import { MODULES } from '../modules.js';
@@ -12,7 +14,6 @@ export default function AccountPage() {
     ['NIK', <span className="font-mono">{user.nik}</span>],
     ['Nama', user.name],
     ['Peran', roleLabel(user.role)],
-    ['Email', user.email ?? 'Belum diisi'],
   ];
 
   return (
@@ -20,7 +21,7 @@ export default function AccountPage() {
       <PageHeader title="Akun saya" />
 
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-12">
-        <section aria-labelledby="profil-title" className="card p-4 sm:p-5 lg:col-span-4">
+        <section aria-labelledby="profil-title" className="card self-start p-4 sm:p-5 lg:col-span-4">
           <h2 id="profil-title" className="text-h2 font-semibold">
             Profil
           </h2>
@@ -32,9 +33,14 @@ export default function AccountPage() {
               </div>
             ))}
           </dl>
+          {/* Halaman sendiri seperti layar masuk; setelah tersimpan, kembali ke halaman masuk */}
+          <Link to="/akun/ganti-password" className="btn-secondary mt-4 h-11 w-full px-4 text-body">
+            <KeyRound className="h-4 w-4" aria-hidden="true" />
+            Ganti password
+          </Link>
         </section>
 
-        <section aria-labelledby="akses-title" className="card lg:col-span-8">
+        <section aria-labelledby="akses-title" className="card self-start lg:col-span-8">
           <div className="p-4 sm:p-5">
             <h2 id="akses-title" className="text-h2 font-semibold">
               Hak akses

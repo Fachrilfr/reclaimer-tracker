@@ -33,15 +33,15 @@ npm install
 npm run dev
 ```
 
-Buka http://localhost:5173. Akun uji dari seeder memakai kata sandi `password123`:
+Buka http://localhost:5173. Akun uji dari seeder memakai kata sandi `password123`. NIK selalu 8 digit angka:
 
 | NIK | Role |
 | --- | --- |
-| OP-1001 | Operator |
-| SPV-2001 | Supervisor |
-| HSE-3001 | HSE |
-| MGT-4001 | Manajemen |
-| ADM-5001 | Admin |
+| 10000001 | Operator |
+| 20000001 | Supervisor |
+| 30000001 | HSE |
+| 40000001 | Manajemen |
+| 50000001 | Super Admin |
 
 ## Database
 
