@@ -23,7 +23,7 @@ class SolventUsageTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 09:30:00');
-        $this->as('OP-1001');
+        $this->as('10000001');
     }
 
     protected function tearDown(): void
@@ -64,7 +64,7 @@ class SolventUsageTest extends TestCase
         // Saldo yang sama dipakai form batch
         $this->getJson('/api/batches/create')->assertJsonPath('data.solvent_balance', 850);
 
-        $this->as('SPV-2001')->getJson('/api/solvent-usages')
+        $this->as('20000001')->getJson('/api/solvent-usages')
             ->assertOk()
             ->assertJsonCount(1, 'data')
             ->assertJsonPath('data.0.purpose', 'Pencucian mesin cetak')
@@ -90,8 +90,8 @@ class SolventUsageTest extends TestCase
 
     public function test_access_follows_matrix(): void
     {
-        $this->as('SPV-2001')->postJson('/api/solvent-usages', $this->payload())->assertForbidden();
-        $this->as('HSE-3001')->getJson('/api/solvent-usages')->assertForbidden();
-        $this->as('MGT-4001')->getJson('/api/solvent-usages')->assertForbidden();
+        $this->as('20000001')->postJson('/api/solvent-usages', $this->payload())->assertForbidden();
+        $this->as('30000001')->getJson('/api/solvent-usages')->assertForbidden();
+        $this->as('40000001')->getJson('/api/solvent-usages')->assertForbidden();
     }
 }

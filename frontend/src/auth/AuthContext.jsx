@@ -167,13 +167,15 @@ export function AuthProvider({ children }) {
       home: session?.home ?? null,
       login,
       logout,
+      // Keluar dengan pesan di halaman masuk, misalnya setelah ganti password
+      signOut: signOutLocally,
       request,
       download,
       can,
       retry: () => loadSession(token),
       refreshSession,
     }),
-    [status, error, notice, signedOutManually, session, login, logout, request, download, can, loadSession, refreshSession, token],
+    [status, error, notice, signedOutManually, session, login, logout, signOutLocally, request, download, can, loadSession, refreshSession, token],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

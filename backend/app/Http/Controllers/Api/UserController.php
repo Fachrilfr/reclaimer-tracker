@@ -60,18 +60,17 @@ class UserController extends Controller
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([
-            'nik' => ['required', 'string', 'min:4', 'max:30', 'regex:/^[A-Za-z0-9-]+$/', Rule::unique('users', 'nik')],
+            'nik' => ['required', 'digits:8', Rule::unique('users', 'nik')],
             'name' => ['required', 'string', 'max:100'],
             'role' => ['required', Rule::in(self::ROLES)],
             'password' => ['required', 'string', 'min:8', 'max:100'],
         ], $this->messages());
 
         $user = User::create([
-            'nik' => strtoupper(trim($data['nik'])),
+            'nik' => $data['nik'],
             'name' => trim($data['name']),
             'role' => $data['role'],
             'password' => $data['password'],
-            'password_encrypted' => $data['password'],
             'is_active' => true,
         ]);
         AuditLog::record($request, 'create', $user, $user->only(['nik', 'name', 'role']));
@@ -114,22 +113,14 @@ class UserController extends Controller
     }
 
     /**
-     * Password pengguna untuk Super Admin (pengguna yang lupa password). Setiap kali dibuka
-     * dicatat di audit log. Null untuk akun yang passwordnya belum pernah diganti sejak fitur ini ada.
+     * Password sementara dari Super Admin untuk pengguna yang lupa password; semua sesi
+     * pengguna itu keluar. Password tersimpan sebagai hash, jadi tidak bisa dilihat siapa pun.
      */
-    public function showPassword(Request $request, User $user): JsonResponse
-    {
-        AuditLog::record($request, 'view_password', $user, ['nik' => $user->nik]);
-
-        return response()->json(['status' => 'success', 'data' => ['password' => $user->password_encrypted]]);
-    }
-
-    /** Password sementara dari Super Admin; semua sesi pengguna itu keluar. */
     public function resetPassword(Request $request, User $user): JsonResponse
     {
         $data = $request->validate(['password' => ['required', 'string', 'min:8', 'max:100']], $this->messages());
 
-        $user->update(['password' => $data['password'], 'password_encrypted' => $data['password']]);
+        $user->update(['password' => $data['password']]);
         if (! $request->user()->is($user)) {
             $user->tokens()->delete();
         }
@@ -162,9 +153,7 @@ class UserController extends Controller
     {
         return [
             'nik.required' => 'Isi NIK.',
-            'nik.min' => 'NIK paling sedikit 4 karakter.',
-            'nik.max' => 'NIK paling panjang 30 karakter.',
-            'nik.regex' => 'NIK hanya boleh huruf, angka, dan tanda hubung, misalnya OP-1002.',
+            'nik.digits' => 'NIK harus 8 digit angka, misalnya 10000003.',
             'nik.unique' => 'NIK ini sudah dipakai pengguna lain.',
             'name.required' => 'Isi nama.',
             'name.max' => 'Nama paling panjang 100 karakter.',

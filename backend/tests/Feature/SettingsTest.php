@@ -33,7 +33,7 @@ class SettingsTest extends TestCase
 
     private function values(array $overrides = []): array
     {
-        $values = collect($this->as('HSE-3001')->getJson('/api/parameters')->assertOk()->json('data'))
+        $values = collect($this->as('30000001')->getJson('/api/parameters')->assertOk()->json('data'))
             ->flatMap(fn ($group) => collect($group['items'])->mapWithKeys(fn ($item) => [$item['key'] => $item['value']]))
             ->all();
 
@@ -42,7 +42,7 @@ class SettingsTest extends TestCase
 
     public function test_parameters_are_grouped_and_hide_unused_keys(): void
     {
-        $keys = collect($this->as('SPV-2001')->getJson('/api/parameters')->assertOk()->json('data'))->flatMap(fn ($g) => array_column($g['items'], 'key'));
+        $keys = collect($this->as('20000001')->getJson('/api/parameters')->assertOk()->json('data'))->flatMap(fn ($g) => array_column($g['items'], 'key'));
 
         $this->assertContains('target_recovery_rate', $keys);
         $this->assertNotContains('daily_reminder_hour', $keys);
@@ -60,7 +60,7 @@ class SettingsTest extends TestCase
         $this->assertSame(42.5, Parameter::number('target_recovery_rate'));
         $this->assertSame(100.0, Parameter::number('b3_max_storage_days'));
         $this->assertDatabaseHas('audit_logs', ['entity_type' => 'parameters', 'action' => 'update']);
-        $this->assertSame(User::where('nik', 'HSE-3001')->value('id'), Parameter::where('param_key', 'b3_max_storage_days')->value('updated_by'));
+        $this->assertSame(User::where('nik', '30000001')->value('id'), Parameter::where('param_key', 'b3_max_storage_days')->value('updated_by'));
     }
 
     public function test_reminder_levels_must_stay_in_order(): void
@@ -75,14 +75,14 @@ class SettingsTest extends TestCase
     public function test_only_managers_can_change_parameters(): void
     {
         $body = $this->values();
-        $this->as('OP-1001')->getJson('/api/parameters')->assertForbidden();
-        $this->as('MGT-4001')->putJson('/api/parameters', $body)->assertForbidden();
-        $this->as('SPV-2001')->putJson('/api/parameters', $body)->assertOk()->assertJsonPath('message', 'Tidak ada perubahan.');
+        $this->as('10000001')->getJson('/api/parameters')->assertForbidden();
+        $this->as('40000001')->putJson('/api/parameters', $body)->assertForbidden();
+        $this->as('20000001')->putJson('/api/parameters', $body)->assertOk()->assertJsonPath('message', 'Tidak ada perubahan.');
     }
 
     public function test_master_data_shifts_and_vendors(): void
     {
-        $this->as('HSE-3001')->getJson('/api/master')->assertOk()
+        $this->as('30000001')->getJson('/api/master')->assertOk()
             ->assertJsonCount(3, 'data.shifts')->assertJsonMissingPath('data.materials');
 
         $this->postJson('/api/master/vendors', ['name' => 'PT Baru Lestari', 'pic_name' => 'Bu Sari'])->assertOk();
@@ -112,7 +112,7 @@ class SettingsTest extends TestCase
         $this->deleteJson("/api/master/vendors/{$vendor->id}")->assertOk();
         $this->assertSoftDeleted('vendors', ['id' => $vendor->id]);
 
-        $this->as('SPV-2001')->getJson('/api/master')->assertOk();
+        $this->as('20000001')->getJson('/api/master')->assertOk();
         $this->postJson('/api/master/vendors', ['name' => 'X'])->assertForbidden();
     }
 }

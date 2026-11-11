@@ -31,7 +31,7 @@ class BatchChainTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 16:00:00');
-        $this->actingAs(User::where('nik', 'OP-1001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '10000001')->first(), 'sanctum');
         [$this->shift1, $this->shift2, $this->shift3] = Shift::orderBy('id')->pluck('id')->all();
     }
 

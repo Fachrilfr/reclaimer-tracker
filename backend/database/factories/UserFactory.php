@@ -23,9 +23,8 @@ class UserFactory extends Factory
     public function definition(): array
     {
         return [
-            'nik' => 'TST-' . fake()->unique()->numerify('#####'),
+            'nik' => fake()->unique()->numerify('9#######'),
             'name' => fake()->name(),
-            'email' => fake()->unique()->safeEmail(),
             'password' => static::$password ??= Hash::make('password'),
             'role' => 'operator',
             'is_active' => true,

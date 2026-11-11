@@ -21,7 +21,7 @@ class BatchHistoryTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 16:00:00');
-        $this->actingAs(User::where('nik', 'OP-1001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '10000001')->first(), 'sanctum');
         $this->shifts = Shift::orderBy('id')->pluck('id')->all();
 
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [

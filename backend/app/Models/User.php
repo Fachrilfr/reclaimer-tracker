@@ -19,16 +19,13 @@ class User extends Authenticatable
     protected $fillable = [
         'nik',
         'name',
-        'email',
         'password',
-        'password_encrypted',
         'role',
         'is_active',
     ];
 
     protected $hidden = [
         'password',
-        'password_encrypted',
         'remember_token',
     ];
 
@@ -36,8 +33,6 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
-            // Salinan yang bisa dibuka Super Admin (APP_KEY); login tetap memakai hash
-            'password_encrypted' => 'encrypted',
             'is_active' => 'boolean',
         ];
     }

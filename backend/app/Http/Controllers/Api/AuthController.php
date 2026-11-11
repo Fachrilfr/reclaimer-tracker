@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -17,10 +19,12 @@ class AuthController extends Controller
     public function login(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'nik' => 'required|string|min:4|max:30',
+            'nik' => 'required|digits:8',
             'password' => 'required|string|min:4',
         ], [
             'nik.required' => 'NIK wajib diisi.',
+            'nik.digits' => 'NIK berupa 8 digit angka.',
+            'password.min' => 'Kata sandi paling sedikit 4 karakter.',
             'password.required' => 'Kata sandi wajib diisi.',
         ]);
 
@@ -109,12 +113,43 @@ class AuthController extends Controller
                 'id' => $user->id,
                 'nik' => $user->nik,
                 'name' => $user->name,
-                'email' => $user->email,
                 'role' => $user->role,
             ],
             'permissions' => (object) $user->permissions(),
             'home' => $user->homeFeature(),
         ];
+    }
+
+    /**
+     * Ganti password sendiri (Akun saya, semua role). Semua sesi akun ini keluar, termasuk
+     * yang sedang dipakai: pengguna kembali ke halaman masuk dan mencoba password barunya.
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'current_password' => ['required', 'string'],
+            'password' => ['required', 'string', 'min:8', 'max:100', 'different:current_password'],
+            'password_confirmation' => ['required', 'same:password'],
+        ], [
+            'current_password.required' => 'Isi password saat ini.',
+            'password.required' => 'Isi password baru.',
+            'password.min' => 'Password baru paling sedikit 8 karakter.',
+            'password.max' => 'Password baru paling panjang 100 karakter.',
+            'password.different' => 'Password baru harus berbeda dari password saat ini.',
+            'password_confirmation.required' => 'Ulangi password baru.',
+            'password_confirmation.same' => 'Belum sama dengan password baru.',
+        ]);
+
+        if (! Hash::check($data['current_password'], $user->password)) {
+            throw ValidationException::withMessages(['current_password' => 'Password saat ini salah.']);
+        }
+
+        $user->update(['password' => $data['password']]);
+        $user->tokens()->delete();
+        AuditLog::record($request, 'change_password', $user, ['nik' => $user->nik]);
+
+        return response()->json(['status' => 'success', 'message' => 'Password sudah diganti. Masuk lagi dengan password baru.']);
     }
 
     /**

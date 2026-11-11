@@ -6,6 +6,7 @@ import AppLayout from './layouts/AppLayout.jsx';
 import FullPageStatus from './components/FullPageStatus.jsx';
 import LoginPage from './pages/LoginPage.jsx';
 import AccountPage from './pages/AccountPage.jsx';
+import ChangePasswordPage from './pages/ChangePasswordPage.jsx';
 import ModulePlaceholderPage from './pages/ModulePlaceholderPage.jsx';
 import { ForbiddenPage, NotFoundPage } from './pages/StatusPages.jsx';
 
@@ -78,6 +79,15 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/masuk" element={<LoginRoute />} />
+          {/* Di luar AppLayout: tampil seperti halaman masuk, tanpa sidebar */}
+          <Route
+            path="/akun/ganti-password"
+            element={
+              <RequireAuth>
+                <ChangePasswordPage />
+              </RequireAuth>
+            }
+          />
           <Route
             element={
               <RequireAuth>

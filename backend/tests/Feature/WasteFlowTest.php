@@ -46,7 +46,7 @@ class WasteFlowTest extends TestCase
     /** Operator menekan "mulai diisi" pada $start dan "penuh" pada $full (terkirim ke TPS). */
     private function fullPallet(string $start, ?string $full): int
     {
-        $this->as('OP-1001');
+        $this->as('10000001');
         Carbon::setTestNow("{$start} 08:00:00");
         $id = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
         if ($full) {
@@ -76,7 +76,7 @@ class WasteFlowTest extends TestCase
         $atTps = $this->fullPallet('2026-07-26', '2026-08-01');
         $this->fullPallet('2026-10-18', null);
 
-        $response = $this->as('HSE-3001')->getJson('/api/b3/pallets')->assertOk();
+        $response = $this->as('30000001')->getJson('/api/b3/pallets')->assertOk();
         $response->assertJsonPath('meta.counts.tps', 1)
             ->assertJsonPath('meta.counts.reclaimer', 1)
             ->assertJsonPath('meta.counts.diserahkan', 0)
@@ -114,12 +114,12 @@ class WasteFlowTest extends TestCase
         $this->assertSame(1, $reminders->handle(Carbon::parse('2026-10-23 07:00')));
         $this->assertSame(1, $reminders->handle(Carbon::parse('2026-10-24 07:00')));
 
-        $hse = User::where('nik', 'HSE-3001')->first();
+        $hse = User::where('nik', '30000001')->first();
         $this->assertSame(3, $hse->notifications()->count());
         $this->assertSame("/limbah-b3?lokasi=semua&sorot=pallet-{$id}", $hse->notifications()->first()->data['url']);
-        $this->assertSame(0, User::where('nik', 'SPV-2001')->first()->notifications()->count());
+        $this->assertSame(0, User::where('nik', '20000001')->first()->notifications()->count());
 
-        $this->as('HSE-3001')->getJson('/api/b3/reminders')->assertOk()
+        $this->as('30000001')->getJson('/api/b3/reminders')->assertOk()
             ->assertJsonCount(3, 'data')
             ->assertJsonPath('data.0.level', 'kritis')
             ->assertJsonPath('data.0.days_remaining', 6);
@@ -134,7 +134,7 @@ class WasteFlowTest extends TestCase
         $first = $this->fullPallet('2026-08-01', '2026-08-07');
         $second = $this->fullPallet('2026-08-10', '2026-08-16');
 
-        $this->as('HSE-3001')->getJson('/api/surat-jalan/create')->assertOk()
+        $this->as('30000001')->getJson('/api/surat-jalan/create')->assertOk()
             ->assertJsonCount(2, 'data.pallets')
             ->assertJsonPath('data.min_pallets', 1)
             ->assertJsonCount(2, 'data.vendors');
@@ -176,7 +176,7 @@ class WasteFlowTest extends TestCase
         $this->fullPallet('2026-10-18', null);
         $filling = B3Pallet::where('status', 'filling')->value('id');
 
-        $this->as('HSE-3001');
+        $this->as('30000001');
         // Petugas vendor, berat, dan pallet wajib; bukti opsional
         $this->postJson('/api/surat-jalan', $this->suratJalan(['file' => null, 'vendor_officer_name' => '', 'weight_kg' => null, 'pallet_ids' => []]))
             ->assertUnprocessable()->assertJsonValidationErrors(['vendor_officer_name', 'weight_kg', 'pallet_ids'])
@@ -205,12 +205,12 @@ class WasteFlowTest extends TestCase
 
     public function test_access_follows_matrix(): void
     {
-        $this->as('SPV-2001')->getJson('/api/b3/pallets')->assertOk();
+        $this->as('20000001')->getJson('/api/b3/pallets')->assertOk();
         $this->getJson('/api/surat-jalan')->assertOk();
         $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [1]]))->assertForbidden();
 
-        $this->as('MGT-4001')->getJson('/api/surat-jalan')->assertOk();
-        $this->as('OP-1001')->getJson('/api/b3/pallets')->assertForbidden();
+        $this->as('40000001')->getJson('/api/surat-jalan')->assertOk();
+        $this->as('10000001')->getJson('/api/b3/pallets')->assertForbidden();
         $this->getJson('/api/surat-jalan')->assertForbidden();
     }
 }

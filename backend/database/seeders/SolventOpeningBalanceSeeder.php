@@ -25,7 +25,7 @@ class SolventOpeningBalanceSeeder extends Seeder
             'previous_balance' => 0,
             'current_balance' => 1000,
             'reason' => 'Saldo awal sistem reclaimer',
-            'user_id' => User::where('nik', 'ADM-5001')->value('id'),
+            'user_id' => User::where('nik', '50000001')->value('id'),
             'created_at' => now(),
         ]);
     }

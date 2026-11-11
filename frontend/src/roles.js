@@ -34,11 +34,11 @@ export const ACCESS_LEVELS = {
 
 // Akun dari UserSeeder, hanya ditampilkan saat `npm run dev`
 export const SEEDED_ACCOUNTS = [
-  { nik: 'OP-1001', role: 'operator' },
-  { nik: 'SPV-2001', role: 'supervisor' },
-  { nik: 'HSE-3001', role: 'hse' },
-  { nik: 'MGT-4001', role: 'management' },
-  { nik: 'ADM-5001', role: 'admin' },
+  { nik: '10000001', role: 'operator' },
+  { nik: '20000001', role: 'supervisor' },
+  { nik: '30000001', role: 'hse' },
+  { nik: '40000001', role: 'management' },
+  { nik: '50000001', role: 'admin' },
 ];
 
 export const SEEDED_PASSWORD = 'password123';

@@ -22,7 +22,7 @@ class ChainReviewTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 10:00:00');
-        $this->as('OP-1001');
+        $this->as('10000001');
 
         // Rangkaian dua batch, gabungan (50 + 50) / 500 = 20%, di bawah toleransi 40%
         $base = [
@@ -54,7 +54,7 @@ class ChainReviewTest extends TestCase
 
     public function test_supervisor_review_removes_chain_from_action_items(): void
     {
-        $this->as('SPV-2001')->getJson('/api/dashboard')->assertJsonCount(1, 'data.action_items.low_recovery_chains')
+        $this->as('20000001')->getJson('/api/dashboard')->assertJsonCount(1, 'data.action_items.low_recovery_chains')
             ->assertJsonPath('data.action_items.low_recovery_chains.0.review', null);
 
         $this->postJson("/api/batch-chains/{$this->root}/review", [])
@@ -71,14 +71,14 @@ class ChainReviewTest extends TestCase
             ->assertJsonPath('data.breakdown.rows.0.review.notes', 'Suhu uap terlalu rendah, operator sudah diarahkan');
 
         // Daftar batch menampilkan tinjauan untuk kedua batch rangkaian
-        $this->as('OP-1001')->getJson('/api/batches')
+        $this->as('10000001')->getJson('/api/batches')
             ->assertJsonPath('data.0.review.by', 'Supervisor Reclaimer')
             ->assertJsonPath('data.1.review.by', 'Supervisor Reclaimer');
 
         $this->assertDatabaseHas('audit_logs', ['action' => 'review', 'entity_id' => $this->root]);
 
         // Tidak bisa ditinjau dua kali
-        $this->as('SPV-2001')->postJson("/api/batch-chains/{$this->root}/review", ['notes' => 'lagi'])
+        $this->as('20000001')->postJson("/api/batch-chains/{$this->root}/review", ['notes' => 'lagi'])
             ->assertUnprocessable()->assertJsonPath('errors.notes.0', 'Proses BR-20261020-001 sudah ditinjau.');
     }
 
@@ -86,13 +86,13 @@ class ChainReviewTest extends TestCase
     {
         $continuation = ReclaimerBatch::where('parent_batch_id', $this->root)->value('id');
 
-        $this->as('SPV-2001')->postJson("/api/batch-chains/{$continuation}/review", ['notes' => 'Ditangani'])->assertOk();
+        $this->as('20000001')->postJson("/api/batch-chains/{$continuation}/review", ['notes' => 'Ditangani'])->assertOk();
         $this->assertTrue(ReclaimerBatch::find($this->root)->supervisor_reviewed);
     }
 
     public function test_only_supervisor_can_review(): void
     {
-        foreach (['OP-1001', 'HSE-3001', 'MGT-4001', 'ADM-5001'] as $nik) {
+        foreach (['10000001', '30000001', '40000001', '50000001'] as $nik) {
             $this->as($nik)->postJson("/api/batch-chains/{$this->root}/review", ['notes' => 'x'])->assertForbidden();
         }
     }
@@ -106,7 +106,7 @@ class ChainReviewTest extends TestCase
         $good = $this->postJson('/api/batches', $base + ['process_status' => 'completed', 'recovery_weight' => 200])->json('data.id');
         $open = $this->postJson('/api/batches', $base + ['process_status' => 'in_progress', 'recovery_weight' => 20])->json('data.id');
 
-        $this->as('SPV-2001');
+        $this->as('20000001');
         $this->postJson("/api/batch-chains/{$good}/review", ['notes' => 'x'])->assertUnprocessable()
             ->assertJsonPath('errors.notes.0', 'Proses ini memenuhi toleransi solvent, tidak perlu ditinjau.');
         $this->postJson("/api/batch-chains/{$open}/review", ['notes' => 'x'])->assertUnprocessable()
@@ -115,7 +115,7 @@ class ChainReviewTest extends TestCase
 
     public function test_unreviewed_chain_disappears_after_7_days(): void
     {
-        $this->as('SPV-2001');
+        $this->as('20000001');
         Carbon::setTestNow('2026-10-26 23:00:00'); // hari ke-7 sejak selesai
         $this->getJson('/api/dashboard')->assertJsonCount(1, 'data.action_items.low_recovery_chains');
 

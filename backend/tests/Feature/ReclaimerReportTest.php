@@ -21,7 +21,7 @@ class ReclaimerReportTest extends TestCase
         // Saldo awal solvent tercatat 1 Sep, sebelum periode yang diuji
         Carbon::setTestNow('2026-09-01 08:00:00');
         $this->seed(DatabaseSeeder::class);
-        $operator = User::where('nik', 'OP-1001')->first();
+        $operator = User::where('nik', '10000001')->first();
         $shift = Shift::orderBy('id')->value('id');
 
         // Saldo awal 1000 kg. Batch di 3 Okt dan 15 Okt, masing-masing disimpan pada harinya,
@@ -39,7 +39,7 @@ class ReclaimerReportTest extends TestCase
             ])->assertCreated();
         }
         Carbon::setTestNow('2026-10-20 10:00:00');
-        $this->as('SPV-2001');
+        $this->as('20000001');
     }
 
     protected function tearDown(): void
@@ -153,8 +153,8 @@ class ReclaimerReportTest extends TestCase
 
     public function test_access_and_validation(): void
     {
-        $this->as('OP-1001')->getJson('/api/reports/reclaimer')->assertForbidden();
-        foreach (['HSE-3001', 'MGT-4001', 'ADM-5001'] as $nik) {
+        $this->as('10000001')->getJson('/api/reports/reclaimer')->assertForbidden();
+        foreach (['30000001', '40000001', '50000001'] as $nik) {
             $this->as($nik)->getJson('/api/reports/reclaimer')->assertOk();
         }
         $this->getJson('/api/reports/reclaimer?period=jam')->assertUnprocessable();

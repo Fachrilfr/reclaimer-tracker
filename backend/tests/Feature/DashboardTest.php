@@ -22,7 +22,7 @@ class DashboardTest extends TestCase
 
         $this->seed(DatabaseSeeder::class);
         Carbon::setTestNow('2026-10-20 14:00:00');
-        $this->actingAs(User::where('nik', 'OP-1001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '10000001')->first(), 'sanctum');
 
         $shift1 = Shift::where('code', 'SHIFT-1')->value('id');
         $shift2 = Shift::where('code', 'SHIFT-2')->value('id');
@@ -59,6 +59,20 @@ class DashboardTest extends TestCase
             ->assertJsonPath('data.by_shift.2.batch_count', 0)
             ->assertJsonPath('data.breakdown.unit', 'chain')
             ->assertJsonCount(2, 'data.breakdown.rows');
+    }
+
+    public function test_daily_breakdown_is_ordered_per_shift(): void
+    {
+        // Input shift 1 yang terlambat dicatat, setelah input shift 2
+        $this->postJson('/api/batches', [
+            'date' => '2026-10-20', 'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'), 'is_continuation' => false,
+            'process_status' => 'completed', 'ink_weight' => 300, 'recovery_weight' => 120, 'oil_temp' => 140, 'vapour_temp' => 50,
+        ])->assertCreated();
+
+        $rows = $this->getJson('/api/dashboard?period=day&date=2026-10-20')->assertOk()->json('data.breakdown.rows');
+
+        $this->assertSame(['Shift 1 (Pagi)', 'Shift 1 (Pagi)', 'Shift 2 (Siang)'], array_column($rows, 'shift'));
+        $this->assertSame([100, 300, 900], array_map('intval', array_column($rows, 'input')));
     }
 
     public function test_monthly_breakdown_is_per_week_and_yearly_per_month(): void
@@ -101,7 +115,7 @@ class DashboardTest extends TestCase
 
     public function test_hse_dashboard_shows_residue_estimate_vendor_weight_and_tps_pallets(): void
     {
-        $hse = User::where('nik', 'HSE-3001')->first();
+        $hse = User::where('nik', '30000001')->first();
         SuratJalan::create([
             'surat_jalan_number' => 'SJ-UJI-001', 'vendor_id' => Vendor::orderBy('id')->value('id'), 'handover_date' => '2026-10-20',
             'total_pallets' => 0, 'weight_kg' => 450.5, 'vendor_officer_name' => 'Petugas', 'created_by' => $hse->id,
@@ -141,7 +155,7 @@ class DashboardTest extends TestCase
 
         // Khusus akun HSE
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'SPV-2001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '20000001')->first(), 'sanctum');
         $this->getJson('/api/dashboard/hse')->assertForbidden();
     }
 
@@ -187,13 +201,13 @@ class DashboardTest extends TestCase
     public function test_dashboard_access_follows_matrix(): void
     {
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'ADM-5001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '50000001')->first(), 'sanctum');
         $this->getJson('/api/dashboard')->assertForbidden();
 
         $this->getJson('/api/dashboard?date=2026-10-21')->assertForbidden();
 
         $this->app['auth']->forgetGuards();
-        $this->actingAs(User::where('nik', 'MGT-4001')->first(), 'sanctum');
+        $this->actingAs(User::where('nik', '40000001')->first(), 'sanctum');
         $this->getJson('/api/dashboard?date=2026-10-21')->assertUnprocessable();
     }
 }

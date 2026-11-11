@@ -53,7 +53,7 @@ class DemoDataSeeder extends Seeder
             throw new RuntimeException('Database sudah berisi input atau pallet. Jalankan php artisan migrate:fresh --seed dulu.');
         }
 
-        $operator = User::where('nik', 'OP-1001')->firstOrFail();
+        $operator = User::where('nik', '10000001')->firstOrFail();
         $this->request = Request::create('/demo-seed', 'POST');
         $this->request->setUserResolver(fn () => $operator);
 
@@ -79,7 +79,7 @@ class DemoDataSeeder extends Seeder
         }
 
         $this->command?->info(sprintf(
-            'Data dummy dibuat: %d input, %d pallet. Login sebagai OP-1001 / password123.',
+            'Data dummy dibuat: %d input, %d pallet. Login sebagai 10000001 / password123.',
             ReclaimerBatch::count(),
             B3Pallet::count(),
         ));
@@ -235,7 +235,7 @@ class DemoDataSeeder extends Seeder
      */
     private function seedSuratJalan(Carbon $realNow): void
     {
-        $hse = User::where('nik', 'HSE-3001')->firstOrFail();
+        $hse = User::where('nik', '30000001')->firstOrFail();
         $request = Request::create('/demo-seed', 'POST');
         $request->setUserResolver(fn () => $hse);
 

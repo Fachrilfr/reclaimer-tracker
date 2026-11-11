@@ -45,14 +45,14 @@ class MachineMaintenanceTest extends TestCase
 
     public function test_operator_reports_maintenance_and_recipients_are_notified(): void
     {
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', [
+        $this->as('10000001')->postJson('/api/machine/maintenance', [
             'reason' => 'Pompa vakum bocor',
         ])->assertOk()
             ->assertJsonPath('data.status', 'maintenance')
             ->assertJsonPath('data.maintenance_reason', 'Pompa vakum bocor')
             ->assertJsonPath('data.maintenance_reported_by', 'Operator Aziz');
 
-        foreach (['HSE-3001', 'SPV-2001', 'MGT-4001', 'ADM-5001'] as $nik) {
+        foreach (['30000001', '20000001', '40000001', '50000001'] as $nik) {
             $this->as($nik)->getJson('/api/notifications')->assertOk()
                 ->assertJsonPath('data.enabled', true)
                 ->assertJsonPath('data.unread_count', 1)
@@ -62,7 +62,7 @@ class MachineMaintenanceTest extends TestCase
         }
 
         // Operator tidak menerima pemberitahuan, tapi tetap melihat status mesin untuk banner
-        $this->as('OP-1001')->getJson('/api/notifications')
+        $this->as('10000001')->getJson('/api/notifications')
             ->assertJsonPath('data.enabled', false)
             ->assertJsonPath('data.unread_count', 0)
             ->assertJsonPath('data.machine.status', 'maintenance');
@@ -73,9 +73,9 @@ class MachineMaintenanceTest extends TestCase
 
     public function test_batch_is_blocked_during_maintenance(): void
     {
-        $this->as('SPV-2001')->postJson('/api/machine/maintenance', ['reason' => 'Ganti seal'])->assertOk();
+        $this->as('20000001')->postJson('/api/machine/maintenance', ['reason' => 'Ganti seal'])->assertOk();
 
-        $this->as('OP-1001')->batch()
+        $this->as('10000001')->batch()
             ->assertUnprocessable()
             ->assertJsonPath('errors.machine.0', 'Mesin IRAC-01 sedang maintenance. Input tidak bisa disimpan sampai mesin kembali beroperasi.');
         $this->assertDatabaseCount('reclaimer_batches', 0);
@@ -89,16 +89,16 @@ class MachineMaintenanceTest extends TestCase
         $this->batch()->assertCreated();
 
         // Penerima mendapat dua pemberitahuan; yang terbaru berisi durasi
-        $this->as('HSE-3001')->getJson('/api/notifications')
+        $this->as('30000001')->getJson('/api/notifications')
             ->assertJsonPath('data.unread_count', 2)
             ->assertJsonPath('data.items.0.kind', 'maintenance_ended')
             ->assertJsonPath('data.items.0.duration_minutes', 390);
 
         // Supervisor yang melapor tidak diberi tahu tentang laporannya sendiri, tapi
         // menerima pemberitahuan saat operator menyelesaikan
-        $this->as('SPV-2001')->getJson('/api/notifications')->assertJsonPath('data.unread_count', 1);
+        $this->as('20000001')->getJson('/api/notifications')->assertJsonPath('data.unread_count', 1);
 
-        $this->as('OP-1001')->getJson('/api/machine')->assertOk()
+        $this->as('10000001')->getJson('/api/machine')->assertOk()
             ->assertJsonCount(1, 'data.history')
             ->assertJsonPath('data.history.0.reason', 'Ganti seal')
             ->assertJsonPath('data.history.0.end_note', 'Seal pompa diganti')
@@ -109,7 +109,7 @@ class MachineMaintenanceTest extends TestCase
 
     public function test_status_rules_and_validation(): void
     {
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', [])->assertUnprocessable()->assertJsonValidationErrors(['reason']);
+        $this->as('10000001')->postJson('/api/machine/maintenance', [])->assertUnprocessable()->assertJsonValidationErrors(['reason']);
         $this->postJson('/api/machine/operating', ['note' => 'x'])->assertUnprocessable()
             ->assertJsonPath('errors.note.0', 'Mesin IRAC-01 tidak sedang maintenance.');
 
@@ -120,18 +120,18 @@ class MachineMaintenanceTest extends TestCase
 
     public function test_access_follows_matrix(): void
     {
-        $this->as('HSE-3001')->getJson('/api/machine')->assertOk();
+        $this->as('30000001')->getJson('/api/machine')->assertOk();
         $this->postJson('/api/machine/maintenance', ['reason' => 'x'])->assertForbidden();
-        $this->as('MGT-4001')->postJson('/api/machine/maintenance', ['reason' => 'x'])->assertForbidden();
-        $this->as('ADM-5001')->getJson('/api/machine')->assertOk();
+        $this->as('40000001')->postJson('/api/machine/maintenance', ['reason' => 'x'])->assertForbidden();
+        $this->as('50000001')->getJson('/api/machine')->assertOk();
     }
 
     public function test_notifications_can_be_marked_read(): void
     {
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', ['reason' => 'Bocor'])->assertOk();
+        $this->as('10000001')->postJson('/api/machine/maintenance', ['reason' => 'Bocor'])->assertOk();
         $this->postJson('/api/machine/operating', ['note' => 'Selesai'])->assertOk();
 
-        $id = $this->as('HSE-3001')->getJson('/api/notifications')->json('data.items.1.id');
+        $id = $this->as('30000001')->getJson('/api/notifications')->json('data.items.1.id');
         $this->postJson("/api/notifications/{$id}/read")->assertOk();
         $this->getJson('/api/notifications')->assertJsonPath('data.unread_count', 1)->assertJsonPath('data.items.1.read', true);
 
@@ -139,7 +139,7 @@ class MachineMaintenanceTest extends TestCase
         $this->getJson('/api/notifications')->assertJsonPath('data.unread_count', 0);
 
         // Pemberitahuan milik orang lain tidak bisa disentuh
-        $this->as('MGT-4001');
+        $this->as('40000001');
         $this->postJson("/api/notifications/{$id}/read")->assertNotFound();
     }
 
@@ -147,11 +147,11 @@ class MachineMaintenanceTest extends TestCase
     public function test_report_documents_show_maintenance_duration_in_minutes(): void
     {
         Carbon::setTestNow('2026-10-20 08:00:00');
-        $this->as('OP-1001')->postJson('/api/machine/maintenance', ['reason' => 'Pompa vakum bocor'])->assertOk();
+        $this->as('10000001')->postJson('/api/machine/maintenance', ['reason' => 'Pompa vakum bocor'])->assertOk();
         Carbon::setTestNow('2026-10-20 10:35:00');
         $this->postJson('/api/machine/operating', ['note' => 'Seal diganti'])->assertOk();
 
-        $html = $this->as('MGT-4001')->getJson('/api/reports/reclaimer/document?period=day&date=2026-10-20')->assertOk()->json('data.html');
+        $html = $this->as('40000001')->getJson('/api/reports/reclaimer/document?period=day&date=2026-10-20')->assertOk()->json('data.html');
         $this->assertStringContainsString('155 menit', $html);
         $this->assertStringNotContainsString(' jam</td>', $html);
     }

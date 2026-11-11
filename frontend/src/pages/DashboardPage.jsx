@@ -396,14 +396,14 @@ function Breakdown({ breakdown, target, sorot }) {
 
   if (unit === 'chain') {
     return (
-      <Table caption="Rincian per proses">
+      <Table caption="Rincian proses per shift">
         <thead>
           <tr>
-            <Th>Proses</Th>
             <Th>Shift awal</Th>
+            <Th>Proses</Th>
             <Th numeric>Tinta X masuk</Th>
             <Th numeric>Hasil solvent</Th>
-            <Th numeric>Residu estimasi</Th>
+            <Th numeric>Hasil residu</Th>
             <Th numeric>Persentase solvent</Th>
           </tr>
         </thead>
@@ -415,6 +415,10 @@ function Breakdown({ breakdown, target, sorot }) {
               tabIndex={-1}
               className={sorot === `rangkaian-${c.root_id}` ? SOROT_CLASS : undefined}
             >
+              <Td className="whitespace-nowrap">
+                {c.shift}
+                <span className="block text-caption text-gray-600">{c.operator}</span>
+              </Td>
               <Td>
                 <span className="font-mono text-gray-900">{c.batch_number}</span>
                 {c.batch_count > 1 && (
@@ -427,10 +431,6 @@ function Breakdown({ breakdown, target, sorot }) {
                     <UnfinishedBadge />
                   </span>
                 )}
-              </Td>
-              <Td className="whitespace-nowrap">
-                {c.shift}
-                <span className="block text-caption text-gray-600">{c.operator}</span>
               </Td>
               <Td numeric>
                 <Kg value={c.input} />
@@ -460,14 +460,14 @@ function Breakdown({ breakdown, target, sorot }) {
   }
 
   return (
-    <Table caption={`Rincian per ${BREAKDOWN_LABEL[unit].toLowerCase()}`}>
+    <Table caption={`Rincian proses per ${BREAKDOWN_LABEL[unit].toLowerCase()}`}>
       <thead>
         <tr>
           <Th>{BREAKDOWN_LABEL[unit]}</Th>
           <Th numeric>Total proses</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
-          <Th numeric>Residu estimasi</Th>
+          <Th numeric>Hasil residu</Th>
           <Th numeric>Persentase solvent</Th>
         </tr>
       </thead>
@@ -639,7 +639,7 @@ export default function DashboardPage() {
                 unit="kg"
               />
               <StatCard
-                label="Residu (estimasi)"
+                label="Hasil residu"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
               />
@@ -678,7 +678,7 @@ export default function DashboardPage() {
                   <Th numeric>Total proses</Th>
                   <Th numeric>Tinta X masuk</Th>
                   <Th numeric>Hasil solvent</Th>
-                  <Th numeric>Residu estimasi</Th>
+                  <Th numeric>Hasil residu</Th>
                   <Th numeric>Persentase solvent</Th>
                 </tr>
               </thead>
@@ -711,7 +711,9 @@ export default function DashboardPage() {
           <section aria-labelledby="breakdown-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="breakdown-title" className="text-h2 font-semibold">
-                {data.breakdown.unit === 'chain' ? 'Rincian proses' : `Per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}
+                {data.breakdown.unit === 'chain'
+                  ? 'Rincian proses per shift'
+                  : `Rincian proses per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}
               </h2>
             </div>
             <Breakdown breakdown={data.breakdown} target={data.target_recovery_rate} sorot={sorot} />
