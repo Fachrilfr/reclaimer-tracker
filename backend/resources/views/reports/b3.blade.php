@@ -69,16 +69,15 @@
 @if ($report['residue_breakdown'])
     @php $residueUnit = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['residue_breakdown']['unit']]; @endphp
     <div class="keep">
-    <h2>Residu per {{ strtolower($residueUnit) }}</h2>
+    <h2>Rincian per {{ strtolower($residueUnit) }}</h2>
     <table>
-        <thead><tr><th>{{ $residueUnit }}</th><th class="num">Total proses</th><th class="num">Berat residu (kg)</th><th class="num">Timbangan vendor (kg)</th><th class="num">Surat jalan</th></tr></thead>
+        <thead><tr><th>{{ $residueUnit }}</th><th class="num">Total pengangkutan</th><th class="num">Berat residu (kg)</th><th class="num">Timbangan vendor (kg)</th></tr></thead>
         @foreach ($report['residue_breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['residue_breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
-                <td class="num">{{ $row['chain_count'] }}</td>
+                <td class="num">{{ $row['surat_jalan_count'] ?: '–' }}</td>
                 <td class="num">{{ $row['chain_count'] ? $kg($row['residue']) : '–' }}</td>
                 <td class="num">{{ $row['surat_jalan_count'] ? $kg($row['vendor_weight']) : '–' }}</td>
-                <td class="num">{{ $row['surat_jalan_count'] ?: '–' }}</td>
             </tr>
         @endforeach
     </table>

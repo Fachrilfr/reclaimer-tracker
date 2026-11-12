@@ -89,24 +89,23 @@ export function ResidueBreakdown({ breakdown }) {
   const { unit, rows } = breakdown;
 
   return (
-    <Table caption={`Residu per ${BREAKDOWN_LABEL[unit].toLowerCase()}`}>
+    <Table caption={`Rincian per ${BREAKDOWN_LABEL[unit].toLowerCase()}`}>
       <thead>
         <tr>
           <Th>{BREAKDOWN_LABEL[unit]}</Th>
-          <Th numeric>Total proses</Th>
+          {/* Total pengangkutan: berapa kali vendor mengangkut residu, satu surat jalan per pengangkutan */}
+          <Th numeric>Total pengangkutan</Th>
           <Th numeric>Berat residu</Th>
           <Th numeric>Timbangan vendor</Th>
-          <Th numeric>Surat jalan</Th>
         </tr>
       </thead>
       <tbody>
         {rows.map((r) => (
           <tr key={r.start}>
             <Td className="whitespace-nowrap">{bucketLabel(r, unit)}</Td>
-            <Td numeric>{r.chain_count}</Td>
+            <Td numeric>{r.surat_jalan_count || '–'}</Td>
             <Td numeric>{r.chain_count ? <Kg value={r.residue} /> : '–'}</Td>
             <Td numeric>{r.surat_jalan_count ? <Kg value={r.vendor_weight} /> : '–'}</Td>
-            <Td numeric>{r.surat_jalan_count || '–'}</Td>
           </tr>
         ))}
       </tbody>
@@ -169,7 +168,7 @@ export default function HseDashboardPage() {
           />
 
           {data.breakdown && (
-            <Section id="hse-breakdown" title={`Per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}>
+            <Section id="hse-breakdown" title={`Rincian per ${BREAKDOWN_LABEL[data.breakdown.unit].toLowerCase()}`}>
               <ResidueBreakdown breakdown={data.breakdown} />
             </Section>
           )}
