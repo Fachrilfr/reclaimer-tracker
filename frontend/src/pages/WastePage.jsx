@@ -18,9 +18,9 @@ import { Table, Td, Th } from '../components/Table.jsx';
 // Lokasi pallet: urutan tab mengikuti tugas HSE, yang di TPS paling dulu
 const LOCATIONS = [
   { value: 'tps', label: 'Di TPS', empty: 'Belum ada pallet di TPS.', hint: 'Pallet masuk ke sini otomatis saat operator menandai pallet penuh.' },
-  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Operator memulai pallet baru dari halaman Input pallet B3.' },
+  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Operator memulai pallet baru dari halaman Input pallet residu.' },
   { value: 'diserahkan', label: 'Diserahkan', empty: 'Belum ada pallet yang diserahkan ke vendor.', hint: 'Pallet pindah ke sini setelah surat jalannya tersimpan.' },
-  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mulai mengisi pallet B3.' },
+  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mulai mengisi pallet residu.' },
 ];
 
 const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: 'Kritis' };
@@ -77,7 +77,7 @@ function TpsDays({ pallet }) {
   );
 }
 
-// Kolom sama dengan tabel pallet operator (Input pallet B3), supaya mudah dibaca semua role,
+// Kolom sama dengan tabel pallet operator (Input pallet residu), supaya mudah dibaca semua role,
 // ditambah masa simpan di TPS (tugas HSE)
 function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
   return (

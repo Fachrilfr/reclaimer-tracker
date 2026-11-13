@@ -171,7 +171,7 @@ export default function DrumPage() {
   return (
     <>
       <PageHeader
-        title="Input pallet B3"
+        title="Input pallet residu"
       />
 
       {!data ? (
