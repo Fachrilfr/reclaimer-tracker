@@ -9,6 +9,10 @@ return [
         'vapour' => ['min' => 40, 'max' => 60],
     ],
 
+    // Berat Tinta X setiap input baru, tetap dan tidak diisi operator (17 Nov 2026).
+    // Null berarti operator mengisi sendiri.
+    'ink_weight_per_input' => 335,
+
     // Penerima pemberitahuan di aplikasi saat mesin mulai dan selesai maintenance (FR-21)
     'maintenance_notify_roles' => ['hse', 'supervisor', 'management', 'admin'],
 

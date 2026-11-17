@@ -104,6 +104,28 @@ class B3ReportTest extends TestCase
         $this->assertSame(['tps', 'reclaimer'], array_column($report['stock']['rows'], 'location'));
         // Pallet yang masih diisi tidak dihitung per drum lagi
         $this->assertNull($report['stock']['rows'][1]['drum_count']);
+
+        // Riwayat pallet: semua yang ada di Oktober, yang sudah diangkut maupun yang masih tersimpan
+        $history = $report['history'];
+        $this->assertSame(5, $history['total']);
+        $this->assertSame(['diangkut' => 3, 'tps' => 1, 'reclaimer' => 1], $history['counts']);
+        $this->assertSame(['diangkut', 'diangkut', 'diangkut', 'tps', 'reclaimer'], array_column($history['rows'], 'status'));
+        $this->assertSame('SJ-001', $history['rows'][0]['surat_jalan_number']);
+        $this->assertSame('2026-10-05', $history['rows'][0]['handover_date']);
+    }
+
+    public function test_history_shows_pallets_as_they_were_at_the_end_of_the_period(): void
+    {
+        // Akhir September: A, B, C belum diangkut, E belum mulai terisi
+        $history = $this->getJson('/api/reports/b3?period=month&date=2026-09-15')->assertOk()->json('data.history');
+        $this->assertSame(4, $history['total']);
+        $this->assertSame(['diangkut' => 0, 'tps' => 4, 'reclaimer' => 0], $history['counts']);
+
+        // November: yang sudah diangkut di Oktober tidak ikut, D dan E masih tersimpan
+        Carbon::setTestNow('2026-11-20 10:00:00');
+        $history = $this->getJson('/api/reports/b3?period=month&date=2026-11-10')->assertOk()->json('data.history');
+        $this->assertSame(2, $history['total']);
+        $this->assertSame(['diangkut' => 0, 'tps' => 1, 'reclaimer' => 1], $history['counts']);
     }
 
     public function test_stock_is_taken_at_the_end_of_a_past_period(): void
@@ -128,11 +150,11 @@ class B3ReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Masa simpan', 'Stok akhir periode', 'Maintenance'], $book->getSheetNames());
-        $this->assertSame('Berat residu (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
-        $this->assertSame('Berat timbangan vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A10')->getValue());
+        $this->assertSame(['Ringkasan', 'Per vendor', 'Per Minggu', 'Surat jalan', 'Pallet diangkut', 'Stok akhir periode', 'Riwayat pallet', 'Maintenance'], $book->getSheetNames());
+        $this->assertSame('Residu masuk TPS (kg)', $book->getSheetByName('Ringkasan')->getCell('A9')->getValue());
+        $this->assertSame('Residu diangkut vendor (kg)', $book->getSheetByName('Ringkasan')->getCell('A10')->getValue());
         $this->assertEquals(900, $book->getSheetByName('Ringkasan')->getCell('B10')->getValue());
-        $this->assertSame('Lewat batas 6 hari', $book->getSheetByName('Masa simpan')->getCell('H6')->getValue());
+        $this->assertSame('Lewat batas 6 hari', $book->getSheetByName('Pallet diangkut')->getCell('H6')->getValue());
 
         $pdf = $this->getJson('/api/reports/b3/export?format=pdf&period=year&date=2026-10-20')->assertOk()->json('data');
         $this->assertSame('Laporan-Residu-Tahunan-2026.pdf', $pdf['filename']);
@@ -148,7 +170,8 @@ class B3ReportTest extends TestCase
         // Pratinjau dokumen: isi sama dengan PDF, dibaca di aplikasi tanpa mengunduh
         $html = $this->getJson('/api/reports/b3/document?period=month&date=2026-10-20')->assertOk()->json('data.html');
         $this->assertStringContainsString('Laporan Residu Bulanan', $html);
-        $this->assertStringContainsString('Residu per input', $html);
+        $this->assertStringContainsString('Rincian residu per input', $html);
+        $this->assertStringContainsString('Riwayat pallet (5 pallet)', $html);
         $this->assertStringContainsString('Maintenance mesin', $html);
         $this->assertStringContainsString('SJ-001', $html);
         $this->assertDatabaseMissing('audit_logs', ['action' => 'export', 'entity_type' => 'reports']);

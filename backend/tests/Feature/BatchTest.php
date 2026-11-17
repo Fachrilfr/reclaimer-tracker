@@ -55,6 +55,22 @@ class BatchTest extends TestCase
         return $this->actingAs($user, 'sanctum')->postJson('/api/batches', $this->payload($overrides));
     }
 
+    public function test_new_input_always_carries_335_kg_of_ink(): void
+    {
+        config(['reclaimer.ink_weight_per_input' => 335]);
+
+        $this->actingAs($this->operator, 'sanctum')->getJson('/api/batches/create')
+            ->assertOk()->assertJsonPath('data.ink_weight_per_input', 335);
+
+        $this->storeAs($this->operator, ['ink_weight' => 400])
+            ->assertUnprocessable()->assertJsonPath('errors.ink_weight.0', 'Tinta X masuk selalu 335 kg per input baru.');
+
+        $this->storeAs($this->operator, ['ink_weight' => 335, 'recovery_weight' => 134])
+            ->assertCreated()
+            ->assertJsonPath('data.total_input_weight', 335)
+            ->assertJsonPath('data.recovery_rate_percent', 40);
+    }
+
     public function test_operator_saves_batch_and_numbers_are_right(): void
     {
         $response = $this->storeAs($this->operator);

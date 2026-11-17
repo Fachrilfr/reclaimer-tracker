@@ -57,7 +57,7 @@ export default function LoginPage() {
           </Alert>
         ) : (
           notice && (
-            <Alert tone="info" className="mt-6">
+            <Alert tone="warning" className="mt-6">
               {notice}
             </Alert>
           )

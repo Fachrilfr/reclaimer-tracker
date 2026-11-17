@@ -64,6 +64,7 @@ final class B3Report
             'surat_jalan' => $suratJalan->map(fn (SuratJalan $s) => $s->present())->all(),
             'compliance' => $compliance,
             'stock' => $stock,
+            'history' => $this->history(),
             // Sama dengan Dashboard HSE: berat residu per periode dan per input
             'residue_breakdown' => $hse['breakdown'],
             'residue_inputs' => $hse['inputs'],
@@ -107,10 +108,64 @@ final class B3Report
         }))->sortBy([['over_days', 'desc'], ['days_stored', 'desc']])->values()->all();
     }
 
+    /** Akhir periode, atau hari ini bila periode belum selesai. */
+    private function asOf(): Carbon
+    {
+        return ($this->end->isFuture() ? now() : $this->end)->copy()->startOfDay();
+    }
+
+    /**
+     * Riwayat pallet: semua pallet yang ada selama periode, baik yang sudah diangkut vendor
+     * maupun yang masih tersimpan. Termasuk bila mulai terisi sebelum akhir periode dan belum
+     * diangkut sebelum awal periode. Status per akhir periode (atau hari ini).
+     */
+    private function history(): array
+    {
+        $at = $this->asOf();
+        $from = $this->start->copy()->startOfDay();
+
+        $rows = B3Pallet::with('suratJalan.vendor')
+            ->whereDate('start_date', '<=', $at->toDateString())
+            ->orderBy('start_date')->orderBy('id')
+            ->get()
+            ->filter(function (B3Pallet $p) use ($from) {
+                $handover = $p->suratJalan->first()?->handover_date;
+
+                return $handover === null || $handover->copy()->startOfDay()->gte($from);
+            })
+            ->map(function (B3Pallet $p) use ($at) {
+                $sj = $p->suratJalan->first();
+                $hauled = $sj !== null && $sj->handover_date->copy()->startOfDay()->lte($at);
+                $atTps = $p->sent_to_tps_at !== null && $p->sent_to_tps_at->copy()->startOfDay()->lte($at);
+
+                return [
+                    'pallet_number' => $p->pallet_number,
+                    'status' => $hauled ? 'diangkut' : ($atTps ? 'tps' : 'reclaimer'),
+                    'drum_count' => $atTps ? $p->drum_count : null,
+                    'start_date' => $p->start_date->toDateString(),
+                    'sent_to_tps_at' => $atTps ? $p->sent_to_tps_at->toDateString() : null,
+                    'handover_date' => $hauled ? $sj->handover_date->toDateString() : null,
+                    'surat_jalan_number' => $hauled ? $sj->surat_jalan_number : null,
+                    'vendor' => $hauled ? $sj->vendor?->name : null,
+                ];
+            })->values();
+
+        return [
+            'as_of' => $at->toDateString(),
+            'total' => $rows->count(),
+            'counts' => [
+                'diangkut' => $rows->where('status', 'diangkut')->count(),
+                'tps' => $rows->where('status', 'tps')->count(),
+                'reclaimer' => $rows->where('status', 'reclaimer')->count(),
+            ],
+            'rows' => $rows->all(),
+        ];
+    }
+
     /** Pallet yang masih tersimpan pada akhir periode, dengan sisa masa simpan saat itu. */
     private function stock(): array
     {
-        $at = ($this->end->isFuture() ? now() : $this->end)->copy()->startOfDay();
+        $at = $this->asOf();
         $thresholds = StorageStatus::thresholds();
 
         $pallets = B3Pallet::with(['drums', 'suratJalan'])

@@ -38,7 +38,7 @@ export function ResiduePerInput({ inputs, sorot }) {
             <Th>No. input</Th>
             <Th>Tanggal dan shift</Th>
             <Th numeric>Tinta X masuk</Th>
-            <Th numeric>Berat residu</Th>
+            <Th numeric>Residu masuk TPS</Th>
           </tr>
         </thead>
         <tbody>
@@ -95,8 +95,8 @@ export function ResidueBreakdown({ breakdown }) {
           <Th>{BREAKDOWN_LABEL[unit]}</Th>
           {/* Total pengangkutan: berapa kali vendor mengangkut residu, satu surat jalan per pengangkutan */}
           <Th numeric>Total pengangkutan</Th>
-          <Th numeric>Berat residu</Th>
-          <Th numeric>Timbangan vendor</Th>
+          <Th numeric>Residu masuk TPS</Th>
+          <Th numeric>Residu diangkut vendor</Th>
         </tr>
       </thead>
       <tbody>
@@ -144,12 +144,12 @@ export default function HseDashboardPage() {
             </h2>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <StatCard
-                label="Berat residu"
+                label="Residu masuk TPS"
                 value={formatNumber(data.totals.residue)}
                 unit="kg"
               />
               <StatCard
-                label="Timbangan vendor"
+                label="Residu diangkut vendor"
                 value={formatNumber(data.totals.vendor_weight)}
                 unit="kg"
               />

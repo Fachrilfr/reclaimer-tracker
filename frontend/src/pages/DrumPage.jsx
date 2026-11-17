@@ -29,6 +29,18 @@ function NotesField({ id, value, onChange, error }) {
   );
 }
 
+// Aturan isi pallet, tampil di kartu mulai isi dan kartu pallet yang sedang diisi
+function DrumRule({ drums }) {
+  return (
+    <p className="mt-3 flex items-start gap-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-body text-warning-fg">
+      <Cylinder className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+      <span>
+        1 pallet harus terisi <strong>tepat {drums} drum residu</strong> dalam sekali input, tidak boleh kurang dan tidak boleh lebih.
+      </span>
+    </p>
+  );
+}
+
 function SubmitButton({ busy, icon: Icon, children, ...props }) {
   return (
     <button type="button" disabled={busy} className="btn-primary h-12 w-full px-5 text-body-lg sm:w-auto" {...props}>
@@ -38,7 +50,7 @@ function SubmitButton({ busy, icon: Icon, children, ...props }) {
   );
 }
 
-function StartPallet({ onSubmit }) {
+function StartPallet({ drums, onSubmit }) {
   const [notes, setNotes] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -60,6 +72,7 @@ function StartPallet({ onSubmit }) {
       <h2 id="start-title" className="text-h2 font-semibold">
         Mulai isi pallet baru
       </h2>
+      <DrumRule drums={drums} />
       <div className="mt-4 max-w-md">
         <NotesField id="start-notes" value={notes} onChange={setNotes} />
       </div>
@@ -77,9 +90,11 @@ function StartPallet({ onSubmit }) {
   );
 }
 
-function FillingPallet({ pallet, canFill, onSubmit }) {
+function FillingPallet({ pallet, drums, canFill, onSubmit }) {
   const [notes, setNotes] = useState('');
   const [confirming, setConfirming] = useState(false);
+  // Centang jumlah drum di dialog Pallet penuh; diulang setiap kali dialog dibuka
+  const [drumsChecked, setDrumsChecked] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
@@ -109,6 +124,7 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
           {pallet.notes && <p className="mt-1 text-body text-gray-800">Keterangan: {pallet.notes}</p>}
         </div>
       </div>
+      <DrumRule drums={drums} />
 
       {canFill && (
         <div className="mt-5 border-t border-gray-100 pt-5">
@@ -122,7 +138,14 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
             </Alert>
           )}
           <div className="mt-4">
-            <SubmitButton busy={busy} icon={PackageCheck} onClick={() => setConfirming(true)}>
+            <SubmitButton
+              busy={busy}
+              icon={PackageCheck}
+              onClick={() => {
+                setDrumsChecked(false);
+                setConfirming(true);
+              }}
+            >
               Pallet penuh
             </SubmitButton>
           </div>
@@ -134,11 +157,21 @@ function FillingPallet({ pallet, canFill, onSubmit }) {
           <p className="text-body text-gray-800">
             Waktu sekarang dicatat sebagai waktu penuh, dan pallet langsung tercatat terkirim ke TPS.
           </p>
+          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-warning-border bg-warning-bg p-3 text-body text-gray-900">
+            <input
+              type="checkbox"
+              checked={drumsChecked}
+              onChange={(e) => setDrumsChecked(e.target.checked)}
+              className="mt-0.5 h-5 w-5 shrink-0 accent-brand-blue-600"
+            />
+            Apakah 1 pallet ini sudah terisi {drums} drum?
+          </label>
           <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button type="button" onClick={() => setConfirming(false)} disabled={busy} className="btn-secondary h-11 px-4 text-body">
               Batal
             </button>
-            <button type="button" onClick={markFull} disabled={busy} className="btn-primary h-11 px-4 text-body">
+            {/* Baru bisa ditekan setelah jumlah drum dicentang */}
+            <button type="button" onClick={markFull} disabled={busy || !drumsChecked} className="btn-primary h-11 px-4 text-body">
               {busy ? <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" /> : null}
               {busy ? 'Menyimpan…' : 'Ya, pallet penuh'}
             </button>
@@ -187,9 +220,9 @@ export default function DrumPage() {
           {message && <Alert tone="success">{message}</Alert>}
 
           {data.filling ? (
-            <FillingPallet key={data.filling.id} pallet={data.filling} canFill={canFill} onSubmit={submit} />
+            <FillingPallet key={data.filling.id} pallet={data.filling} drums={data.drums_per_pallet} canFill={canFill} onSubmit={submit} />
           ) : canFill ? (
-            <StartPallet onSubmit={submit} />
+            <StartPallet drums={data.drums_per_pallet} onSubmit={submit} />
           ) : (
             <div className="card">
               <EmptyState icon={Cylinder} title="Tidak ada pallet yang sedang diisi.">

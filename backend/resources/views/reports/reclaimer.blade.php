@@ -21,7 +21,7 @@
 
 <div>
 <h1>Laporan Reclaimer {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['chain_count'] }} proses selesai ({{ $s['batch_count'] }} input)@if ($s['open_chain_count']) · {{ $s['open_chain_count'] }} proses belum selesai tidak dihitung @endif</div>
+<div class="meta">Periode {{ $period }}</div>
 
 <table class="kpi kpi-5"><tr>
     <td><div class="box"><div class="label">Tinta X masuk</div><div class="value">{{ $kg($s['input']) }} kg</div></div></td>

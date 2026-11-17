@@ -80,7 +80,7 @@ export const MODULE_GROUPS = [
         label: 'Dashboard HSE',
         path: '/dashboard-hse',
         icon: Scale,
-        summary: 'Berat residu per input dan per periode, timbangan vendor, dan pallet di TPS.',
+        summary: 'Residu masuk TPS per input dan per periode, residu diangkut vendor, dan pallet di TPS.',
         page: HseDashboardPage,
       },
       {
@@ -134,7 +134,7 @@ export const MODULE_GROUPS = [
         label: 'Laporan residu',
         path: '/laporan-b3',
         icon: ClipboardCheck,
-        summary: 'Berat yang diserahkan ke vendor, surat jalan, kepatuhan masa simpan, dan stok, dengan ekspor Excel dan PDF.',
+        summary: 'Residu diangkut vendor, surat jalan, daftar pallet diangkut, dan stok, dengan ekspor Excel dan PDF.',
         page: B3ReportPage,
       },
     ],

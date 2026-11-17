@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useRef, useState } from 'react';
+import { forwardRef, useEffect, useMemo, useRef, useState } from 'react';
 import { Calculator, Hourglass, LoaderCircle, TriangleAlert, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useNotifications } from '../notifications/NotificationContext.jsx';
@@ -11,9 +11,11 @@ import Alert from '../components/Alert.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import BatchHistory from './BatchHistory.jsx';
 
-// Sama dengan StoreBatchRequest::TIME_PATTERN: jam 00.00 sampai 23.59
-const TIME_PATTERN = /(?<!\d)([01]?\d|2[0-3])[.:][0-5]\d(?!\d)/;
-const CONTINUATION_NOTE_ERROR = 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.';
+// Kalimat centang sebelum menyimpan, berbeda untuk proses selesai dan yang dilanjutkan shift berikutnya
+const CONFIRM_TEXT = {
+  completed: 'Apakah input data sudah sesuai dengan data di lapangan?',
+  in_progress: 'Apakah sudah sesuai data di lapangan? Akan dilanjutkan oleh shift selanjutnya untuk input lanjutan.',
+};
 
 const round2 = (n) => Math.round(n * 100) / 100;
 const numberOrZero = (raw) => {
@@ -26,24 +28,27 @@ function nowTime() {
   return `${String(now.getHours()).padStart(2, '0')}.${String(now.getMinutes()).padStart(2, '0')}`;
 }
 
+// Mesin hanya satu: selama ada proses belum selesai, form langsung menjadi input lanjutan
 function emptyForm(formData, keep = {}) {
+  const open = formData.open_chains;
   return {
     date: keep.date ?? formData.today,
     shift_id: keep.shift_id ?? String(formData.suggested_shift_id ?? formData.shifts[0]?.id ?? ''),
     regu: keep.regu ?? '',
-    is_continuation: false,
-    parent_batch_id: '',
+    is_continuation: open.length > 0,
+    parent_batch_id: open.length === 1 ? String(open[0].root_id) : '',
     process_status: 'completed',
-    ink_weight: '',
+    ink_weight: formData.ink_weight_per_input != null ? String(formData.ink_weight_per_input) : '',
     recovery_weight: '',
     oil_temp: '',
     vapour_temp: '',
     notes: '',
+    confirmed: false,
   };
 }
 
 // Angka rata kanan, tabular, satuan di dalam field (design.md §6.2)
-const NumberInput = forwardRef(function NumberInput({ suffix, ...props }, ref) {
+const NumberInput = forwardRef(function NumberInput({ suffix, className = '', ...props }, ref) {
   return (
     <div className="relative">
       <input
@@ -52,7 +57,7 @@ const NumberInput = forwardRef(function NumberInput({ suffix, ...props }, ref) {
         type="text"
         inputMode="decimal"
         autoComplete="off"
-        className={`field text-right tabular-nums ${suffix.length > 2 ? 'pr-14' : 'pr-11'}`}
+        className={`field text-right tabular-nums ${suffix.length > 2 ? 'pr-14' : 'pr-11'} ${className}`}
       />
       <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-body text-gray-600">
         {suffix}
@@ -112,8 +117,26 @@ function BatchForm({ formData, onSaved }) {
 
   const { temperature, target_recovery_rate: target, solvent_balance: balance } = formData;
   const openChains = formData.open_chains;
+  const mustContinue = openChains.length > 0;
+  const fixedInk = formData.ink_weight_per_input;
   const parent = openChains.find((c) => String(c.root_id) === form.parent_batch_id);
   const isFinishing = form.process_status === 'completed';
+
+  // Daftar proses belum selesai berubah setelah menyimpan atau dimuat ulang: sesuaikan jenis input
+  const openKey = openChains.map((c) => c.root_id).join(',');
+  useEffect(() => {
+    setForm((f) => {
+      if (mustContinue && !f.is_continuation) {
+        return { ...f, is_continuation: true, ink_weight: '', parent_batch_id: openChains.length === 1 ? String(openChains[0].root_id) : '' };
+      }
+      if (!mustContinue && f.is_continuation) {
+        return { ...f, is_continuation: false, parent_batch_id: '', ink_weight: fixedInk != null ? String(fixedInk) : '' };
+      }
+      return f;
+    });
+    // openKey mewakili isi openChains
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openKey]);
 
   // Tombol "Lanjutkan" di banner: isi form batch lanjutan dari rangkaian yang dipilih
   const continueChain = (chain) => {
@@ -165,13 +188,16 @@ function BatchForm({ formData, onSaved }) {
     if (!form.date) errs.date = 'Isi tanggal proses.';
     if (!form.shift_id) errs.shift_id = 'Pilih shift.';
     if (form.is_continuation && !form.parent_batch_id) errs.parent_batch_id = 'Pilih input awal yang dilanjutkan.';
-    if (!form.is_continuation) {
+    if (!form.is_continuation && mustContinue) {
+      errs.is_continuation = 'Masih ada proses yang belum selesai. Catat sebagai input lanjutan.';
+    }
+    if (!form.is_continuation && fixedInk == null) {
       numberField('ink_weight', 'Isi berat Tinta X yang masuk ke mesin.', { positive: true });
     }
     numberField('recovery_weight', 'Isi berat hasil solvent dalam kg. Isi 0 bila belum ada hasil.');
     numberField('oil_temp', 'Isi suhu oli.');
     numberField('vapour_temp', 'Isi suhu uap.');
-    if (form.is_continuation && !TIME_PATTERN.test(form.notes)) errs.notes = CONTINUATION_NOTE_ERROR;
+    if (!form.confirmed) errs.confirmed = 'Centang dulu setelah memastikan data sesuai dengan di lapangan.';
 
     if (!errs.recovery_weight && summary.recoveryExceeds) {
       errs.recovery_weight = form.is_continuation
@@ -204,7 +230,7 @@ function BatchForm({ formData, onSaved }) {
           is_continuation: form.is_continuation,
           parent_batch_id: form.is_continuation ? Number(form.parent_batch_id) : null,
           process_status: form.process_status,
-          ink_weight: form.is_continuation ? 0 : parseDecimal(form.ink_weight),
+          ink_weight: form.is_continuation ? 0 : fixedInk ?? parseDecimal(form.ink_weight),
           recovery_weight: parseDecimal(form.recovery_weight),
           oil_temp: parseDecimal(form.oil_temp),
           vapour_temp: parseDecimal(form.vapour_temp),
@@ -239,7 +265,7 @@ function BatchForm({ formData, onSaved }) {
         {openChains.length > 0 && (
           <section
             aria-labelledby="open-chains-title"
-            className="rounded-card border border-info-border bg-info-bg p-4 text-info-fg sm:p-5"
+            className="rounded-card border border-warning-border bg-warning-bg p-4 text-warning-fg sm:p-5"
           >
             <h2 id="open-chains-title" className="flex items-center gap-2 text-h3 font-semibold">
               <Hourglass className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -253,7 +279,7 @@ function BatchForm({ formData, onSaved }) {
               {openChains.map((chain) => (
                 <li
                   key={chain.root_id}
-                  className="flex flex-col gap-3 rounded-lg border border-info-border bg-white p-3 text-gray-800 sm:flex-row sm:items-center sm:justify-between"
+                  className="flex flex-col gap-3 rounded-lg border border-warning-border bg-white p-3 text-gray-800 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0 text-body">
                     <p className="font-mono font-medium text-gray-900">{chainLabel(chain)}</p>
@@ -343,7 +369,16 @@ function BatchForm({ formData, onSaved }) {
               <RadioOption
                 name="is_continuation"
                 checked={!form.is_continuation}
-                onChange={() => setForm((f) => ({ ...f, is_continuation: false, parent_batch_id: '' }))}
+                disabled={mustContinue}
+                describedBy="continuation-hint"
+                onChange={() =>
+                  setForm((f) => ({
+                    ...f,
+                    is_continuation: false,
+                    parent_batch_id: '',
+                    ink_weight: fixedInk != null ? String(fixedInk) : '',
+                  }))
+                }
               >
                 Input baru
               </RadioOption>
@@ -364,10 +399,11 @@ function BatchForm({ formData, onSaved }) {
                 Input lanjutan dari shift sebelumnya
               </RadioOption>
             </div>
-            <p id="continuation-hint" className="mt-1 text-caption text-gray-600">
-              {openChains.length
-                ? 'Input lanjutan tidak membawa Tinta X baru. Isi hasil solvent dari sisa prosesnya.'
-                : 'Tidak ada input belum selesai yang bisa dilanjutkan.'}
+            <p id="continuation-hint" className={`mt-1 text-caption ${errors.is_continuation ? 'text-danger-fg' : 'text-gray-600'}`}>
+              {errors.is_continuation ??
+                (mustContinue
+                  ? 'Input baru terkunci sampai proses yang belum selesai ditutup, karena mesin hanya satu. Input lanjutan tidak membawa Tinta X baru.'
+                  : 'Tidak ada input belum selesai yang bisa dilanjutkan.')}
             </p>
           </fieldset>
 
@@ -424,6 +460,13 @@ function BatchForm({ formData, onSaved }) {
                   Tidak ada Tinta X baru
                 </p>
               </div>
+            ) : fixedInk != null ? (
+              // Berat tetap per input baru, tidak bisa diubah operator
+              <Field id="ink_weight" label="Tinta X masuk" hint="Tetap untuk setiap input baru." error={errors.ink_weight}>
+                {(props) => (
+                  <NumberInput {...props} suffix="kg" value={formatNumber(fixedInk)} readOnly className="bg-gray-100 text-gray-800" />
+                )}
+              </Field>
             ) : (
               <Field id="ink_weight" label="Tinta X masuk" required error={errors.ink_weight}>
                 {(props) => <NumberInput {...props} suffix="kg" value={form.ink_weight} onChange={set('ink_weight')} />}
@@ -517,7 +560,8 @@ function BatchForm({ formData, onSaved }) {
               <RadioOption
                 name="process_status"
                 checked={form.process_status === 'completed'}
-                onChange={() => setForm((f) => ({ ...f, process_status: 'completed' }))}
+                // Kalimat konfirmasi berganti, jadi centang harus diulang
+                onChange={() => setForm((f) => ({ ...f, process_status: 'completed', confirmed: false }))}
               >
                 Selesai
               </RadioOption>
@@ -525,7 +569,7 @@ function BatchForm({ formData, onSaved }) {
                 name="process_status"
                 checked={form.process_status === 'in_progress'}
                 describedBy="process-status-hint"
-                onChange={() => setForm((f) => ({ ...f, process_status: 'in_progress' }))}
+                onChange={() => setForm((f) => ({ ...f, process_status: 'in_progress', confirmed: false }))}
               >
                 Belum selesai, dilanjutkan shift berikutnya
               </RadioOption>
@@ -543,8 +587,7 @@ function BatchForm({ formData, onSaved }) {
             <Field
               id="notes"
               label="Keterangan"
-              required={form.is_continuation}
-              hint={form.is_continuation ? 'Wajib mencatat jam, contoh: Lanjutan Pkl 15.30.' : 'Opsional.'}
+              hint="Opsional."
               error={errors.notes}
             >
               {(props) => (
@@ -633,6 +676,32 @@ function BatchForm({ formData, onSaved }) {
                 : 'Status belum selesai, lanjutkan di shift berikutnya. '}
               Saldo solvent sekarang {formatNumber(saved.solvent_balance_after)} kg.
             </Alert>
+          )}
+
+          {!isMaintenance && (
+            <div className="mt-4 rounded-lg border border-warning-border bg-warning-bg p-3">
+              <label className="flex cursor-pointer items-start gap-3 text-body text-gray-900">
+                <input
+                  type="checkbox"
+                  checked={form.confirmed}
+                  onChange={(e) => {
+                    const { checked } = e.target;
+                    setForm((f) => ({ ...f, confirmed: checked }));
+                    setErrors((errs) => ({ ...errs, confirmed: undefined }));
+                  }}
+                  aria-invalid={Boolean(errors.confirmed)}
+                  aria-describedby={errors.confirmed ? 'confirmed-error' : undefined}
+                  className="mt-0.5 h-5 w-5 shrink-0 accent-brand-blue-600"
+                />
+                {CONFIRM_TEXT[form.process_status]}
+              </label>
+              {errors.confirmed && (
+                <p id="confirmed-error" className="mt-1.5 flex items-center gap-1.5 text-caption text-danger-fg">
+                  <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                  {errors.confirmed}
+                </p>
+              )}
+            </div>
           )}
 
           {isMaintenance && (
