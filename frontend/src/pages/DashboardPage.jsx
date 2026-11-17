@@ -59,7 +59,7 @@ function trendPoints(trend, valueOf, detailOf, flagOf = () => false) {
 // tooltip menampilkan persen dan beratnya dalam kg.
 const TREND_SERIES = {
   solvent: { label: 'Solvent', title: 'Tren solvent', color: SOLVENT_COLOR },
-  waste: { label: 'Limbah B3', title: 'Tren limbah B3', color: WASTE_COLOR },
+  waste: { label: 'Residu', title: 'Tren residu', color: WASTE_COLOR },
 };
 
 function TrendCharts({ trend, period, anchor, label }) {
@@ -139,7 +139,7 @@ function TrendCharts({ trend, period, anchor, label }) {
             : trendPoints(
                 trend,
                 (p) => p.residue_rate,
-                (p) => `Limbah B3 ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
+                (p) => `Residu ${formatNumber(p.residue)} kg dari Tinta X ${formatNumber(p.input)} kg`,
               )
         }
         flagLabel={isSolvent ? 'di bawah toleransi' : undefined}
@@ -201,7 +201,7 @@ function AlertCard({ id, icon: Icon, title, status, tone, needsAction, children,
 // di TPS (90 hari) sampai diserahkan ke vendor; tidak ada batas kirim ke TPS. Per role di DASHBOARD_ALERTS.
 export const B3_VIEWS = {
   storage: {
-    title: 'Limbah B3 di TPS',
+    title: 'Residu di TPS',
     status: (p) => p.storage,
     badge: (p) => <StorageBadge storage={p.storage} />,
     due: (p) => `Batas simpan ${formatDate(p.expiry_date)}`,
@@ -209,9 +209,9 @@ export const B3_VIEWS = {
     since: (p) => `di TPS sejak ${formatDate(p.sent_to_tps_at)}`,
     actionNoun: 'perlu ditindak',
     noAction: 'Tidak ada pallet yang mendesak atau kritis.',
-    listTitle: 'Pallet B3 di TPS',
+    listTitle: 'Pallet residu di TPS',
     meterLabel: 'Masa simpan',
-    empty: 'Tidak ada pallet B3 di TPS.',
+    empty: 'Tidak ada pallet residu di TPS.',
   },
 };
 

@@ -11,7 +11,7 @@ Artisan::command('inspire', function () {
 
 Artisan::command('b3:pengingat', function (SendStorageReminders $reminders) {
     $this->info("{$reminders->handle()} pengingat masa simpan terkirim ke HSE.");
-})->purpose('Kirim pengingat masa simpan limbah B3 ke HSE');
+})->purpose('Kirim pengingat masa simpan residu ke HSE');
 
 // Jam pengingat harian (parameter daily_reminder_hour, PRD §8). Butuh scheduler berjalan:
 // php artisan schedule:work (lokal) atau cron "* * * * * php artisan schedule:run" (server).

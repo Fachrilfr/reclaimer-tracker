@@ -5,7 +5,7 @@ import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { formatDate, formatDateTime } from '../lib/format.js';
 
 // Banner di semua halaman selama ada pallet yang sudah mulai diisi tapi belum ditandai penuh.
-// Hilang sendiri setelah pallet ditekan "Pallet penuh" di Input pallet B3.
+// Hilang sendiri setelah pallet ditekan "Pallet penuh" di Input pallet residu.
 export default function FillingPalletBanner() {
   const { fillingPallet: pallet } = useNotifications();
   const { can } = useAuth();
@@ -27,7 +27,7 @@ export default function FillingPalletBanner() {
         </div>
         {can('drum_b3') && pathname !== '/drum-b3' && (
           <Link to="/drum-b3" className="btn-secondary h-11 shrink-0 px-4 text-body">
-            Buka Input pallet B3
+            Buka Input pallet residu
           </Link>
         )}
       </div>

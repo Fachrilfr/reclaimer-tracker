@@ -94,7 +94,7 @@ export const MODULE_GROUPS = [
       },
       {
         key: 'drum_b3',
-        label: 'Input pallet B3',
+        label: 'Input pallet residu',
         path: '/drum-b3',
         icon: Cylinder,
         summary: 'Tekan mulai isi saat pallet mulai diisi residu, dan pallet penuh saat sudah penuh. Pallet penuh langsung terkirim ke TPS.',
