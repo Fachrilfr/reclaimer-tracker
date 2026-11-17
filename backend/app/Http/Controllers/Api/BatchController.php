@@ -39,6 +39,7 @@ class BatchController extends Controller
                 'solvent_balance' => SolventLedger::currentBalance(),
                 'target_recovery_rate' => Parameter::number('target_recovery_rate'),
                 'temperature' => config('reclaimer.temperature'),
+                'ink_weight_per_input' => config('reclaimer.ink_weight_per_input'),
                 // Rangkaian yang menunggu batch lanjutan dari shift berikutnya
                 'open_chains' => BatchChain::open()->map(fn (BatchChain $chain) => $chain->toArray())->values(),
             ],

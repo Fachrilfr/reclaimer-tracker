@@ -19,6 +19,63 @@ function Empty({ children }) {
   return <p className="px-4 pb-5 text-body text-gray-600 sm:px-5">{children}</p>;
 }
 
+const HISTORY_STATUS = { diangkut: 'Diangkut', tps: 'Di TPS', reclaimer: 'Di area reclaimer' };
+
+// Semua pallet yang ada selama periode, yang sudah diangkut vendor maupun yang masih tersimpan
+function PalletHistory({ history }) {
+  const { total, counts, rows } = history;
+
+  return (
+    <Section id="b3-history" title={`Riwayat pallet (${total} pallet)`}>
+      {rows.length ? (
+        <>
+          <p className="px-4 pb-3 text-body text-gray-800 sm:px-5">
+            {counts.diangkut} diangkut · {counts.tps} di TPS · {counts.reclaimer} di area reclaimer, per {formatDate(history.as_of)}.
+          </p>
+          <Table caption="Riwayat pallet di periode">
+            <thead>
+              <tr>
+                <Th>Pallet</Th>
+                <Th>Status</Th>
+                <Th numeric>Drum</Th>
+                <Th>Mulai terisi</Th>
+                <Th>Sampai di TPS</Th>
+                <Th>Diangkut vendor</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((p) => (
+                <tr key={p.pallet_number}>
+                  <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
+                  <Td className="whitespace-nowrap">{HISTORY_STATUS[p.status]}</Td>
+                  <Td numeric className="whitespace-nowrap">{p.drum_count ?? <span className="text-gray-600">Sedang diisi</span>}</Td>
+                  <Td className="whitespace-nowrap">{formatDate(p.start_date)}</Td>
+                  <Td className="whitespace-nowrap">{p.sent_to_tps_at ? formatDate(p.sent_to_tps_at) : <span className="text-gray-600">–</span>}</Td>
+                  <Td className="whitespace-nowrap">
+                    {p.handover_date ? (
+                      <>
+                        {formatDate(p.handover_date)}
+                        <span className="block text-caption text-gray-600">
+                          <span className="font-mono">{p.surat_jalan_number}</span>
+                          {p.vendor && ` · ${p.vendor}`}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-gray-600">–</span>
+                    )}
+                  </Td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
+        </>
+      ) : (
+        <Empty>Tidak ada pallet di periode ini.</Empty>
+      )}
+    </Section>
+  );
+}
+
 function ReportBody({ report }) {
   const s = report.summary;
   const stock = report.stock;
@@ -29,15 +86,12 @@ function ReportBody({ report }) {
   return (
     <div className="mt-6 space-y-6">
 
-      {/* Lima kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
-      <div className="grid grid-cols-2 gap-4 xl:grid-cols-5">
-        <StatCard label="Berat residu" value={formatNumber(s.residue)} unit="kg" />
-        <StatCard label="Berat diserahkan" value={formatNumber(s.weight_kg)} unit="kg" />
-        <StatCard label="Pallet diserahkan" value={s.pallet_count} unit="pallet" />
-        <StatCard label="Lewat batas simpan" value={s.over_limit_count} unit="pallet" />
-        <div className="col-span-2 xl:col-span-1">
-          <StatCard label={`Stok di TPS ${stockLabel}`} value={atTps} unit="pallet" />
-        </div>
+      {/* Empat kartu sama ukuran, tanpa deskripsi: label pendek dan satu angka */}
+      <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
+        <StatCard label="Residu masuk TPS" value={formatNumber(s.residue)} unit="kg" />
+        <StatCard label="Residu diangkut vendor" value={formatNumber(s.weight_kg)} unit="kg" />
+        <StatCard label="Pallet diangkut" value={s.pallet_count} unit="pallet" />
+        <StatCard label={`Stok di TPS ${stockLabel}`} value={atTps} unit="pallet" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -66,7 +120,7 @@ function ReportBody({ report }) {
               </tbody>
             </Table>
           ) : (
-            <Empty>Tidak ada residu yang diserahkan ke vendor di periode ini.</Empty>
+            <Empty>Tidak ada residu yang diangkut vendor di periode ini.</Empty>
           )}
         </Section>
 
@@ -98,12 +152,12 @@ function ReportBody({ report }) {
 
       {/* Data residu sama dengan Dashboard HSE */}
       {report.residue_breakdown && (
-        <Section id="b3-residu-periode" title={`Residu per ${BREAKDOWN_LABEL[report.residue_breakdown.unit].toLowerCase()}`}>
+        <Section id="b3-residu-periode" title={`Rincian residu per ${BREAKDOWN_LABEL[report.residue_breakdown.unit].toLowerCase()}`}>
           <ResidueBreakdown breakdown={report.residue_breakdown} />
         </Section>
       )}
 
-      <Section id="b3-residu-input" title="Residu per input">
+      <Section id="b3-residu-input" title="Rincian residu per input">
         <ResiduePerInput inputs={report.residue_inputs} />
       </Section>
 
@@ -158,10 +212,10 @@ function ReportBody({ report }) {
 
       <Section
         id="b3-compliance"
-        title="Kepatuhan masa simpan"
+        title="Daftar pallet diangkut"
       >
         {report.compliance.length ? (
-          <Table caption="Kepatuhan masa simpan">
+          <Table caption="Daftar pallet diangkut">
             <thead>
               <tr>
                 <Th>Pallet</Th>
@@ -169,7 +223,7 @@ function ReportBody({ report }) {
                 <Th>Serah terima</Th>
                 <Th>Batas simpan</Th>
                 <Th numeric>Lama simpan</Th>
-                <Th>Status</Th>
+                <Th>Kepatuhan masa simpan</Th>
               </tr>
             </thead>
             <tbody>
@@ -193,7 +247,7 @@ function ReportBody({ report }) {
             </tbody>
           </Table>
         ) : (
-          <Empty>Tidak ada pallet yang diserahkan di periode ini.</Empty>
+          <Empty>Tidak ada pallet yang diangkut di periode ini.</Empty>
         )}
       </Section>
 
@@ -237,6 +291,8 @@ function ReportBody({ report }) {
           <Empty>Tidak ada pallet yang tersimpan {stockLabel}.</Empty>
         )}
       </Section>
+
+      <PalletHistory history={report.history} />
 
       <Section
         id="b3-maintenance"

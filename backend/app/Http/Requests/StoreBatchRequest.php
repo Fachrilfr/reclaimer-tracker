@@ -37,7 +37,11 @@ class StoreBatchRequest extends FormRequest
             }
 
             if (! $this->boolean('is_continuation')) {
-                if ((float) $this->input('ink_weight') <= 0) {
+                $fixed = config('reclaimer.ink_weight_per_input');
+                if ($fixed !== null && (float) $this->input('ink_weight') !== (float) $fixed) {
+                    // Berat Tinta X per input tetap (keputusan 17 Nov 2026), tidak diisi operator
+                    $validator->errors()->add('ink_weight', 'Tinta X masuk selalu ' . str_replace('.', ',', (string) (float) $fixed) . ' kg per input baru.');
+                } elseif ((float) $this->input('ink_weight') <= 0) {
                     $validator->errors()->add('ink_weight', 'Isi berat Tinta X yang masuk ke mesin. Untuk input tanpa Tinta baru, pilih Input lanjutan.');
                 }
 
@@ -48,16 +52,8 @@ class StoreBatchRequest extends FormRequest
             if ((float) $this->input('ink_weight') > 0) {
                 $validator->errors()->add('ink_weight', 'Input lanjutan tidak membawa Tinta X baru. Kosongkan berat Tinta X, atau catat sebagai input baru.');
             }
-
-            // Keterangan batch lanjutan wajib mencatat jam, misalnya "Lanjutan Pkl 15.30"
-            if (! preg_match(self::TIME_PATTERN, (string) $this->input('notes'))) {
-                $validator->errors()->add('notes', 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
-            }
         }];
     }
-
-    /** Jam 00.00 sampai 23.59, dengan titik atau titik dua. */
-    public const TIME_PATTERN = '/(?<!\d)([01]?\d|2[0-3])[.:][0-5]\d(?!\d)/';
 
     public function messages(): array
     {

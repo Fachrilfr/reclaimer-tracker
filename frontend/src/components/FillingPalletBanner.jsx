@@ -14,7 +14,7 @@ export default function FillingPalletBanner() {
   if (!pallet) return null;
 
   return (
-    <div role="status" className="mb-6 rounded-card border border-info-border bg-info-bg p-4 text-info-fg">
+    <div role="status" className="mb-6 rounded-card border border-warning-border bg-warning-bg p-4 text-warning-fg">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-start gap-3">
           <Cylinder className="mt-0.5 h-5 w-5 shrink-0" aria-hidden="true" />

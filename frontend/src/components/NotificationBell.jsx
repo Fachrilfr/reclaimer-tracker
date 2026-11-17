@@ -81,7 +81,7 @@ export default function NotificationBell() {
                   <button
                     type="button"
                     onClick={() => openItem(item)}
-                    className={`focus-ring block w-full px-4 py-3 text-left hover:bg-gray-25 ${item.read ? '' : 'bg-brand-blue-50'}`}
+                    className={`focus-ring block w-full px-4 py-3 text-left hover:bg-gray-25 ${item.read ? '' : 'bg-warning-bg'}`}
                   >
                     <span className="flex items-start justify-between gap-2">
                       <span className="text-body font-semibold text-gray-900">{item.title}</span>

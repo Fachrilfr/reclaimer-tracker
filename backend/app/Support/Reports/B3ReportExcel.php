@@ -28,23 +28,23 @@ final class B3ReportExcel extends ReportWorkbook
 
         $this->summarySheet($book->getActiveSheet());
 
-        $this->table($book->createSheet(), 'Per vendor', 'Berat yang diserahkan per vendor',
+        $this->table($book->createSheet(), 'Per vendor', 'Residu diangkut vendor per vendor',
             ['Vendor', 'Surat jalan', 'Pallet', 'Drum', 'Berat vendor (kg)'],
             array_map(fn ($v) => [$v['vendor'], $v['surat_jalan_count'], $v['pallet_count'], $v['drum_count'], $v['weight_kg']], $r['by_vendor']),
             formats: [5 => self::KG],
             total: $r['by_vendor'] ? $total('Total', $s) : null,
-            empty: 'Tidak ada residu yang diserahkan ke vendor di periode ini.');
+            empty: 'Tidak ada residu yang diangkut vendor di periode ini.');
 
         if ($breakdown = $r['breakdown']) {
             $label = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$breakdown['unit']];
-            $this->table($book->createSheet(), "Per {$label}", 'Berat yang diserahkan per ' . strtolower($label),
+            $this->table($book->createSheet(), "Per {$label}", 'Residu diangkut vendor per ' . strtolower($label),
                 [$label, 'Surat jalan', 'Pallet', 'Drum', 'Berat vendor (kg)'],
                 array_map(fn ($x) => [self::bucketLabel($x, $breakdown['unit']), $x['surat_jalan_count'], $x['pallet_count'], $x['drum_count'], $x['weight_kg']], $breakdown['rows']),
                 formats: [5 => self::KG],
                 total: $total('Total', $s));
         }
 
-        $this->table($book->createSheet(), 'Surat jalan', 'Surat jalan yang diserahkan di periode ini',
+        $this->table($book->createSheet(), 'Surat jalan', 'Surat jalan di periode ini',
             ['No. surat jalan', 'Tanggal serah terima', 'Vendor', 'Pallet', 'Drum', 'Berat vendor (kg)', 'Petugas vendor', 'Dicatat oleh', 'Berkas bukti', 'Catatan'],
             array_map(fn ($sj) => [
                 $sj['number'], self::date($sj['handover_date']), $sj['vendor'], implode(', ', array_column($sj['pallets'], 'pallet_number')),
@@ -55,15 +55,15 @@ final class B3ReportExcel extends ReportWorkbook
             total: $r['surat_jalan'] ? ['Total', null, null, null, $s['drum_count'], $s['weight_kg'], null, null, null, null] : null,
             empty: 'Belum ada surat jalan di periode ini.');
 
-        $this->table($book->createSheet(), 'Masa simpan', "Lama simpan pallet yang diserahkan, batas {$r['max_storage_days']} hari sejak sampai di TPS",
-            ['No. pallet', 'Surat jalan', 'Mulai terisi', 'Sampai di TPS', 'Serah terima', 'Batas simpan', 'Lama simpan (hari)', 'Status'],
+        $this->table($book->createSheet(), 'Pallet diangkut', "Lama simpan pallet yang diangkut, batas {$r['max_storage_days']} hari sejak sampai di TPS",
+            ['No. pallet', 'Surat jalan', 'Mulai terisi', 'Sampai di TPS', 'Serah terima', 'Batas simpan', 'Lama simpan (hari)', 'Kepatuhan masa simpan'],
             array_map(fn ($c) => [
                 $c['pallet_number'], $c['surat_jalan_number'], self::date($c['start_date']), $c['sent_to_tps_at'] ? self::date($c['sent_to_tps_at']) : null,
                 self::date($c['handover_date']), self::date($c['expiry_date']), $c['days_stored'],
                 $c['over_days'] > 0 ? "Lewat batas {$c['over_days']} hari" : 'Dalam batas',
             ], $r['compliance']),
             tones: [8 => fn ($row) => str_starts_with($row[7], 'Lewat') ? 'danger' : null],
-            empty: 'Tidak ada pallet yang diserahkan di periode ini.',
+            empty: 'Tidak ada pallet yang diangkut di periode ini.',
             tab: $s['over_limit_count'] ? self::TONES['danger'][0] : null);
 
         $stock = $r['stock'];
@@ -75,6 +75,18 @@ final class B3ReportExcel extends ReportWorkbook
             ], $stock['rows']),
             tones: [8 => fn ($row) => self::LEVEL_TONE[array_search($row[7], self::LEVEL, true)] ?? null, 7 => fn ($row) => $row[6] !== null && $row[6] < 0 ? 'danger' : null],
             empty: 'Tidak ada pallet yang tersimpan pada akhir periode ini.');
+
+        $history = $r['history'];
+        $this->table($book->createSheet(), 'Riwayat pallet',
+            "Semua pallet di periode ini ({$history['total']} pallet): {$history['counts']['diangkut']} diangkut, {$history['counts']['tps']} di TPS, {$history['counts']['reclaimer']} di area reclaimer, per " . self::date($history['as_of']),
+            ['No. pallet', 'Status', 'Drum', 'Mulai terisi', 'Sampai di TPS', 'Diangkut vendor', 'Surat jalan', 'Vendor'],
+            array_map(fn ($p) => [
+                $p['pallet_number'], ['diangkut' => 'Diangkut', 'tps' => 'Di TPS', 'reclaimer' => 'Di area reclaimer'][$p['status']],
+                $p['drum_count'] ?? 'Sedang diisi', self::date($p['start_date']),
+                $p['sent_to_tps_at'] ? self::date($p['sent_to_tps_at']) : null,
+                $p['handover_date'] ? self::date($p['handover_date']) : null, $p['surat_jalan_number'], $p['vendor'],
+            ], $history['rows']),
+            empty: 'Tidak ada pallet di periode ini.');
 
         $this->table($book->createSheet(), 'Maintenance', 'Maintenance mesin di periode ini; pengiriman residu ke TPS ikut terhenti',
             ['Mulai', 'Selesai', 'Durasi di periode (menit)', 'Alasan', 'Catatan perbaikan', 'Dilaporkan oleh'],
@@ -98,19 +110,18 @@ final class B3ReportExcel extends ReportWorkbook
         $at = $this->sectionsSheet($sheet, 'Ringkasan', 'Penyerahan ke vendor, kepatuhan masa simpan, dan stok', [
             ['Penyerahan ke vendor', [
                 ['sj', 'Surat jalan', $s['surat_jalan_count'], null, null],
-                ['pallets', 'Pallet diserahkan', $s['pallet_count'], null, null],
-                ['drums', 'Drum diserahkan', $s['drum_count'], null, null],
-                ['residue', 'Berat residu (kg)', $s['residue'], "Dari {$s['residue_chain_count']} proses selesai, Tinta X − hasil solvent", self::KG],
-                ['weight', 'Berat timbangan vendor (kg)', $s['weight_kg'], 'Berat resmi, dicatat per surat jalan', self::KG],
+                ['pallets', 'Pallet diangkut', $s['pallet_count'], null, null],
+                ['drums', 'Drum diangkut', $s['drum_count'], null, null],
+                ['residue', 'Residu masuk TPS (kg)', $s['residue'], "Dari {$s['residue_chain_count']} proses selesai, Tinta X − hasil solvent", self::KG],
+                ['weight', 'Residu diangkut vendor (kg)', $s['weight_kg'], 'Berat resmi, dicatat per surat jalan', self::KG],
             ]],
             ['Kepatuhan masa simpan', [
                 ['limit', 'Batas masa simpan (hari)', $r['max_storage_days'], 'Sejak pallet sampai di TPS', null],
-                ['over', 'Pallet diserahkan lewat batas', $s['over_limit_count'], $s['over_limit_count'] ? 'Rincian di sheet "Masa simpan"' : 'Semua pallet diserahkan dalam batas', null],
                 ['longest', 'Lama simpan terlama (hari)', $s['longest_days_stored'], null, null],
             ]],
             ["Stok {$stockLabel}", [
                 ['stock', 'Pallet masih tersimpan', $rows->count(), null, null],
-                ['tps', 'Di TPS', $atTps, 'Menunggu diserahkan ke vendor', null],
+                ['tps', 'Di TPS', $atTps, 'Menunggu diangkut vendor', null],
                 ['reclaimer', 'Di area reclaimer', $rows->count() - $atTps, 'Masih diisi', null],
                 ['action', 'Mendesak atau kritis', $needsAction, $needsAction ? 'Sisa masa simpan 14 hari atau kurang' : null, null],
             ]],
@@ -121,7 +132,6 @@ final class B3ReportExcel extends ReportWorkbook
         ]);
 
         $sheet->getStyle("A{$at['weight']}:B{$at['weight']}")->getFont()->setBold(true)->setSize(11);
-        $this->tone($sheet, "B{$at['over']}", $s['over_limit_count'] ? 'danger' : 'success');
         if ($needsAction) {
             $this->tone($sheet, "B{$at['action']}", 'danger');
         }

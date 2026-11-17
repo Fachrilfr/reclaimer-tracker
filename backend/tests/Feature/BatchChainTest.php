@@ -199,11 +199,10 @@ class BatchChainTest extends TestCase
         $root = $this->batch(['ink_weight' => 500, 'recovery_weight' => 60, 'process_status' => 'in_progress'])
             ->json('data.id');
 
-        // Keterangan wajib mencatat jam
-        $this->continuation($root, ['recovery_weight' => 10, 'notes' => 'Lanjutan'])
+        // Mesin hanya satu: selama proses belum selesai, input baru ditolak
+        $this->batch(['ink_weight' => 300, 'recovery_weight' => 100])
             ->assertUnprocessable()
-            ->assertJsonPath('errors.notes.0', 'Input lanjutan wajib mencatat jam di keterangan, contoh: Lanjutan Pkl 15.30.');
-        $this->continuation($root, ['recovery_weight' => 10, 'notes' => 'Lanjutan Pkl 25.10'])->assertUnprocessable();
+            ->assertJsonPath('errors.is_continuation.0', 'Proses BR-20261020-001 belum selesai. Catat sebagai input lanjutan sampai proses itu selesai.');
 
         // Tidak boleh sebelum batch sebelumnya
         $this->continuation($root, ['recovery_weight' => 10, 'date' => '2026-10-19'])
@@ -217,6 +216,11 @@ class BatchChainTest extends TestCase
         $this->batch(['ink_weight' => 100, 'process_status' => null])
             ->assertUnprocessable()->assertJsonValidationErrors(['process_status']);
 
-        $this->continuation($root, ['recovery_weight' => 440, 'notes' => 'Kuras residu Pkl 7.05'])->assertCreated();
+        // Keterangan opsional, juga untuk input lanjutan
+        $this->continuation($root, ['recovery_weight' => 10, 'notes' => null, 'process_status' => 'in_progress'])->assertCreated();
+        $this->continuation($root, ['recovery_weight' => 430, 'notes' => 'Kuras residu'])->assertCreated();
+
+        // Proses sudah selesai: input baru boleh lagi
+        $this->batch(['ink_weight' => 300, 'recovery_weight' => 100])->assertCreated();
     }
 }

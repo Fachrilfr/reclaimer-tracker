@@ -23,13 +23,12 @@
 
 <div>
 <h1>Laporan Residu {{ $report['period_label'] }}</h1>
-<div class="meta">Periode {{ $period }} · {{ $s['surat_jalan_count'] }} surat jalan · batas masa simpan {{ $report['max_storage_days'] }} hari sejak pallet sampai di TPS</div>
+<div class="meta">Periode {{ $period }}</div>
 
-<table class="kpi kpi-5"><tr>
-    <td><div class="box"><div class="label">Berat residu</div><div class="value">{{ $kg($s['residue']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Berat diserahkan</div><div class="value">{{ $kg($s['weight_kg']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Pallet diserahkan</div><div class="value">{{ $s['pallet_count'] }} pallet</div></div></td>
-    <td><div class="box"><div class="label">Lewat batas simpan</div><div class="value {{ $s['over_limit_count'] ? 'bad' : '' }}">{{ $s['over_limit_count'] }} pallet</div></div></td>
+<table class="kpi"><tr>
+    <td><div class="box"><div class="label">Residu masuk TPS</div><div class="value">{{ $kg($s['residue']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Residu diangkut vendor</div><div class="value">{{ $kg($s['weight_kg']) }} kg</div></div></td>
+    <td><div class="box"><div class="label">Pallet diangkut</div><div class="value">{{ $s['pallet_count'] }} pallet</div></div></td>
     <td><div class="box"><div class="label">Stok di TPS {{ $stockLabel }}</div><div class="value">{{ collect($stock['rows'])->where('location', 'tps')->count() }} pallet</div></div></td>
 </tr></table>
 </div>
@@ -45,7 +44,7 @@
             @endforeach
         </table>
     @else
-        <div class="empty">Tidak ada residu yang diserahkan ke vendor di periode ini.</div>
+        <div class="empty">Tidak ada residu yang diangkut vendor di periode ini.</div>
     @endif
 </td>
 <td class="col">
@@ -69,9 +68,9 @@
 @if ($report['residue_breakdown'])
     @php $residueUnit = ['day' => 'Hari', 'week' => 'Minggu', 'month' => 'Bulan'][$report['residue_breakdown']['unit']]; @endphp
     <div class="keep">
-    <h2>Rincian per {{ strtolower($residueUnit) }}</h2>
+    <h2>Rincian residu per {{ strtolower($residueUnit) }}</h2>
     <table>
-        <thead><tr><th>{{ $residueUnit }}</th><th class="num">Total pengangkutan</th><th class="num">Berat residu (kg)</th><th class="num">Timbangan vendor (kg)</th></tr></thead>
+        <thead><tr><th>{{ $residueUnit }}</th><th class="num">Total pengangkutan</th><th class="num">Residu masuk TPS (kg)</th><th class="num">Residu diangkut vendor (kg)</th></tr></thead>
         @foreach ($report['residue_breakdown']['rows'] as $row)
             <tr>
                 <td>{{ $report['residue_breakdown']['unit'] === 'month' ? Fmt::month($row['start']) : ($row['start'] === $row['end'] ? Fmt::date($row['start']) : Fmt::date($row['start']) . ' – ' . Fmt::date($row['end'])) }}</td>
@@ -84,10 +83,10 @@
     </div>
 @endif
 
-<h2>Residu per input</h2>
+<h2>Rincian residu per input</h2>
 @if (count($report['residue_inputs']))
     <table>
-        <thead><tr><th>No. input</th><th>Tanggal</th><th>Shift</th><th class="num">Tinta X masuk (kg)</th><th class="num">Berat residu (kg)</th></tr></thead>
+        <thead><tr><th>No. input</th><th>Tanggal</th><th>Shift</th><th class="num">Tinta X masuk (kg)</th><th class="num">Residu masuk TPS (kg)</th></tr></thead>
         @foreach ($report['residue_inputs'] as $row)
             <tr>
                 <td>{{ $row['batch_number'] }}@if ($row['batch_count'] > 1) <span class="muted">+ {{ $row['batch_count'] - 1 }} lanjutan</span>@endif</td>
@@ -123,11 +122,11 @@
 </div>
 
 <div class="keep">
-<h2>Kepatuhan masa simpan</h2>
-<div class="muted">Lama simpan pallet yang diserahkan, dari sampai di TPS sampai serah terima.</div>
+<h2>Daftar pallet diangkut</h2>
+<div class="muted">Lama simpan pallet yang diangkut, dari sampai di TPS sampai serah terima.</div>
 @if (count($report['compliance']))
     <table>
-        <thead><tr><th>Pallet</th><th>Surat jalan</th><th>Sampai di TPS</th><th>Serah terima</th><th>Batas simpan</th><th class="num">Lama simpan</th><th>Status</th></tr></thead>
+        <thead><tr><th>Pallet</th><th>Surat jalan</th><th>Sampai di TPS</th><th>Serah terima</th><th>Batas simpan</th><th class="num">Lama simpan</th><th>Kepatuhan masa simpan</th></tr></thead>
         @foreach ($report['compliance'] as $c)
             <tr>
                 <td>{{ $c['pallet_number'] }}</td><td>{{ $c['surat_jalan_number'] }}</td>
@@ -138,13 +137,13 @@
         @endforeach
     </table>
 @else
-    <div class="empty">Tidak ada pallet yang diserahkan di periode ini.</div>
+    <div class="empty">Tidak ada pallet yang diangkut di periode ini.</div>
 @endif
 </div>
 
 <div class="keep">
 <h2>Stok {{ $stockLabel }}</h2>
-<div class="muted">Pallet yang belum diserahkan ke vendor, dengan sisa masa simpan saat itu.</div>
+<div class="muted">Pallet yang belum diangkut vendor, dengan sisa masa simpan saat itu.</div>
 @if (count($stock['rows']))
     <table>
         <thead><tr><th>Pallet</th><th>Lokasi</th><th class="num">Drum</th><th>Mulai terisi</th><th>Sampai di TPS</th><th>Batas simpan</th><th class="num">Sisa masa simpan</th><th>Status</th></tr></thead>
@@ -159,6 +158,29 @@
     </table>
 @else
     <div class="empty">Tidak ada pallet yang tersimpan.</div>
+@endif
+</div>
+
+@php $history = $report['history']; @endphp
+<div class="keep">
+<h2>Riwayat pallet ({{ $history['total'] }} pallet)</h2>
+<div class="muted">{{ $history['counts']['diangkut'] }} diangkut · {{ $history['counts']['tps'] }} di TPS · {{ $history['counts']['reclaimer'] }} di area reclaimer, per {{ Fmt::date($history['as_of']) }}.</div>
+@if (count($history['rows']))
+    <table>
+        <thead><tr><th>Pallet</th><th>Status</th><th class="num">Drum</th><th>Mulai terisi</th><th>Sampai di TPS</th><th>Diangkut vendor</th><th>Surat jalan</th></tr></thead>
+        @foreach ($history['rows'] as $p)
+            <tr>
+                <td>{{ $p['pallet_number'] }}</td>
+                <td>{{ ['diangkut' => 'Diangkut', 'tps' => 'Di TPS', 'reclaimer' => 'Di area reclaimer'][$p['status']] }}</td>
+                <td class="num">{{ $p['drum_count'] ?? 'Sedang diisi' }}</td>
+                <td>{{ Fmt::date($p['start_date']) }}</td><td>{{ $p['sent_to_tps_at'] ? Fmt::date($p['sent_to_tps_at']) : '–' }}</td>
+                <td>{{ $p['handover_date'] ? Fmt::date($p['handover_date']) : '–' }}</td>
+                <td>{{ $p['surat_jalan_number'] ?? '–' }}</td>
+            </tr>
+        @endforeach
+    </table>
+@else
+    <div class="empty">Tidak ada pallet di periode ini.</div>
 @endif
 </div>
 

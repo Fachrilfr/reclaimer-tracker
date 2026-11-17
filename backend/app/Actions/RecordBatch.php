@@ -139,6 +139,15 @@ class RecordBatch
     private function chainBefore(array $data): array
     {
         if (! $data['is_continuation']) {
+            // Mesin hanya satu: selama masih ada proses yang belum selesai, tidak ada input baru.
+            // Dicek di dalam kunci saldo supaya dua operator tidak sama-sama membuka proses baru.
+            $open = BatchChain::open()->first();
+            if ($open) {
+                throw ValidationException::withMessages([
+                    'is_continuation' => "Proses {$open->root->batch_number} belum selesai. Catat sebagai input lanjutan sampai proses itu selesai.",
+                ]);
+            }
+
             return [null, 0.0, 0.0];
         }
 
