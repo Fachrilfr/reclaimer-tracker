@@ -14,25 +14,32 @@ use Illuminate\Support\Collection;
 final class MaintenanceHistory
 {
     /**
-     * @return Collection<int, array{start: CarbonInterface, end: ?CarbonInterface, reason: string, started_by: ?string, end_note: ?string, ended_by: ?string}>
+     * id dan end_id adalah id log mulai dan log selesai, dipakai Koreksi data. Tanda
+     * koreksi disimpan di log mulai.
+     *
+     * @return Collection<int, array{id: int, end_id: ?int, start: CarbonInterface, end: ?CarbonInterface, reason: string, started_by: ?string, end_note: ?string, ended_by: ?string, correction: ?array}>
      */
     public static function windows(): Collection
     {
         $windows = [];
         $open = null;
 
-        foreach (MachineMaintenanceLog::with('user')->orderBy('logged_at')->orderBy('id')->get() as $log) {
+        foreach (MachineMaintenanceLog::with(['user', 'corrector'])->orderBy('logged_at')->orderBy('id')->get() as $log) {
             if ($log->action === 'start') {
                 $open = count($windows);
                 $windows[] = [
+                    'id' => $log->id,
+                    'end_id' => null,
                     'start' => $log->logged_at,
                     'end' => null,
                     'reason' => $log->reason,
                     'started_by' => $log->user?->name,
                     'end_note' => null,
                     'ended_by' => null,
+                    'correction' => $log->correctionSummary(),
                 ];
             } elseif ($open !== null) {
+                $windows[$open]['end_id'] = $log->id;
                 $windows[$open]['end'] = $log->logged_at;
                 $windows[$open]['end_note'] = $log->reason;
                 $windows[$open]['ended_by'] = $log->user?->name;
@@ -87,6 +94,8 @@ final class MaintenanceHistory
             'end_note' => $window['end_note'],
             'ended_by' => $window['ended_by'],
             'duration_minutes' => $window['end'] ? (int) round($window['start']->diffInMinutes($window['end'])) : null,
+            'id' => $window['id'],
+            'correction' => $window['correction'],
         ];
     }
 }

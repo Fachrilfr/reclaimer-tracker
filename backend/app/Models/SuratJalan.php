@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCorrection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -13,7 +14,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  */
 class SuratJalan extends Model
 {
-    use SoftDeletes;
+    use HasCorrection, SoftDeletes;
 
     protected $table = 'surat_jalan';
 
@@ -48,6 +49,7 @@ class SuratJalan extends Model
             'id' => $this->id,
             'number' => $this->surat_jalan_number,
             'handover_date' => $this->handover_date->toDateString(),
+            'vendor_id' => $this->vendor_id,
             'vendor' => $this->vendor?->name,
             'pallets' => $this->pallets->map(fn (B3Pallet $p) => ['id' => $p->id, 'pallet_number' => $p->pallet_number, 'drum_count' => $p->drum_count])->values()->all(),
             'total_pallets' => $this->total_pallets,
@@ -57,6 +59,7 @@ class SuratJalan extends Model
             'file_name' => $this->file_name,
             'created_by' => $this->creator?->name,
             'created_at' => $this->created_at?->toIso8601String(),
+            'correction' => $this->correctionSummary(),
         ];
     }
 }

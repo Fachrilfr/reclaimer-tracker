@@ -31,14 +31,3 @@ export const ACCESS_LEVELS = {
   tinjau: { label: 'Tinjau', meaning: 'Memeriksa dan menindaklanjuti', includes: ['tinjau', 'lihat'] },
   lihat: { label: 'Lihat', meaning: 'Hanya baca', includes: ['lihat'] },
 };
-
-// Akun dari UserSeeder, hanya ditampilkan saat `npm run dev`
-export const SEEDED_ACCOUNTS = [
-  { nik: '10000001', role: 'operator' },
-  { nik: '20000001', role: 'supervisor' },
-  { nik: '30000001', role: 'hse' },
-  { nik: '40000001', role: 'management' },
-  { nik: '50000001', role: 'admin' },
-];
-
-export const SEEDED_PASSWORD = 'password123';

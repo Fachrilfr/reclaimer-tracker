@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Actions\SetOpeningSolventBalance;
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
 use App\Models\ReclaimerBatch;
@@ -147,6 +148,27 @@ class MasterDataController extends Controller
         return array_map(fn ($v) => filled($v) ? trim($v) : null, $data);
     }
 
+    /** Saldo awal solvent dari hitung fisik saat aplikasi mulai dipakai. */
+    public function setSolventOpening(Request $request, SetOpeningSolventBalance $action): JsonResponse
+    {
+        $data = $request->validate([
+            'amount' => ['required', 'numeric', 'min:0', 'max:9999999'],
+            'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'reason' => ['nullable', 'string', 'max:255'],
+        ], [
+            'amount.required' => 'Isi saldo awal solvent dalam kg.',
+            'amount.numeric' => 'Isi dengan angka, contoh 1.250,5.',
+            'amount.min' => 'Saldo awal tidak boleh negatif.',
+            'amount.max' => 'Angka terlalu besar. Periksa kembali satuan kg.',
+            'date.required' => 'Isi tanggal saldo awal.',
+            'date.date_format' => 'Tanggal saldo awal tidak valid.',
+            'date.before_or_equal' => 'Tanggal saldo awal tidak boleh setelah hari ini.',
+            'reason.max' => 'Alasan paling panjang 255 karakter.',
+        ]);
+
+        return $this->saved($action->handle($request, round((float) $data['amount'], 2), $data['date'], $data['reason'] ?? null));
+    }
+
     private function saved(string $message): JsonResponse
     {
         return response()->json(['status' => 'success', 'message' => $message, 'data' => self::all()]);
@@ -171,6 +193,7 @@ class MasterDataController extends Controller
                 'address' => $v->address,
                 'is_active' => $v->is_active,
             ]),
+            'solvent_opening' => SetOpeningSolventBalance::summary(),
         ];
     }
 }

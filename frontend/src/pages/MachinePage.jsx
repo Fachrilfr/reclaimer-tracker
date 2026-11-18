@@ -7,6 +7,7 @@ import { formatDateTime, formatDuration } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
+import CorrectedBadge from '../components/CorrectedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -192,7 +193,7 @@ export default function MachinePage() {
                 </thead>
                 <tbody>
                   {data.history.map((w) => (
-                    <tr key={w.start}>
+                    <tr key={w.id}>
                       <Td className="whitespace-nowrap">
                         {formatDateTime(w.start)}
                         <span className="block text-caption text-gray-600">{w.started_by}</span>
@@ -208,7 +209,10 @@ export default function MachinePage() {
                         )}
                       </Td>
                       <Td className="whitespace-nowrap">{w.end ? formatDuration(w.duration_minutes) : 'Masih berlangsung'}</Td>
-                      <Td className="min-w-[12rem]">{w.reason}</Td>
+                      <Td className="min-w-[12rem]">
+                        {w.reason}
+                        <CorrectedBadge correction={w.correction} />
+                      </Td>
                       <Td className="min-w-[12rem]">{w.end_note ?? '–'}</Td>
                     </tr>
                   ))}

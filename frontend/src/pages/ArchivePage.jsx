@@ -6,6 +6,7 @@ import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatNumber } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Alert from '../components/Alert.jsx';
+import CorrectedBadge from '../components/CorrectedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -176,6 +177,7 @@ export default function ArchivePage() {
                       <Td className="min-w-[11rem]">
                         <span className="block font-mono font-medium text-gray-900">{s.number}</span>
                         {s.notes && <span className="block text-caption text-gray-600">{s.notes}</span>}
+                        <CorrectedBadge correction={s.correction} />
                       </Td>
                       <Td className="min-w-[12rem]">
                         {formatDate(s.handover_date)}

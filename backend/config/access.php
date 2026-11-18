@@ -40,6 +40,9 @@ return [
         'laporan_b3' => ['hse' => 'lihat', 'management' => 'lihat', 'admin' => 'lihat'],
         'parameter' => ['supervisor' => 'kelola', 'hse' => 'kelola'],
         'data_master' => ['supervisor' => 'lihat', 'hse' => 'kelola', 'admin' => 'kelola'],
+        // Koreksi data (18 Nov 2026): ubah atau hapus input reclaimer, pemakaian solvent,
+        // pallet, surat jalan, dan maintenance yang salah ketik, dengan alasan wajib.
+        'koreksi' => ['supervisor' => 'kelola', 'admin' => 'kelola'],
 
         // Catatan PRD §5.1: bila role Admin dipakai, pengelolaan pengguna
         // pindah ke Admin, dan HSE cukup mengelola master limbah B3 dan vendor.

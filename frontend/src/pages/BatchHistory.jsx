@@ -5,6 +5,7 @@ import { useResource } from '../lib/useResource.js';
 import { useSorot, SOROT_CLASS } from '../lib/useSorot.js';
 import { formatDate, formatDateRange, formatNumber, formatPercent, parseDate, toIso } from '../lib/format.js';
 import Alert from '../components/Alert.jsx';
+import CorrectedBadge from '../components/CorrectedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import UnfinishedBadge from '../components/UnfinishedBadge.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -156,6 +157,7 @@ function BatchRows({ batches, sorot }) {
                   </span>
                 )}
                 {b.notes && <span className="mt-0.5 block text-gray-600">{b.notes}</span>}
+                <CorrectedBadge correction={b.correction} />
               </Td>
             </tr>
           );
