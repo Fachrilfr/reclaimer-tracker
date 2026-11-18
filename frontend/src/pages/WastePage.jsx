@@ -28,7 +28,7 @@ const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: '
 // Keterangan: surat jalan bila sudah diserahkan, lalu catatan operator dan keterangan
 // otomatis sistem
 function Keterangan({ pallet }) {
-  const hasNotes = pallet.notes || pallet.drum_notes.length > 0;
+  const hasNotes = pallet.notes || pallet.drum_notes.length > 0 || pallet.correction;
   if (!pallet.surat_jalan && !hasNotes) return <span className="text-gray-600">–</span>;
 
   return (

@@ -29,6 +29,7 @@ final class AccessMatrix
         'laporan_b3' => ['lihat'],
         'parameter' => ['lihat', 'kelola'],
         'data_master' => ['lihat', 'kelola'],
+        'koreksi' => ['kelola'],
         'pengguna' => ['lihat', 'kelola'],
     ];
 

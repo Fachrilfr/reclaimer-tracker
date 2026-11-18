@@ -105,6 +105,7 @@ class PalletController extends Controller
                     ->map(fn ($drum) => ['sequence' => $drum->drum_sequence, 'notes' => $drum->notes])
                     ->values()
                 : [],
+            'correction' => $pallet->correctionSummary(),
         ];
 
         if ($withDrums) {

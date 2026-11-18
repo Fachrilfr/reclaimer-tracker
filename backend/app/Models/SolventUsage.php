@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCorrection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
  * Pengambilan solvent dari saldo hasil recovery. Tidak terkait batch: solvent yang
@@ -11,6 +13,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  */
 class SolventUsage extends Model
 {
+    use HasCorrection, SoftDeletes;
+
     protected $guarded = ['id'];
 
     protected function casts(): array
@@ -37,6 +41,7 @@ class SolventUsage extends Model
         return [
             'id' => $this->id,
             'date' => $this->date->toDateString(),
+            'shift_id' => $this->shift_id,
             'shift' => $this->shift?->name,
             'weight' => $this->weight,
             'purpose' => $this->purpose,
@@ -44,6 +49,7 @@ class SolventUsage extends Model
             'balance_after' => $this->balance_after,
             'used_by' => $this->user?->name,
             'recorded_at' => $this->created_at?->toIso8601String(),
+            'correction' => $this->correctionSummary(),
         ];
     }
 }

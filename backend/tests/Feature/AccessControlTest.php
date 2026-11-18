@@ -48,10 +48,13 @@ class AccessControlTest extends TestCase
             User::factory()->role('operator')->make()->permissions(),
         );
         $this->assertSame(
-            ['mesin' => 'lihat', 'laporan' => 'lihat', 'laporan_b3' => 'lihat', 'data_master' => 'kelola', 'pengguna' => 'kelola'],
+            ['mesin' => 'lihat', 'laporan' => 'lihat', 'laporan_b3' => 'lihat', 'data_master' => 'kelola', 'koreksi' => 'kelola', 'pengguna' => 'kelola'],
             User::factory()->role('admin')->make()->permissions(),
         );
         $this->assertSame('tinjau', User::factory()->role('supervisor')->make()->accessLevel('dashboard'));
+        // Koreksi data hanya Supervisor dan Super Admin (18 Nov 2026)
+        $this->assertSame('kelola', User::factory()->role('supervisor')->make()->accessLevel('koreksi'));
+        $this->assertNull(User::factory()->role('hse')->make()->accessLevel('koreksi'));
         $this->assertNull(User::factory()->role('management')->make()->accessLevel('batch'));
     }
 

@@ -6,6 +6,7 @@ import { formatDate, formatNumber, parseDecimal } from '../lib/format.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
+import CorrectedBadge from '../components/CorrectedBadge.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
@@ -232,6 +233,7 @@ function UsageHistory({ list, page, onPage }) {
                   <Td>
                     {u.purpose}
                     {u.notes && <span className="block text-caption text-gray-600">{u.notes}</span>}
+                    <CorrectedBadge correction={u.correction} />
                   </Td>
                   <Td numeric className="whitespace-nowrap">
                     {formatNumber(u.weight)} <span className="text-gray-600">kg</span>

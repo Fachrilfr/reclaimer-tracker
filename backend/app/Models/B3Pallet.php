@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasCorrection;
 use App\Support\StorageStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class B3Pallet extends Model
 {
-    use SoftDeletes;
+    use HasCorrection, SoftDeletes;
 
     protected $table = 'b3_pallets';
 

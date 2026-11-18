@@ -75,7 +75,7 @@ class BatchController extends Controller
             ->orWhereIn('parent_batch_id', (clone $roots)->select('id'))
             ->count();
 
-        $page = $roots->with(['shift', 'operator', 'reviewer', 'continuations' => fn ($q) => $q->with(['shift', 'operator', 'parent'])])
+        $page = $roots->with(['shift', 'operator', 'reviewer', 'corrector', 'continuations' => fn ($q) => $q->with(['shift', 'operator', 'parent', 'corrector'])])
             ->paginate($filters['per_page'] ?? 20);
 
         $rows = $page->getCollection()->flatMap(function (ReclaimerBatch $root) {
@@ -151,6 +151,7 @@ class BatchController extends Controller
             'is_temp_abnormal' => $batch->is_temp_abnormal,
             'is_recovery_low' => $batch->is_recovery_low,
             'notes' => $batch->notes,
+            'correction' => $batch->correctionSummary(),
         ];
     }
 }

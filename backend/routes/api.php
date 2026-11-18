@@ -3,6 +3,12 @@
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BatchController;
 use App\Http\Controllers\Api\ChainReviewController;
+use App\Http\Controllers\Api\Correction\BatchCorrectionController;
+use App\Http\Controllers\Api\Correction\CorrectionHistoryController;
+use App\Http\Controllers\Api\Correction\MaintenanceCorrectionController;
+use App\Http\Controllers\Api\Correction\PalletCorrectionController;
+use App\Http\Controllers\Api\Correction\SolventCorrectionController;
+use App\Http\Controllers\Api\Correction\SuratJalanCorrectionController;
 use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\HseDashboardController;
 use App\Http\Controllers\Api\MachineController;
@@ -78,6 +84,8 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::post('/master/vendors', [MasterDataController::class, 'storeVendor'])->middleware('akses:data_master,kelola');
     Route::put('/master/vendors/{vendor}', [MasterDataController::class, 'updateVendor'])->middleware('akses:data_master,kelola');
     Route::delete('/master/vendors/{vendor}', [MasterDataController::class, 'destroyVendor'])->middleware('akses:data_master,kelola');
+    // Saldo awal solvent (hitung fisik saat aplikasi mulai dipakai)
+    Route::put('/master/solvent-opening', [MasterDataController::class, 'setSolventOpening'])->middleware('akses:data_master,kelola');
 
     // Limbah B3 (HSE): inventaris pallet, masa simpan, dan log pengingat
     Route::get('/b3/pallets', [WasteController::class, 'index'])->middleware('akses:limbah_b3');
@@ -92,4 +100,26 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
     Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
     Route::post('/pallets/{pallet}/full', [PalletController::class, 'markFull'])->middleware('akses:drum_b3,isi');
+
+    // Koreksi data (Supervisor dan Super Admin): ubah atau hapus data yang salah, alasan wajib.
+    // Nilai lama tercatat di riwayat koreksi; saldo solvent disesuaikan lewat baris penyesuaian.
+    Route::prefix('koreksi')->middleware('akses:koreksi,kelola')->group(function () {
+        Route::get('/riwayat', [CorrectionHistoryController::class, 'index']);
+        Route::get('/input', [BatchCorrectionController::class, 'index']);
+        Route::put('/input/{batch}', [BatchCorrectionController::class, 'update']);
+        Route::delete('/input/{batch}', [BatchCorrectionController::class, 'destroy']);
+        Route::get('/solvent', [SolventCorrectionController::class, 'index']);
+        Route::put('/solvent/{usage}', [SolventCorrectionController::class, 'update']);
+        Route::delete('/solvent/{usage}', [SolventCorrectionController::class, 'destroy']);
+        Route::get('/pallet', [PalletCorrectionController::class, 'index']);
+        Route::put('/pallet/{pallet}', [PalletCorrectionController::class, 'update']);
+        Route::delete('/pallet/{pallet}', [PalletCorrectionController::class, 'destroy']);
+        Route::get('/surat-jalan', [SuratJalanCorrectionController::class, 'index']);
+        // POST karena bisa membawa berkas bukti baru (PHP tidak membaca multipart pada PUT)
+        Route::post('/surat-jalan/{suratJalan}', [SuratJalanCorrectionController::class, 'update']);
+        Route::delete('/surat-jalan/{suratJalan}', [SuratJalanCorrectionController::class, 'destroy']);
+        Route::get('/maintenance', [MaintenanceCorrectionController::class, 'index']);
+        Route::put('/maintenance/{log}', [MaintenanceCorrectionController::class, 'update']);
+        Route::delete('/maintenance/{log}', [MaintenanceCorrectionController::class, 'destroy']);
+    });
 });

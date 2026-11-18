@@ -5,7 +5,6 @@ import AuthShell from '../components/AuthShell.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import PageHeader from '../components/PageHeader.jsx';
-import { SEEDED_ACCOUNTS, SEEDED_PASSWORD, roleLabel } from '../roles.js';
 
 export default function LoginPage() {
   const { login, notice } = useAuth();
@@ -15,13 +14,6 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [formError, setFormError] = useState('');
-
-  const fillSeededAccount = (seededNik) => {
-    setNik(seededNik);
-    setPassword(SEEDED_PASSWORD);
-    setFieldErrors({});
-    setFormError('');
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -126,37 +118,6 @@ export default function LoginPage() {
           </button>
         </form>
       </div>
-
-      {import.meta.env.DEV && (
-        <section aria-labelledby="seeded-title" className="mt-4 rounded-card border border-dashed border-gray-400 p-4">
-          <h2 id="seeded-title" className="text-label font-semibold">
-            Akun uji dari seeder
-          </h2>
-          <p className="mt-0.5 text-caption text-gray-600">
-            Hanya tampil di mode pengembangan. Kata sandi semua akun:{' '}
-            <span className="font-mono text-gray-800">{SEEDED_PASSWORD}</span>
-          </p>
-          <ul className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {SEEDED_ACCOUNTS.map((account) => (
-              <li key={account.nik}>
-                <button
-                  type="button"
-                  onClick={() => fillSeededAccount(account.nik)}
-                  aria-pressed={nik === account.nik}
-                  className={`focus-ring flex min-h-11 w-full items-center justify-between gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${
-                    nik === account.nik
-                      ? 'border-brand-blue-600 bg-brand-blue-50'
-                      : 'border-gray-200 bg-white hover:bg-gray-25'
-                  }`}
-                >
-                  <span className="font-mono text-label text-gray-900">{account.nik}</span>
-                  <span className="text-caption text-gray-600">{roleLabel(account.role)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </AuthShell>
   );
 }

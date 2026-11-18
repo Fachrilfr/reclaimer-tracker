@@ -8,7 +8,7 @@ const FOCUSABLE = 'a[href], button:not([disabled]), textarea:not([disabled]), in
  * Escape dan area gelap menutup, fokus tetap di dalam selama terbuka dan kembali
  * ke tombol pemicu setelah ditutup.
  */
-export default function Modal({ title, onClose, children }) {
+export default function Modal({ title, onClose, children, wide = false }) {
   const panelRef = useRef(null);
   const titleId = useId();
   // onClose dari pemanggil sering fungsi baru di setiap render; disimpan di ref supaya efek di
@@ -58,7 +58,10 @@ export default function Modal({ title, onClose, children }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative w-full max-w-lg rounded-modal bg-white p-4 shadow-pop sm:p-6"
+        // Form panjang (misalnya koreksi data) digulir di dalam dialog, tidak terpotong layar
+        className={`relative max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-modal bg-white p-4 shadow-pop sm:p-6 ${
+          wide ? 'max-w-2xl' : 'max-w-lg'
+        }`}
       >
         <div className="flex items-start justify-between gap-4">
           <h2 id={titleId} className="text-h2 font-semibold">

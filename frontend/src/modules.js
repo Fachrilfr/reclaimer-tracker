@@ -5,6 +5,7 @@ import {
   Cylinder,
   Database,
   Droplets,
+  FilePen,
   FileChartColumn,
   LayoutDashboard,
   Recycle,
@@ -28,6 +29,7 @@ import HseDashboardPage from './pages/HseDashboardPage.jsx';
 import ParameterPage from './pages/ParameterPage.jsx';
 import MasterDataPage from './pages/MasterDataPage.jsx';
 import UserPage from './pages/UserPage.jsx';
+import CorrectionPage from './pages/correction/CorrectionPage.jsx';
 
 // `key` sama dengan nama fitur di backend/config/access.php. Urutan di sini = urutan menu.
 // `page` diisi komponen halaman saat modulnya selesai; selama null, menu diberi label
@@ -143,6 +145,15 @@ export const MODULE_GROUPS = [
     label: 'Pengaturan',
     modules: [
       {
+        key: 'koreksi',
+        label: 'Koreksi data',
+        path: '/koreksi',
+        icon: FilePen,
+        summary:
+          'Perbaiki atau hapus input, pemakaian solvent, pallet, surat jalan, dan maintenance yang salah ketik, dengan alasan wajib.',
+        page: CorrectionPage,
+      },
+      {
         key: 'parameter',
         label: 'Parameter',
         path: '/parameter',
@@ -155,7 +166,7 @@ export const MODULE_GROUPS = [
         label: 'Data master',
         path: '/data-master',
         icon: Database,
-        summary: 'Shift dan vendor.',
+        summary: 'Saldo awal solvent, shift, dan vendor.',
         page: MasterDataPage,
       },
       {
