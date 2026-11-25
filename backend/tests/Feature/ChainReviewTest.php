@@ -26,7 +26,7 @@ class ChainReviewTest extends TestCase
 
         // Rangkaian dua batch, gabungan (50 + 50) / 500 = 20%, di bawah toleransi 40%
         $base = [
-            'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'oil_temp' => 140,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => Shift::orderBy('id')->value('id'), 'oil_temp' => 140,
             'vapour_temp' => 50,
         ];
         $this->root = $this->postJson('/api/batches', $base + [
@@ -100,7 +100,7 @@ class ChainReviewTest extends TestCase
     public function test_chain_meeting_target_or_unfinished_cannot_be_reviewed(): void
     {
         $base = [
-            'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
             'oil_temp' => 140, 'vapour_temp' => 50, 'ink_weight' => 500,
         ];
         $good = $this->postJson('/api/batches', $base + ['process_status' => 'completed', 'recovery_weight' => 200])->json('data.id');

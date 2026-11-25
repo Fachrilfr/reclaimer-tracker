@@ -110,10 +110,11 @@ final class B3ReportExcel extends ReportWorkbook
         $at = $this->sectionsSheet($sheet, 'Ringkasan', 'Penyerahan ke vendor, kepatuhan masa simpan, dan stok', [
             ['Penyerahan ke vendor', [
                 ['sj', 'Surat jalan', $s['surat_jalan_count'], null, null],
-                ['pallets', 'Pallet diangkut', $s['pallet_count'], null, null],
+                ['arrivals', 'Pallet masuk TPS dalam periode', $s['arrived_pallets'], null, null],
                 ['drums', 'Drum diangkut', $s['drum_count'], null, null],
                 ['residue', 'Residu masuk TPS (kg)', $s['residue'], "Dari {$s['residue_chain_count']} proses selesai, Tinta X − hasil solvent", self::KG],
                 ['weight', 'Residu diangkut vendor (kg)', $s['weight_kg'], 'Berat resmi, dicatat per surat jalan', self::KG],
+                ['balance', 'Estimasi saldo residu saat ini (kg)', $s['current_residue'], null, self::KG],
             ]],
             ['Kepatuhan masa simpan', [
                 ['limit', 'Batas masa simpan (hari)', $r['max_storage_days'], 'Sejak pallet sampai di TPS', null],
@@ -121,7 +122,7 @@ final class B3ReportExcel extends ReportWorkbook
             ]],
             ["Stok {$stockLabel}", [
                 ['stock', 'Pallet masih tersimpan', $rows->count(), null, null],
-                ['tps', 'Di TPS', $atTps, 'Menunggu diangkut vendor', null],
+                ['tps', 'Stok drum di TPS', $s['tps_drum_count'], 'Menunggu diangkut vendor', null],
                 ['reclaimer', 'Di area reclaimer', $rows->count() - $atTps, 'Masih diisi', null],
                 ['action', 'Mendesak atau kritis', $needsAction, $needsAction ? 'Sisa masa simpan 14 hari atau kurang' : null, null],
             ]],

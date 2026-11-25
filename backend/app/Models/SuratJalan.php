@@ -40,7 +40,12 @@ class SuratJalan extends Model
 
     public function pallets(): BelongsToMany
     {
-        return $this->belongsToMany(B3Pallet::class, 'surat_jalan_pallets', 'surat_jalan_id', 'pallet_id')->orderBy('pallet_number');
+        return $this->belongsToMany(B3Pallet::class, 'surat_jalan_pallets', 'surat_jalan_id', 'pallet_id')->withPivot('drum_count')->orderBy('pallet_number');
+    }
+
+    public function transportedDrums(): int
+    {
+        return (int) $this->pallets->sum(fn ($p) => $p->pivot->drum_count ?? $p->drum_count);
     }
 
     public function present(): array
@@ -51,8 +56,9 @@ class SuratJalan extends Model
             'handover_date' => $this->handover_date->toDateString(),
             'vendor_id' => $this->vendor_id,
             'vendor' => $this->vendor?->name,
-            'pallets' => $this->pallets->map(fn (B3Pallet $p) => ['id' => $p->id, 'pallet_number' => $p->pallet_number, 'drum_count' => $p->drum_count])->values()->all(),
+            'pallets' => $this->pallets->map(fn (B3Pallet $p) => ['id' => $p->id, 'pallet_number' => $p->pallet_number, 'drum_count' => $p->pivot->drum_count ?? $p->drum_count])->values()->all(),
             'total_pallets' => $this->total_pallets,
+            'total_drums' => $this->transportedDrums(),
             'weight_kg' => $this->weight_kg,
             'vendor_officer_name' => $this->vendor_officer_name,
             'notes' => $this->notes,

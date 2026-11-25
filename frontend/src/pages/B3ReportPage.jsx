@@ -1,3 +1,4 @@
+import ShipmentDetails from '../components/ShipmentDetails.jsx';
 import { Link } from 'react-router-dom';
 import { Truck } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
@@ -80,7 +81,6 @@ function ReportBody({ report }) {
   const s = report.summary;
   const stock = report.stock;
   const stockLabel = stock.is_current ? 'hari ini' : `per ${formatDate(stock.as_of)}`;
-  const atTps = stock.rows.filter((p) => p.location === 'tps').length;
   const unit = report.breakdown?.unit;
 
   return (
@@ -90,8 +90,10 @@ function ReportBody({ report }) {
       <div className="grid grid-cols-2 gap-4 xl:grid-cols-4">
         <StatCard label="Residu masuk TPS" value={formatNumber(s.residue)} unit="kg" />
         <StatCard label="Residu diangkut vendor" value={formatNumber(s.weight_kg)} unit="kg" />
-        <StatCard label="Pallet diangkut" value={s.pallet_count} unit="pallet" />
-        <StatCard label={`Stok di TPS ${stockLabel}`} value={atTps} unit="pallet" />
+        <StatCard label="Estimasi saldo residu saat ini" value={formatNumber(s.current_residue)} unit="kg" />
+        <StatCard label="Pallet masuk TPS dalam periode" value={s.arrived_pallets} unit="pallet" />
+        <StatCard label="Drum diangkut" value={s.drum_count} unit="drum" />
+        <StatCard label={`Stok drum di TPS ${stockLabel}`} value={s.tps_drum_count} unit="drum" />
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -161,54 +163,7 @@ function ReportBody({ report }) {
         <ResiduePerInput inputs={report.residue_inputs} />
       </Section>
 
-      <Section id="b3-sj" title="Surat jalan">
-        {report.surat_jalan.length ? (
-          <Table caption="Surat jalan di periode">
-            <thead>
-              <tr>
-                <Th>No. surat jalan</Th>
-                <Th>Serah terima</Th>
-                <Th>Pallet</Th>
-                <Th numeric>Berat vendor</Th>
-                <Th>Petugas vendor</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {report.surat_jalan.map((sj) => (
-                <tr key={sj.id}>
-                  <Td className="min-w-[11rem]">
-                    <Link
-                      to={`/arsip?q=${encodeURIComponent(sj.number)}`}
-                      className="focus-ring rounded font-mono font-medium text-brand-blue-700 hover:underline"
-                    >
-                      {sj.number}
-                    </Link>
-                  </Td>
-                  <Td className="min-w-[12rem]">
-                    {formatDate(sj.handover_date)}
-                    <span className="block text-caption text-gray-600">{sj.vendor}</span>
-                  </Td>
-                  <Td>
-                    {sj.pallets.map((p) => (
-                      <span key={p.id} className="block whitespace-nowrap font-mono text-gray-900">
-                        {p.pallet_number}
-                      </span>
-                    ))}
-                  </Td>
-                  <Td numeric>
-                    <Kg value={sj.weight_kg} />
-                  </Td>
-                  <Td className="whitespace-nowrap">{sj.vendor_officer_name ?? <span className="text-gray-600">–</span>}</Td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        ) : (
-          <EmptyState icon={Truck} title="Belum ada surat jalan di periode ini.">
-            Pilih periode lain, atau buat surat jalan untuk pallet yang ada di TPS.
-          </EmptyState>
-        )}
-      </Section>
+      <ShipmentDetails shipments={report.surat_jalan} />
 
       <Section
         id="b3-compliance"

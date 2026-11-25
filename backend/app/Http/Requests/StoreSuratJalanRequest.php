@@ -2,7 +2,6 @@
 
 namespace App\Http\Requests;
 
-use App\Models\Parameter;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -18,7 +17,9 @@ class StoreSuratJalanRequest extends FormRequest
             'surat_jalan_number' => ['required', 'string', 'max:100', Rule::unique('surat_jalan', 'surat_jalan_number')],
             'vendor_id' => ['required', 'integer', Rule::exists('vendors', 'id')->where('is_active', true)->whereNull('deleted_at')],
             'handover_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
-            'pallet_ids' => ['required', 'array', 'min:' . max(1, (int) Parameter::number('min_pallet_per_delivery'))],
+            'pallet_ids' => ['required', 'array', 'min:1', 'max:20'],
+            'quantities' => ['sometimes', 'array', 'max:20'],
+            'quantities.*' => ['required', 'integer', 'between:1,20'],
             'pallet_ids.*' => ['integer', 'distinct'],
             'weight_kg' => ['required', 'numeric', 'gt:0', 'max:999999'],
             'vendor_officer_name' => ['required', 'string', 'max:100'],
@@ -29,8 +30,6 @@ class StoreSuratJalanRequest extends FormRequest
 
     public function messages(): array
     {
-        $min = max(1, (int) Parameter::number('min_pallet_per_delivery'));
-
         return [
             'surat_jalan_number.required' => 'Isi nomor surat jalan.',
             'surat_jalan_number.unique' => 'Nomor surat jalan ini sudah tercatat. Periksa kembali nomornya.',
@@ -40,8 +39,8 @@ class StoreSuratJalanRequest extends FormRequest
             'handover_date.required' => 'Isi tanggal serah terima.',
             'handover_date.date_format' => 'Tanggal serah terima tidak valid.',
             'handover_date.before_or_equal' => 'Tanggal serah terima tidak boleh setelah hari ini.',
-            'pallet_ids.required' => "Pilih minimal {$min} pallet yang diserahkan.",
-            'pallet_ids.min' => "Pilih minimal {$min} pallet yang diserahkan.",
+            'pallet_ids.required' => "Pilih drum dari pallet di TPS.",
+            'pallet_ids.min' => "Pilih drum dari pallet di TPS.",
             'weight_kg.required' => 'Isi berat dari timbangan vendor dalam kg.',
             'weight_kg.numeric' => 'Isi dengan angka, contoh 450,5.',
             'weight_kg.gt' => 'Berat harus lebih dari 0 kg.',

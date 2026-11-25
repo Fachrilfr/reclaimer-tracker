@@ -1,3 +1,4 @@
+import ReguComparison from '../components/ReguComparison.jsx';
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Biohazard, ChevronRight, CircleCheck, Recycle, TriangleAlert } from 'lucide-react';
@@ -423,7 +424,7 @@ function Breakdown({ breakdown, target, sorot }) {
                 <span className="font-mono text-gray-900">{c.batch_number}</span>
                 {c.batch_count > 1 && (
                   <span className="block text-caption text-gray-600">
-                    + lanjutan <span className="font-mono">{c.batch_numbers.slice(1).join(', ')}</span>
+                    {c.batch_count - 1} input lanjutan
                   </span>
                 )}
                 {!c.is_complete && (
@@ -534,7 +535,7 @@ export function ActivePallets({ pallets, view, sorot }) {
               <div className="sm:col-span-3">
                 <span className="font-mono text-gray-900">{p.pallet_number}</span>
                 <span className="block text-caption text-gray-600">
-                  {p.drum_count} drum · {view.since(p)}
+                  {p.available_drums ?? p.drum_count} drum · {view.since(p)}
                 </span>
               </div>
               <div className="sm:col-span-5">
@@ -665,6 +666,7 @@ export default function DashboardPage() {
 
           <TrendCharts trend={data.trend} period={period} anchor={anchor} label={label} />
 
+          <ReguComparison rows={data.by_regu} />
           <section aria-labelledby="shift-title" className="card">
             <div className="p-4 sm:p-5">
               <h2 id="shift-title" className="text-h2 font-semibold">

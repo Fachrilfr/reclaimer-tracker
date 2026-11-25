@@ -1,3 +1,4 @@
+import DrumPicker from '../../components/DrumPicker.jsx';
 import { useState } from 'react';
 import { Truck } from 'lucide-react';
 import { formatDate, parseDecimal } from '../../lib/format.js';
@@ -38,6 +39,7 @@ function SuratJalanDialog({ suratJalan, meta, onClose, onDone }) {
     vendor_officer_name: suratJalan.vendor_officer_name,
     notes: suratJalan.notes ?? '',
     pallet_ids: suratJalan.pallets.map((p) => p.id),
+    amounts: Object.fromEntries(suratJalan.pallets.map((p) => [p.id, p.drum_count])),
     reason: '',
   });
   const [file, setFile] = useState(null);
@@ -46,16 +48,11 @@ function SuratJalanDialog({ suratJalan, meta, onClose, onDone }) {
     setForm((f) => ({ ...f, [key]: e.target.value }));
     clear(key);
   };
-  const toggle = (id) => {
-    setForm((f) => ({ ...f, pallet_ids: f.pallet_ids.includes(id) ? f.pallet_ids.filter((x) => x !== id) : [...f.pallet_ids, id] }));
-    clear('pallet_ids');
-  };
-
   // Pallet di surat jalan ini, lalu pallet lain yang sedang di TPS
-  const own = suratJalan.pallets.map((p) => ({ id: p.id, pallet_number: p.pallet_number, note: 'Di surat jalan ini', tps: suratJalan.pallet_tps_dates[p.id] }));
+  const own = suratJalan.pallets.map((p) => ({ id: p.id, pallet_number: p.pallet_number, available_drums: p.drum_count + (meta.available_pallets.find((row) => row.id === p.id)?.available_drums ?? 0), sent_to_tps_at: suratJalan.pallet_tps_dates[p.id], note: 'Di surat jalan ini', tps: suratJalan.pallet_tps_dates[p.id] }));
   const others = meta.available_pallets
     .filter((p) => !own.some((o) => o.id === p.id))
-    .map((p) => ({ id: p.id, pallet_number: p.pallet_number, note: `Di TPS sejak ${formatDate(p.sent_to_tps_at)}`, tps: p.sent_to_tps_at }));
+    .map((p) => ({ id: p.id, pallet_number: p.pallet_number, available_drums: p.available_drums, sent_to_tps_at: p.sent_to_tps_at, note: `Di TPS sejak ${formatDate(p.sent_to_tps_at)}`, tps: p.sent_to_tps_at }));
   const options = [...own, ...others];
   const vendors = meta.vendors.filter((v) => v.selectable || v.id === suratJalan.vendor_id);
   const vendorName = (id) => meta.vendors.find((v) => String(v.id) === String(id))?.name ?? '–';
@@ -96,7 +93,6 @@ function SuratJalanDialog({ suratJalan, meta, onClose, onDone }) {
     const weightError = numberError(form.weight_kg) ?? (parseDecimal(form.weight_kg) <= 0 ? 'Berat harus lebih dari 0 kg.' : null);
     if (weightError) local.weight_kg = weightError;
     if (!form.vendor_officer_name.trim()) local.vendor_officer_name = 'Isi nama petugas vendor yang menerima pallet.';
-    if (form.pallet_ids.length < meta.min_pallets) local.pallet_ids = `Pilih minimal ${meta.min_pallets} pallet yang diangkut.`;
     if (file && file.size > MAX_FILE_MB * 1024 * 1024) local.file = `Ukuran bukti paling besar ${MAX_FILE_MB} MB.`;
     if (!form.reason.trim()) local.reason = REASON_REQUIRED;
 
@@ -108,6 +104,7 @@ function SuratJalanDialog({ suratJalan, meta, onClose, onDone }) {
     body.append('vendor_officer_name', form.vendor_officer_name.trim());
     if (form.notes.trim()) body.append('notes', form.notes.trim());
     form.pallet_ids.forEach((id) => body.append('pallet_ids[]', id));
+    Object.entries(form.amounts).forEach(([id, n]) => body.append('quantities[' + id + ']', n));
     if (file) body.append('file', file);
     body.append('reason', form.reason.trim());
     submit(`/koreksi/surat-jalan/${suratJalan.id}`, { method: 'POST', body }, local);
@@ -167,25 +164,8 @@ function SuratJalanDialog({ suratJalan, meta, onClose, onDone }) {
           </Field>
         </div>
 
-        <fieldset aria-describedby={errors.pallet_ids ? 'koreksi-pallet-error' : undefined}>
-          <legend className="mb-1.5 text-label font-medium text-gray-800">
-            Pallet yang diangkut <span className="text-danger-fg" aria-hidden="true">*</span>
-          </legend>
-          <div className="max-h-56 space-y-1 overflow-y-auto rounded-lg border border-gray-200 p-2">
-            {options.map((p) => (
-              <label key={p.id} className="flex min-h-11 items-center gap-3 rounded-md px-2 hover:bg-gray-25">
-                <input type="checkbox" checked={form.pallet_ids.includes(p.id)} onChange={() => toggle(p.id)} className="h-5 w-5 accent-brand-blue-600" />
-                <span className="font-mono text-gray-900">{p.pallet_number}</span>
-                <span className="text-caption text-gray-600">{p.note}</span>
-              </label>
-            ))}
-          </div>
-          {errors.pallet_ids && (
-            <p id="koreksi-pallet-error" className="mt-1.5 text-caption text-danger-fg">
-              {errors.pallet_ids}
-            </p>
-          )}
-        </fieldset>
+        <DrumPicker pallets={options} amounts={form.amounts} error={errors.pallet_ids}
+          onChange={(amounts) => { setForm((f) => ({ ...f, amounts, pallet_ids: Object.keys(amounts).map(Number) })); clear('pallet_ids'); }} />
 
         <Field id="koreksi-catatan" label="Catatan" hint="Opsional." error={errors.notes}>
           {(props) => <textarea {...props} rows={2} maxLength={500} value={form.notes} onChange={set('notes')} className="field h-auto py-2" />}

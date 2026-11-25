@@ -27,12 +27,12 @@ class DashboardTest extends TestCase
         $shift1 = Shift::where('code', 'SHIFT-1')->value('id');
         $shift2 = Shift::where('code', 'SHIFT-2')->value('id');
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [
-            'shift_id' => $shift1, 'is_continuation' => false, 'process_status' => 'completed', 'oil_temp' => 140, 'vapour_temp' => 50,
+            'regu' => 'A', 'shift_id' => $shift1, 'is_continuation' => false, 'process_status' => 'completed', 'oil_temp' => 140, 'vapour_temp' => 50,
         ])->assertCreated();
 
         // 20 Okt: 10/100 (10%) di shift 1 dan 360/900 (40%) di shift 2
         $batch(['date' => '2026-10-20', 'ink_weight' => 100, 'recovery_weight' => 10]);
-        $batch(['date' => '2026-10-20', 'ink_weight' => 900, 'recovery_weight' => 360, 'shift_id' => $shift2]);
+        $batch(['date' => '2026-10-20', 'ink_weight' => 900, 'recovery_weight' => 360, 'regu' => 'A', 'shift_id' => $shift2]);
         // 3 Okt: 200/500 (40%), di bulan yang sama tapi minggu lain
         $batch(['date' => '2026-10-03', 'ink_weight' => 500, 'recovery_weight' => 200]);
     }
@@ -65,7 +65,7 @@ class DashboardTest extends TestCase
     {
         // Input shift 1 yang terlambat dicatat, setelah input shift 2
         $this->postJson('/api/batches', [
-            'date' => '2026-10-20', 'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'), 'is_continuation' => false,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'), 'is_continuation' => false,
             'process_status' => 'completed', 'ink_weight' => 300, 'recovery_weight' => 120, 'oil_temp' => 140, 'vapour_temp' => 50,
         ])->assertCreated();
 

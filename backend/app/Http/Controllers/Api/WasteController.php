@@ -35,7 +35,7 @@ class WasteController extends Controller
         $rows = $all
             ->when($location !== 'semua', fn ($c) => $c->filter(fn (B3Pallet $p) => $p->location() === $location))
             ->when($filters['q'] ?? null, fn ($c, $q) => $c->filter(fn (B3Pallet $p) => str_contains(strtolower($p->pallet_number), strtolower($q))
-                || str_contains(strtolower((string) $p->suratJalan->first()?->surat_jalan_number), strtolower($q))))
+                || $p->suratJalan->contains(fn ($sj) => str_contains(strtolower($sj->surat_jalan_number), strtolower($q)))))
             ->map(fn (B3Pallet $p) => self::present($p, $thresholds))
             // Yang paling mendesak di atas: sisa masa simpan paling sedikit
             ->sortBy(fn (array $p) => [$p['location'] === 'diserahkan' ? 1 : 0, $p['storage']['days_remaining'] ?? PHP_INT_MAX])
@@ -76,13 +76,13 @@ class WasteController extends Controller
 
     public static function present(B3Pallet $pallet, array $thresholds): array
     {
-        $suratJalan = $pallet->suratJalan->first();
+        $suratJalan = $pallet->suratJalan->sortByDesc('handover_date')->first();
 
         return PalletController::present($pallet, $thresholds) + [
             'location' => $pallet->location(),
             // Total hari tersimpan di TPS: sejak sampai di TPS sampai diserahkan ke vendor, atau sampai hari ini
             'tps_days' => $pallet->sent_to_tps_at
-                ? (int) round($pallet->sent_to_tps_at->copy()->startOfDay()->diffInDays(($suratJalan?->handover_date ?? now())->copy()->startOfDay()))
+                ? (int) round($pallet->sent_to_tps_at->copy()->startOfDay()->diffInDays(($pallet->status === 'transported' ? ($suratJalan?->handover_date ?? now()) : now())->copy()->startOfDay()))
                 : null,
             'surat_jalan' => $suratJalan ? [
                 'id' => $suratJalan->id,

@@ -180,6 +180,7 @@ class DemoDataSeeder extends Seeder
             'date' => $date->toDateString(),
             'shift_id' => $shiftId,
             'weight' => $weight,
+            'regu' => ['A', 'B', 'C'][mt_rand(0, 2)],
             'purpose' => ['Pencucian mesin cetak', 'Pengenceran tinta', 'Pembersihan peralatan'][mt_rand(0, 2)],
             'notes' => null,
         ]);
@@ -192,7 +193,7 @@ class DemoDataSeeder extends Seeder
         return $values + [
             'date' => $date->toDateString(),
             'shift_id' => $shiftId,
-            'regu' => ['A1', 'B2', 'C3'][mt_rand(0, 2)],
+            'regu' => ['A', 'B', 'C'][mt_rand(0, 2)],
             'is_continuation' => false,
             'parent_batch_id' => null,
             'oil_temp' => $abnormal ? $this->between(161, 168) : $this->between(120, 155),
@@ -212,6 +213,7 @@ class DemoDataSeeder extends Seeder
         $plan = [
             [130, 124], // sudah diserahkan ke vendor lewat surat jalan (lihat seedSuratJalan)
             [110, 104], // idem, satu surat jalan dengan pallet di atas
+            [123, 120], [121, 118], [119, 116], [117, 114], [115, 112],
             [85, 76],   // terkirim ke TPS terlambat 2 hari; di TPS sisa 5 hari: kritis
             [75, 69],   // terkirim tepat waktu; di TPS sisa 15 hari: perhatian
             [66, 61],   // di TPS sisa 24 hari: perhatian
@@ -241,7 +243,21 @@ class DemoDataSeeder extends Seeder
 
         $date = $realNow->copy()->subDays(100);
         Carbon::setTestNow($date->copy()->setTime(10, 0));
-        $pallets = B3Pallet::where('status', 'full')->orderBy('start_date')->limit(2)->pluck('id')->all();
+        $quantities = [];
+        $needed = RecordSuratJalan::DRUMS_PER_DELIVERY;
+        foreach (B3Pallet::where('status', 'full')->whereDate('sent_to_tps_at', '<=', $date)->orderBy('start_date')->get() as $pallet) {
+            $take = min($needed, $pallet->remainingDrums());
+            if ($take > 0) {
+                $quantities[$pallet->id] = $take;
+                $needed -= $take;
+            }
+            if (! $needed) {
+                break;
+            }
+        }
+        if ($needed) {
+            return;
+        }
         $number = 'SJ-DUMMY/' . $date->format('Y/m') . '/001';
 
         $path = tempnam(sys_get_temp_dir(), 'sj') . '.pdf';
@@ -253,7 +269,8 @@ class DemoDataSeeder extends Seeder
             'surat_jalan_number' => $number,
             'vendor_id' => Vendor::orderBy('id')->value('id'),
             'handover_date' => $date->toDateString(),
-            'pallet_ids' => $pallets,
+            'pallet_ids' => array_keys($quantities),
+            'quantities' => $quantities,
             'weight_kg' => 598.4,
             'vendor_officer_name' => 'Petugas vendor (dummy)',
             'notes' => 'Data dummy',

@@ -2,7 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\ReclaimerBatch;
 use App\Models\Shift;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
@@ -36,7 +35,7 @@ class BatchTest extends TestCase
         return array_merge([
             'date' => '2026-10-20',
             'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'),
-            'regu' => 'B2',
+            'regu' => 'B',
             'is_continuation' => false,
             'parent_batch_id' => null,
             'process_status' => 'completed',

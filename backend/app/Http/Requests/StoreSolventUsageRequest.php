@@ -14,7 +14,7 @@ class StoreSolventUsageRequest extends FormRequest
             'shift_id' => ['required', 'integer', 'exists:shifts,id'],
             'weight' => ['required', 'numeric', 'gt:0', 'max:99999'],
             'purpose' => ['required', 'string', 'max:150'],
-            'notes' => ['nullable', 'string', 'max:500'],
+            'regu' => ['required', 'in:A,B,C'],
         ];
     }
 
@@ -32,21 +32,21 @@ class StoreSolventUsageRequest extends FormRequest
             'weight.max' => 'Angka terlalu besar. Periksa kembali satuan kg.',
             'purpose.required' => 'Isi keperluan pemakaian solvent, contoh: pencucian mesin cetak.',
             'purpose.max' => 'Keperluan paling panjang 150 karakter.',
-            'notes.max' => 'Catatan paling panjang 500 karakter.',
+            'regu.required' => 'Pilih regu.',
+            'regu.in' => 'Pilih regu A, B, atau C.',
         ];
     }
 
     public function usageData(): array
     {
         $data = $this->validated();
-        $notes = trim((string) ($data['notes'] ?? ''));
 
         return [
             'date' => $data['date'],
             'shift_id' => (int) $data['shift_id'],
             'weight' => round((float) $data['weight'], 2),
             'purpose' => trim($data['purpose']),
-            'notes' => $notes === '' ? null : $notes,
+            'regu' => $data['regu'],
         ];
     }
 }

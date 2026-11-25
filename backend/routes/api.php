@@ -99,6 +99,7 @@ Route::middleware(['auth:sanctum', 'aktif'])->group(function () {
 
     Route::get('/pallets', [PalletController::class, 'index'])->middleware('akses:drum_b3');
     Route::post('/pallets', [PalletController::class, 'store'])->middleware('akses:drum_b3,isi');
+    Route::post('/pallets/dispatch', [PalletController::class, 'dispatchToTps'])->middleware('akses:drum_b3,isi');
     Route::post('/pallets/{pallet}/full', [PalletController::class, 'markFull'])->middleware('akses:drum_b3,isi');
 
     // Koreksi data (Supervisor dan Super Admin): ubah atau hapus data yang salah, alasan wajib.

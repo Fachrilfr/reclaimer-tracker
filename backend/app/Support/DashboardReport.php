@@ -41,7 +41,7 @@ final class DashboardReport
 
         $thresholds = PalletController::thresholds();
         // Masa simpan di TPS sampai diserahkan ke vendor (HSE); pallet di area reclaimer belum terhitung
-        $activePallets = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
+        $activePallets = B3Pallet::with('suratJalan')->where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
             ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
 
         // Saldo pada akhir periode; untuk periode yang masih berjalan, saldo saat ini
@@ -65,6 +65,7 @@ final class DashboardReport
                 'below_target_count' => $totals['below_target_count'],
                 'chain_count' => $totals['chain_count'],
             ],
+            'by_regu' => ReguComparison::between($this->start, $this->end),
             'by_shift' => $this->byShift($completed),
             'breakdown' => $this->breakdown($chains, $completed),
             'trend' => $this->trend(),

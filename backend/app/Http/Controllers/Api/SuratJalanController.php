@@ -20,14 +20,14 @@ class SuratJalanController extends Controller
     public function create(): JsonResponse
     {
         $thresholds = PalletController::thresholds();
-        $available = B3Pallet::with('drums')->where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')
+        $available = B3Pallet::with(['drums', 'suratJalan'])->where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')
             ->orderBy('expiry_date')->orderBy('id')->get();
 
         return response()->json([
             'status' => 'success',
             'data' => [
                 'today' => now()->toDateString(),
-                'min_pallets' => max(1, (int) Parameter::number('min_pallet_per_delivery')),
+                'min_pallets' => 1,
                 'drums_per_pallet' => (int) Parameter::number('drums_per_pallet'),
                 'vendors' => Vendor::where('is_active', true)->orderBy('name')->get(['id', 'name', 'pic_name']),
                 'pallets' => $available->map(fn (B3Pallet $p) => PalletController::present($p, $thresholds))->values(),

@@ -8,16 +8,16 @@ import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
 import EmptyState from '../components/EmptyState.jsx';
-import StorageBadge from '../components/StorageBadge.jsx';
+import DrumPicker, { fillShipment } from '../components/DrumPicker.jsx';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 
 const ACCEPT = '.pdf,.jpg,.jpeg,.png';
 const MAX_FILE_MB = 10;
 
 function emptyForm(data, preselected = []) {
-  const available = new Set(data.pallets.map((p) => p.id));
+  const amounts = fillShipment(data.pallets.filter((p) => preselected.includes(p.id)));
   return {
-    pallet_ids: preselected.filter((id) => available.has(id)),
+    amounts,
     surat_jalan_number: '',
     vendor_id: data.vendors.length === 1 ? String(data.vendors[0].id) : '',
     handover_date: data.today,
@@ -25,58 +25,6 @@ function emptyForm(data, preselected = []) {
     vendor_officer_name: '',
     notes: '',
   };
-}
-
-// Daftar pallet di TPS yang bisa dipilih, paling dekat batas simpan di atas
-function PalletPicker({ pallets, drumsPerPallet, selected, onToggle, error, readOnly }) {
-  return (
-    <fieldset aria-describedby={error ? 'pallet_ids-error' : undefined}>
-      <legend className="mb-1.5 text-label font-medium text-gray-800">
-        Pallet yang diserahkan {!readOnly && <span className="text-danger-fg" aria-hidden="true">*</span>}
-      </legend>
-      <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200">
-        {pallets.map((p) => {
-          const checked = selected.includes(p.id);
-          const body = (
-            <>
-              <span className="min-w-0 flex-1">
-                <span className="block font-mono font-medium text-gray-900">{p.pallet_number}</span>
-                <span className="block text-caption text-gray-600">
-                  {p.drum_count}/{drumsPerPallet} drum · sampai di TPS {formatDate(p.sent_to_tps_at)} · batas simpan{' '}
-                  {formatDate(p.expiry_date)}
-                </span>
-              </span>
-              <StorageBadge storage={p.storage} />
-            </>
-          );
-          return (
-            <li key={p.id}>
-              {readOnly ? (
-                <div className="flex flex-wrap items-center gap-3 px-3 py-2.5">{body}</div>
-              ) : (
-                <label
-                  className={`flex min-h-14 cursor-pointer flex-wrap items-center gap-3 px-3 py-2.5 ${checked ? 'bg-brand-blue-50' : 'hover:bg-gray-25'}`}
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggle(p.id)}
-                    className="h-5 w-5 shrink-0 accent-brand-blue-600"
-                  />
-                  {body}
-                </label>
-              )}
-            </li>
-          );
-        })}
-      </ul>
-      {error && (
-        <p id="pallet_ids-error" className="mt-1.5 text-caption text-danger-fg">
-          {error}
-        </p>
-      )}
-    </fieldset>
-  );
 }
 
 function SuratJalanForm({ data, preselected, onSaved }) {
@@ -93,14 +41,10 @@ function SuratJalanForm({ data, preselected, onSaved }) {
     setErrors((errs) => ({ ...errs, [field]: undefined }));
   };
 
-  const toggle = (id) => {
-    setForm((f) => ({ ...f, pallet_ids: f.pallet_ids.includes(id) ? f.pallet_ids.filter((x) => x !== id) : [...f.pallet_ids, id] }));
-    setErrors((errs) => ({ ...errs, pallet_ids: undefined }));
-  };
-
+  const total = Object.values(form.amounts).reduce((sum, n) => sum + n, 0);
   const validate = () => {
     const errs = {};
-    if (form.pallet_ids.length < data.min_pallets) errs.pallet_ids = `Pilih minimal ${data.min_pallets} pallet yang diserahkan.`;
+    if (total !== 20) errs.pallet_ids = 'Pilih tepat 20 drum untuk pengangkutan ini.';
     if (!form.surat_jalan_number.trim()) errs.surat_jalan_number = 'Isi nomor surat jalan.';
     if (!form.vendor_id) errs.vendor_id = 'Pilih vendor penerima.';
     if (!form.handover_date) errs.handover_date = 'Isi tanggal serah terima.';
@@ -124,7 +68,10 @@ function SuratJalanForm({ data, preselected, onSaved }) {
     }
 
     const body = new FormData();
-    form.pallet_ids.forEach((id) => body.append('pallet_ids[]', id));
+    Object.entries(form.amounts).forEach(([id, count]) => {
+      body.append('pallet_ids[]', id);
+      body.append('quantities[' + id + ']', count);
+    });
     body.append('surat_jalan_number', form.surat_jalan_number.trim());
     body.append('vendor_id', form.vendor_id);
     body.append('handover_date', form.handover_date);
@@ -155,13 +102,9 @@ function SuratJalanForm({ data, preselected, onSaved }) {
           Pallet di TPS
         </h2>
         <div className="mt-4">
-          <PalletPicker
-            pallets={data.pallets}
-            drumsPerPallet={data.drums_per_pallet}
-            selected={form.pallet_ids}
-            onToggle={toggle}
-            error={errors.pallet_ids}
-          />
+          <DrumPicker pallets={data.pallets} amounts={form.amounts}
+            onChange={(amounts) => { setForm((f) => ({ ...f, amounts })); setErrors((e) => ({ ...e, pallet_ids: undefined })); }}
+            error={errors.pallet_ids} />
         </div>
       </section>
 
@@ -238,14 +181,14 @@ function SuratJalanForm({ data, preselected, onSaved }) {
 
           {/* Pesan umum hilang setelah semua isian yang ditandai diperbaiki */}
           {formError && (Object.values(errors).some(Boolean) || !Object.keys(errors).length) && <Alert tone="danger">{formError}</Alert>}
-          <button type="submit" disabled={isSaving} className="btn-primary h-12 w-full text-body-lg">
+          <button type="submit" disabled={isSaving || total !== 20} className="btn-primary h-12 w-full text-body-lg">
             {isSaving ? (
               <>
                 <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
                 Menyimpan…
               </>
             ) : (
-              `Simpan surat jalan${form.pallet_ids.length ? ` (${form.pallet_ids.length} pallet)` : ''}`
+              'Simpan surat jalan'
             )}
           </button>
         </div>
@@ -272,9 +215,7 @@ export default function SuratJalanPage() {
       {saved ? (
         <div className="mt-6 space-y-4">
           <Alert tone="success" title={`Surat jalan ${saved.number} tersimpan.`}>
-            {saved.total_pallets} pallet ({saved.pallets.map((p) => p.pallet_number).join(', ')}) diserahkan ke {saved.vendor}{' '}
-            pada {formatDate(saved.handover_date)}, berat {formatNumber(saved.weight_kg)} kg. Pallet ini tidak lagi menerima
-            pengingat masa simpan.
+            {saved.total_drums} drum diserahkan ke {saved.vendor} pada {formatDate(saved.handover_date)}, berat {formatNumber(saved.weight_kg)} kg.
           </Alert>
           <div className="flex flex-wrap gap-3">
             <Link to={`/arsip?q=${encodeURIComponent(saved.number)}`} className="btn-secondary h-11 px-4 text-body">
@@ -304,7 +245,7 @@ export default function SuratJalanPage() {
               </Link>
             }
           >
-            Pallet masuk ke TPS saat operator menandai pallet penuh.
+            Pallet masuk ke TPS saat operator mencatat pengirimannya.
           </EmptyState>
         </div>
       ) : canFill ? (
@@ -320,7 +261,7 @@ export default function SuratJalanPage() {
       ) : (
         <section className="card mt-6 p-4 sm:p-5">
           {data.pallets.length ? (
-            <PalletPicker pallets={data.pallets} drumsPerPallet={data.drums_per_pallet} selected={[]} readOnly />
+            <DrumPicker pallets={data.pallets} amounts={{}} />
           ) : (
             <p className="text-body text-gray-600">Belum ada pallet di TPS yang menunggu diserahkan.</p>
           )}

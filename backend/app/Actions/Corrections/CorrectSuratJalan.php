@@ -36,11 +36,13 @@ class CorrectSuratJalan
 
         try {
             return DB::transaction(function () use ($request, $suratJalan, $data, $file, $path, $reason) {
-                $suratJalan = SuratJalan::with('pallets')->lockForUpdate()->findOrFail($suratJalan->id);
+                \App\Models\Machine::orderBy('id')->lockForUpdate()->firstOrFail();
+            $suratJalan = SuratJalan::with('pallets')->lockForUpdate()->findOrFail($suratJalan->id);
                 $currentIds = $suratJalan->pallets->pluck('id')->all();
                 $pallets = B3Pallet::whereIn('id', $data['pallet_ids'])->orderBy('pallet_number')->lockForUpdate()->get();
                 $this->ensureAvailable($pallets, $data, $currentIds);
 
+                $allocation = RecordSuratJalan::allocate($pallets, $data, $suratJalan);
                 $old = $this->snapshot($suratJalan, $suratJalan->pallets);
                 $values = [
                     'surat_jalan_number' => trim($data['surat_jalan_number']),
@@ -58,6 +60,12 @@ class CorrectSuratJalan
                     $oldChanged['file_path'] = $suratJalan->file_path_surat_jalan;
                     $newChanged['file_name'] = $file->getClientOriginalName();
                 }
+                $oldCounts = $suratJalan->pallets->mapWithKeys(fn ($p) => [$p->id => (int) $p->pivot->drum_count])->all();
+                $newCounts = array_map(fn ($line) => $line['drum_count'], $allocation);
+                if ($oldCounts != $newCounts) {
+                    $oldChanged['drum_counts'] = $oldCounts;
+                    $newChanged['drum_counts'] = $newCounts;
+                }
                 if (! $newChanged) {
                     throw Correction::nothingChanged();
                 }
@@ -70,9 +78,8 @@ class CorrectSuratJalan
                 $suratJalan->save();
 
                 $removed = array_values(array_diff($currentIds, $pallets->pluck('id')->all()));
-                $suratJalan->pallets()->sync($pallets->pluck('id'));
-                B3Pallet::whereIn('id', $removed)->update(['status' => 'full']);
-                B3Pallet::whereIn('id', $pallets->pluck('id'))->update(['status' => 'transported']);
+                $suratJalan->pallets()->sync($allocation);
+                RecordSuratJalan::refreshStatuses(B3Pallet::whereIn('id', array_merge($removed, array_keys($allocation)))->lockForUpdate()->get());
 
                 Correction::audit($request, 'correct', $suratJalan, $values['surat_jalan_number'], $reason, $oldChanged, $newChanged);
 
@@ -90,12 +97,13 @@ class CorrectSuratJalan
     public function delete(Request $request, SuratJalan $suratJalan, string $reason): string
     {
         return DB::transaction(function () use ($request, $suratJalan, $reason) {
+            \App\Models\Machine::orderBy('id')->lockForUpdate()->firstOrFail();
             $suratJalan = SuratJalan::with('pallets')->lockForUpdate()->findOrFail($suratJalan->id);
             $ids = $suratJalan->pallets->pluck('id');
             $snapshot = $this->snapshot($suratJalan, $suratJalan->pallets) + ['file_path' => $suratJalan->file_path_surat_jalan];
 
             $suratJalan->pallets()->detach();
-            B3Pallet::whereIn('id', $ids)->update(['status' => 'full']);
+            RecordSuratJalan::refreshStatuses(B3Pallet::whereIn('id', $ids)->lockForUpdate()->get());
             $suratJalan->forceDelete();
 
             Correction::audit($request, 'delete', $suratJalan, $suratJalan->surat_jalan_number, $reason, $snapshot);

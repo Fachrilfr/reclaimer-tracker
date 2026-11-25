@@ -19,7 +19,7 @@ class PalletController extends Controller
         $thresholds = self::thresholds();
 
         $filling = B3Pallet::with('drums.operator')->where('status', 'filling')->first();
-        $recent = B3Pallet::with('drums')->orderByDesc('start_date')->orderByDesc('id')->limit(10)->get();
+        $recent = B3Pallet::with(['drums', 'suratJalan'])->orderByDesc('start_date')->orderByDesc('id')->limit(10)->get();
 
         return response()->json([
             'status' => 'success',
@@ -58,6 +58,30 @@ class PalletController extends Controller
         ]);
     }
 
+    public function dispatchToTps(Request $request, RecordPallet $recordPallet): JsonResponse
+    {
+        $data = $request->validate([
+            'start_date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
+            'sent_to_tps_at' => ['required', 'date_format:Y-m-d', 'after_or_equal:start_date', 'before_or_equal:today'],
+            'pallet_id' => ['nullable', 'integer'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ], [
+            'sent_to_tps_at.after_or_equal' => 'Tanggal pengiriman tidak boleh sebelum tanggal mulai pengisian.',
+            'sent_to_tps_at.before_or_equal' => 'Tanggal pengiriman tidak boleh setelah hari ini.',
+            'start_date.before_or_equal' => 'Tanggal pengisian tidak boleh setelah hari ini.',
+        ]);
+        if (isset($data['pallet_id'])) {
+            $data['pallet_id'] = (int) $data['pallet_id'];
+        }
+        $pallet = $recordPallet->dispatchToTps($request, $data);
+
+        return response()->json([
+            'status' => 'success',
+            'message' => "Pengiriman pallet {$pallet->pallet_number} ke TPS sudah tercatat.",
+            'data' => self::present($pallet, self::thresholds()),
+        ], 201);
+    }
+
     private function notes(Request $request): ?string
     {
         $notes = $request->validate(
@@ -83,10 +107,12 @@ class PalletController extends Controller
             'pallet_number' => $pallet->pallet_number,
             'status' => $pallet->status,
             'drum_count' => $pallet->drum_count,
+            'available_drums' => $pallet->remainingDrums(),
             'start_date' => $pallet->start_date->toDateString(),
             'full_date' => $pallet->full_date?->toDateString(),
             // Waktu tombol ditekan: mulai diisi dan penuh (null untuk data lama tanpa jam)
-            'started_at' => $pallet->created_at?->toIso8601String(),
+            'started_at' => ($pallet->status === 'filling' || $pallet->full_at) && $pallet->created_at?->isSameDay($pallet->start_date)
+                ? $pallet->created_at->toIso8601String() : null,
             'full_at' => $pallet->full_at?->toIso8601String(),
             // Total hari kirim ke TPS: tanggal penuh dan terkirim dikurangi tanggal mulai diisi.
             // Null selama pallet masih diisi.

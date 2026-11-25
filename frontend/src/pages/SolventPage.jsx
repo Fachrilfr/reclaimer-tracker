@@ -17,7 +17,7 @@ function emptyForm(meta, keep = {}) {
     shift_id: keep.shift_id ?? String(meta.suggested_shift_id ?? meta.shifts[0]?.id ?? ''),
     weight: '',
     purpose: '',
-    notes: '',
+    regu: '',
   };
 }
 
@@ -43,6 +43,7 @@ function UsageForm({ meta, onSaved }) {
   const validate = () => {
     const errs = {};
     if (!form.date) errs.date = 'Isi tanggal pemakaian.';
+    if (!form.regu) errs.regu = 'Pilih regu.';
     if (!form.shift_id) errs.shift_id = 'Pilih shift.';
     if (weight === null) errs.weight = 'Isi berat solvent yang diambil dalam kg.';
     else if (Number.isNaN(weight)) errs.weight = 'Isi dengan angka, contoh 125,5.';
@@ -75,7 +76,7 @@ function UsageForm({ meta, onSaved }) {
           shift_id: Number(form.shift_id),
           weight,
           purpose: form.purpose.trim(),
-          notes: form.notes.trim() || null,
+          regu: form.regu,
         },
       });
       setSaved(response.data);
@@ -134,10 +135,11 @@ function UsageForm({ meta, onSaved }) {
           <Field id="purpose" label="Keperluan" required hint="Untuk apa solvent ini dipakai." error={errors.purpose}>
             {(props) => <input {...props} type="text" maxLength={150} value={form.purpose} onChange={set('purpose')} className="field" />}
           </Field>
-          <Field id="notes" label="Catatan" hint="Opsional." error={errors.notes}>
-            {(props) => (
-              <textarea {...props} rows={2} maxLength={500} value={form.notes} onChange={set('notes')} className="field h-auto py-2" />
-            )}
+          <Field id="regu" label="Regu" required error={errors.regu}>
+            {(props) => (<select {...props} value={form.regu} onChange={set('regu')} className="field">
+                  <option value="">Pilih regu</option>
+                  {['A', 'B', 'C'].map((regu) => <option key={regu}>{regu}</option>)}
+                </select>)}
           </Field>
         </div>
       </section>
@@ -228,7 +230,7 @@ function UsageHistory({ list, page, onPage }) {
                 <tr key={u.id}>
                   <Td className="whitespace-nowrap">
                     {formatDate(u.date)}
-                    <span className="block text-caption text-gray-600">{u.shift}</span>
+                    <span className="block text-caption text-gray-600">{u.shift}{u.regu && ' ? Regu ' + u.regu}</span>
                   </Td>
                   <Td>
                     {u.purpose}

@@ -61,7 +61,7 @@ function BatchRows({ batches, sorot }) {
     <Table caption="Riwayat input">
       <thead>
         <tr>
-          <Th>No. input</Th>
+          <Th>No. proses</Th>
           <Th>Tanggal dan shift</Th>
           <Th numeric>Tinta X masuk</Th>
           <Th numeric>Hasil solvent</Th>
@@ -86,7 +86,7 @@ function BatchRows({ batches, sorot }) {
                 <span className="whitespace-nowrap font-mono text-gray-900">{b.batch_number}</span>
                 {b.is_continuation && (
                   <span className="block text-caption text-gray-600">
-                    Lanjutan dari <span className="whitespace-nowrap font-mono">{b.parent_batch_number}</span>
+                    Lanjutan
                   </span>
                 )}
                 {!b.chain_complete && (
@@ -156,7 +156,7 @@ function BatchRows({ batches, sorot }) {
                     </span>
                   </span>
                 )}
-                {b.notes && <span className="mt-0.5 block text-gray-600">{b.notes}</span>}
+                <span className="mt-0.5 block text-gray-600">{b.notes?.trim() || '-'}</span>
                 <CorrectedBadge correction={b.correction} />
               </Td>
             </tr>
@@ -234,7 +234,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
     <section aria-labelledby="recent-title" className="card mt-6">
       <div className="p-4 sm:p-5">
         <h2 id="recent-title" className="text-h2 font-semibold">
-          Riwayat input
+          Riwayat proses
         </h2>
 
         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12" role="search" aria-label="Filter riwayat input">
@@ -271,7 +271,7 @@ const BatchHistory = forwardRef(function BatchHistory(_, ref) {
               type="search"
               value={searchText}
               onChange={(e) => setSearchText(e.target.value)}
-              placeholder="No. input, keterangan, operator"
+              placeholder="No. proses, keterangan, operator"
               aria-describedby="filter-cari-hint"
               className="field pl-10"
             />

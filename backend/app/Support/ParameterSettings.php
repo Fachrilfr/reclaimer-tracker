@@ -40,15 +40,7 @@ final class ParameterSettings
                 ],
             ],
         ],
-        [
-            'title' => 'Surat jalan',
-            'keys' => [
-                'min_pallet_per_delivery' => [
-                    'label' => 'Minimal pallet per surat jalan', 'min' => 1, 'max' => 20, 'integer' => true,
-                    'hint' => 'Jumlah pallet paling sedikit dalam satu serah terima ke vendor.',
-                ],
-            ],
-        ],
+
     ];
 
     /**

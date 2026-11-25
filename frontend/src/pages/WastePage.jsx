@@ -17,10 +17,10 @@ import { Table, Td, Th } from '../components/Table.jsx';
 
 // Lokasi pallet: urutan tab mengikuti tugas HSE, yang di TPS paling dulu
 const LOCATIONS = [
-  { value: 'tps', label: 'Di TPS', empty: 'Belum ada pallet di TPS.', hint: 'Pallet masuk ke sini otomatis saat operator menandai pallet penuh.' },
-  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Operator memulai pallet baru dari halaman Input pallet residu.' },
+  { value: 'tps', label: 'Di TPS', empty: 'Belum ada pallet di TPS.', hint: 'Pallet masuk ke sini otomatis saat operator mencatat pengiriman.' },
+  { value: 'reclaimer', label: 'Di area reclaimer', empty: 'Tidak ada pallet yang sedang diisi.', hint: 'Pallet yang masih terbuka bisa diselesaikan dari halaman Input pallet residu.' },
   { value: 'diserahkan', label: 'Diserahkan', empty: 'Belum ada pallet yang diserahkan ke vendor.', hint: 'Pallet pindah ke sini setelah surat jalannya tersimpan.' },
-  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mulai mengisi pallet residu.' },
+  { value: 'semua', label: 'Semua', empty: 'Belum ada pallet tercatat.', hint: 'Pallet muncul setelah operator mencatat pengiriman ke TPS.' },
 ];
 
 const REMINDER_LABEL = { perhatian: 'Perhatian', mendesak: 'Mendesak', kritis: 'Kritis' };
@@ -79,20 +79,22 @@ function TpsDays({ pallet }) {
 
 // Kolom sama dengan tabel pallet operator (Input pallet residu), supaya mudah dibaca semua role,
 // ditambah masa simpan di TPS (tugas HSE)
-function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
+function PalletTable({ pallets, selectable, selected, onToggle, onSelectAll, sorot }) {
   return (
     <Table caption="Inventaris pallet residu">
       <thead>
         <tr>
           {selectable && (
             <Th className="w-12">
-              <span className="sr-only">Pilih untuk surat jalan</span>
+              <input type="checkbox" aria-label="Pilih semua pallet yang ditampilkan untuk surat jalan"
+                checked={pallets.length > 0 && pallets.every((p) => selected.includes(p.id))}
+                onChange={(e) => onSelectAll(e.target.checked ? pallets.map((p) => p.id) : [])} />
             </Th>
           )}
           <Th>No. pallet</Th>
           <Th>Mulai diisi</Th>
           <Th>Penuh dan terkirim ke TPS</Th>
-          <Th>Total hari kirim ke TPS</Th>
+          <Th>Total proses pengisian drum</Th>
           <Th>Total hari di TPS</Th>
           <Th>Masa simpan di TPS</Th>
           <Th>Keterangan</Th>
@@ -117,7 +119,7 @@ function PalletTable({ pallets, selectable, selected, onToggle, sorot }) {
                 />
               </Td>
             )}
-            <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}</Td>
+            <Td className="whitespace-nowrap font-mono text-gray-900">{p.pallet_number}{p.location === 'tps' && <span className="block font-sans text-caption">{p.available_drums} drum tersisa</span>}</Td>
             <Td>
               <DateTime text={startedText(p)} />
             </Td>
@@ -325,6 +327,7 @@ export default function WastePage() {
                 selectable={selectable}
                 selected={selected}
                 onToggle={toggle}
+                onSelectAll={setSelected}
                 sorot={sorot}
               />
             </div>

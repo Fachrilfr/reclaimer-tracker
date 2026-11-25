@@ -41,7 +41,7 @@ class RecordSolventUsage
                 'created_at' => now(),
             ]);
 
-            AuditLog::record($request, 'create', $usage, $usage->only(['date', 'shift_id', 'weight', 'purpose', 'notes', 'balance_after']));
+            AuditLog::record($request, 'create', $usage, $usage->only(['date', 'shift_id', 'weight', 'purpose', 'regu', 'balance_after']));
 
             return $usage;
         });

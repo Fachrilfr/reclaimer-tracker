@@ -19,6 +19,8 @@ use Illuminate\Validation\ValidationException;
  */
 class RecordSuratJalan
 {
+    public const DRUMS_PER_DELIVERY = 20;
+
     public const DISK = 'local';
 
     /** Bukti surat jalan opsional (meeting 30 Okt 2026). */
@@ -28,8 +30,11 @@ class RecordSuratJalan
 
         try {
             return DB::transaction(function () use ($request, $data, $file, $path) {
+                \App\Models\Machine::orderBy('id')->lockForUpdate()->firstOrFail();
                 $pallets = B3Pallet::whereIn('id', $data['pallet_ids'])->lockForUpdate()->get();
                 $this->ensureAvailable($pallets, $data);
+
+                $allocation = self::allocate($pallets, $data);
 
                 $suratJalan = SuratJalan::create([
                     'surat_jalan_number' => trim($data['surat_jalan_number']),
@@ -44,8 +49,8 @@ class RecordSuratJalan
                     'notes' => filled($data['notes'] ?? null) ? trim($data['notes']) : null,
                     'created_by' => $request->user()->id,
                 ]);
-                $suratJalan->pallets()->attach($pallets->pluck('id'));
-                B3Pallet::whereIn('id', $pallets->pluck('id'))->update(['status' => 'transported']);
+                $suratJalan->pallets()->attach($allocation);
+                self::refreshStatuses($pallets);
 
                 AuditLog::record($request, 'create', $suratJalan, $suratJalan->only([
                     'surat_jalan_number', 'vendor_id', 'handover_date', 'total_pallets', 'weight_kg', 'vendor_officer_name', 'file_name',
@@ -58,6 +63,40 @@ class RecordSuratJalan
                 Storage::disk(self::DISK)->delete($path);
             }
             throw $e;
+        }
+    }
+
+    public static function allocate($pallets, array $data, ?SuratJalan $current = null): array
+    {
+        $allocation = [];
+        if (isset($data['quantities']) && (array_diff(array_keys($data['quantities']), $data['pallet_ids'])
+            || array_diff($data['pallet_ids'], array_keys($data['quantities'])))) {
+            throw ValidationException::withMessages(['pallet_ids' => 'Tentukan jumlah drum untuk setiap pallet yang dipilih.']);
+        }
+        foreach ($pallets as $pallet) {
+            $available = $pallet->remainingDrums(exceptShipment: $current?->id);
+            $old = $current?->pallets->firstWhere('id', $pallet->id)?->pivot?->drum_count;
+            $count = (int) ($data['quantities'][$pallet->id] ?? $old ?? $available);
+            if ($count < 1 || $count > $available) {
+                throw ValidationException::withMessages(['pallet_ids' => "Jumlah drum dari {$pallet->pallet_number} melebihi stok yang tersedia."]);
+            }
+            $allocation[$pallet->id] = ['drum_count' => $count];
+        }
+        $total = array_sum(array_column($allocation, 'drum_count'));
+        // Dokumen lama tetap dapat dikoreksi tanpa mengganti jumlah drum historisnya.
+        $unchanged = $current && $current->pallets->count() === count($allocation)
+            && $current->pallets->every(fn ($p) => ($allocation[$p->id]['drum_count'] ?? 0) === (int) ($p->pivot->drum_count ?? $p->drum_count));
+        if ($total !== self::DRUMS_PER_DELIVERY && ! $unchanged) {
+            throw ValidationException::withMessages(['pallet_ids' => "Setiap pengangkutan harus tepat 20 drum. Terpilih {$total} drum."]);
+        }
+        return $allocation;
+    }
+
+    public static function refreshStatuses($pallets): void
+    {
+        $pallets->load('suratJalan');
+        foreach ($pallets as $pallet) {
+            $pallet->update(['status' => $pallet->remainingDrums() > 0 ? 'full' : 'transported']);
         }
     }
 

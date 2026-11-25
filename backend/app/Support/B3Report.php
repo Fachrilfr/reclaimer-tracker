@@ -50,6 +50,9 @@ final class B3Report
                 'over_limit_count' => collect($compliance)->where('over_days', '>', 0)->count(),
                 'longest_days_stored' => collect($compliance)->max('days_stored'),
                 'residue' => $residue['residue'],
+                'tps_drum_count' => collect($stock['rows'])->where('location', 'tps')->sum('drum_count'),
+                'current_residue' => $hse['totals']['current_residue'],
+                'arrived_pallets' => $hse['totals']['arrived_pallets'],
                 'residue_chain_count' => $residue['chain_count'],
             ],
             'by_vendor' => $suratJalan->groupBy(fn (SuratJalan $s) => $s->vendor?->name ?? '–')
@@ -79,7 +82,7 @@ final class B3Report
         return [
             'surat_jalan_count' => $suratJalan->count(),
             'pallet_count' => $suratJalan->sum(fn (SuratJalan $s) => $s->pallets->count()),
-            'drum_count' => $suratJalan->sum(fn (SuratJalan $s) => $s->pallets->sum('drum_count')),
+            'drum_count' => $suratJalan->sum(fn (SuratJalan $s) => $s->transportedDrums()),
             'weight_kg' => round($suratJalan->sum('weight_kg'), 2),
         ];
     }
@@ -129,19 +132,19 @@ final class B3Report
             ->orderBy('start_date')->orderBy('id')
             ->get()
             ->filter(function (B3Pallet $p) use ($from) {
-                $handover = $p->suratJalan->first()?->handover_date;
+                $handover = $p->remainingDrums() === 0 && $p->suratJalan->isNotEmpty() ? $p->suratJalan->max('handover_date') : null;
 
                 return $handover === null || $handover->copy()->startOfDay()->gte($from);
             })
             ->map(function (B3Pallet $p) use ($at) {
-                $sj = $p->suratJalan->first();
+                $sj = $p->remainingDrums($at->toDateString()) === 0 ? $p->suratJalan->sortByDesc('handover_date')->first() : null;
                 $hauled = $sj !== null && $sj->handover_date->copy()->startOfDay()->lte($at);
                 $atTps = $p->sent_to_tps_at !== null && $p->sent_to_tps_at->copy()->startOfDay()->lte($at);
 
                 return [
                     'pallet_number' => $p->pallet_number,
                     'status' => $hauled ? 'diangkut' : ($atTps ? 'tps' : 'reclaimer'),
-                    'drum_count' => $atTps ? $p->drum_count : null,
+                    'drum_count' => $atTps ? ($hauled ? $p->drum_count : $p->remainingDrums($at->toDateString())) : null,
                     'start_date' => $p->start_date->toDateString(),
                     'sent_to_tps_at' => $atTps ? $p->sent_to_tps_at->toDateString() : null,
                     'handover_date' => $hauled ? $sj->handover_date->toDateString() : null,
@@ -173,7 +176,7 @@ final class B3Report
             ->orderBy('id')
             ->get()
             ->filter(function (B3Pallet $p) use ($at) {
-                $handover = $p->suratJalan->first()?->handover_date;
+                $handover = $p->remainingDrums() === 0 && $p->suratJalan->isNotEmpty() ? $p->suratJalan->max('handover_date') : null;
 
                 return $handover === null || $handover->copy()->startOfDay()->gt($at);
             });
@@ -187,7 +190,7 @@ final class B3Report
                 $days = $atTps ? (int) round($at->diffInDays($p->expiry_date->copy()->startOfDay(), false)) : null;
                 // Pallet penuh berisi drum_count drum. Yang masih diisi tidak dihitung per drum
                 // lagi (null); hanya data lama yang punya catatan drum.
-                $drums = $atTps ? $p->drum_count : $p->drums->filter(fn ($d) => $d->filled_date->copy()->startOfDay()->lte($at))->count();
+                $drums = $atTps ? $p->remainingDrums($at->toDateString()) : $p->drums->filter(fn ($d) => $d->filled_date->copy()->startOfDay()->lte($at))->count();
 
                 return [
                     'pallet_number' => $p->pallet_number,

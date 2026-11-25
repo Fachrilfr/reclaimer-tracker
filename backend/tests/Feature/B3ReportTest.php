@@ -72,6 +72,7 @@ class B3ReportTest extends TestCase
 
     private function suratJalan(string $number, int $vendor, string $date, array $pallets, float $weight): void
     {
+        \App\Models\B3Pallet::whereIn('id', $pallets)->update(['drum_count' => intdiv(20, count($pallets))]);
         $this->postJson('/api/surat-jalan', [
             'surat_jalan_number' => $number, 'vendor_id' => $vendor, 'handover_date' => $date,
             'pallet_ids' => $pallets, 'weight_kg' => $weight, 'vendor_officer_name' => 'Petugas vendor',
@@ -85,7 +86,16 @@ class B3ReportTest extends TestCase
 
         $this->assertSame(2, $report['summary']['surat_jalan_count']);
         $this->assertSame(3, $report['summary']['pallet_count']);
-        $this->assertSame(9, $report['summary']['drum_count']);
+        $this->assertSame(20, $report['surat_jalan'][0]['total_drums']);
+        $this->assertSame(-900, $report['summary']['current_residue']);
+        $this->assertSame(0, $report['summary']['arrived_pallets']);
+        $this->assertSame(40, $report['summary']['drum_count']);
+        $this->assertSame(3, $report['summary']['tps_drum_count']);
+        $this->getJson('/api/dashboard/hse?period=month&date=2026-10-20')->assertOk()
+            ->assertJsonPath('data.totals.handover_drum_count', 40)
+            ->assertJsonPath('data.totals.tps_drum_count', 3);
+        $this->getJson('/api/dashboard/hse?period=month&date=2026-09-15')->assertOk()
+            ->assertJsonPath('data.totals.arrived_pallets', 1);
         $this->assertEquals(900, $report['summary']['weight_kg']);
         $this->assertSame(1, $report['summary']['over_limit_count']);
         $this->assertSame(96, $report['summary']['longest_days_stored']);

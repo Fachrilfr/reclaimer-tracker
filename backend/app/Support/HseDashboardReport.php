@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Http\Controllers\Api\PalletController;
 use App\Models\B3Pallet;
 use App\Models\SuratJalan;
+use App\Models\ReclaimerBatch;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
@@ -31,13 +32,13 @@ final class HseDashboardReport
         // Residu baru pasti setelah rangkaian selesai, seperti di dashboard reclaimer
         $completed = DashboardReport::chainsBetween($this->start, $this->end)
             ->filter(fn (BatchChain $c) => $c->isComplete())->values();
-        $suratJalan = SuratJalan::with('pallets')
+        $suratJalan = SuratJalan::with(['pallets', 'vendor', 'creator'])
             ->whereDate('handover_date', '>=', $this->start->toDateString())
             ->whereDate('handover_date', '<=', $this->end->toDateString())
             ->get();
 
         $thresholds = PalletController::thresholds();
-        $tpsPallets = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
+        $tpsPallets = B3Pallet::with('suratJalan')->where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')->orderBy('expiry_date')->get()
             ->map(fn (B3Pallet $pallet) => PalletController::present($pallet, $thresholds));
         $unit = ReportPeriod::BREAKDOWN[$this->period];
 
@@ -46,9 +47,13 @@ final class HseDashboardReport
             'start' => $this->start->toDateString(),
             'end' => $this->end->toDateString(),
             'totals' => self::residue($completed) + self::handover($suratJalan) + [
+                'current_residue' => round($this->producedResidue() - SuratJalan::sum('weight_kg'), 2),
+                'arrived_pallets' => B3Pallet::whereDate('sent_to_tps_at', '>=', $this->start->toDateString())
+                    ->whereDate('sent_to_tps_at', '<=', $this->end->toDateString())->count(),
                 'tps_pallet_count' => $tpsPallets->count(),
-                'tps_drum_count' => $tpsPallets->sum('drum_count'),
+                'tps_drum_count' => $tpsPallets->sum('available_drums'),
             ],
+            'surat_jalan' => $suratJalan->sortByDesc('handover_date')->values()->map(fn (SuratJalan $sj) => $sj->present())->all(),
             'inputs' => $completed->map(fn (BatchChain $c) => [
                 'root_id' => $c->root->id,
                 'batch_number' => $c->root->batch_number,
@@ -70,6 +75,13 @@ final class HseDashboardReport
         ];
     }
 
+    private function producedResidue(): float
+    {
+        $completed = ReclaimerBatch::whereNull('parent_batch_id')->whereNotNull('chain_completed_at')->select('id');
+        return (float) ReclaimerBatch::where(fn ($q) => $q->whereIn('id', $completed)->orWhereIn('parent_batch_id', $completed))
+            ->selectRaw('SUM(total_input_weight - recovery_weight) AS kg')->value('kg');
+    }
+
     /** @param  Collection<int, BatchChain>  $chains */
     private static function residue(Collection $chains): array
     {
@@ -88,6 +100,7 @@ final class HseDashboardReport
     {
         return [
             'surat_jalan_count' => $suratJalan->count(),
+            'handover_drum_count' => $suratJalan->sum(fn (SuratJalan $s) => $s->transportedDrums()),
             'handover_pallet_count' => $suratJalan->sum(fn (SuratJalan $s) => $s->pallets->count()),
             'vendor_weight' => round($suratJalan->sum('weight_kg'), 2),
         ];

@@ -43,7 +43,7 @@ class SolventUsageTest extends TestCase
     {
         return $overrides + [
             'date' => '2026-10-20',
-            'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'),
+            'regu' => 'A', 'shift_id' => Shift::where('code', 'SHIFT-1')->value('id'),
             'weight' => 150,
             'purpose' => 'Pencucian mesin cetak',
             'notes' => null,
@@ -83,9 +83,9 @@ class SolventUsageTest extends TestCase
 
     public function test_fields_are_validated(): void
     {
-        $this->postJson('/api/solvent-usages', $this->payload(['weight' => 0, 'purpose' => '', 'date' => '2026-10-21']))
+        $this->postJson('/api/solvent-usages', $this->payload(['regu' => 'D', 'weight' => 0, 'purpose' => '', 'date' => '2026-10-21']))
             ->assertUnprocessable()
-            ->assertJsonValidationErrors(['weight', 'purpose', 'date']);
+            ->assertJsonValidationErrors(['regu', 'weight', 'purpose', 'date']);
     }
 
     public function test_access_follows_matrix(): void

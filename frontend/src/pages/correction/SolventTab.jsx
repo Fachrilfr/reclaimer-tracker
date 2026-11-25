@@ -26,7 +26,7 @@ import {
   useSubmit,
 } from './parts.jsx';
 
-const KNOWN = ['date', 'shift_id', 'weight', 'purpose', 'notes', 'reason'];
+const KNOWN = ['date', 'shift_id', 'weight', 'purpose', 'regu', 'reason'];
 
 function UsageDialog({ usage, meta, onClose, onDone }) {
   const [form, setForm] = useState({
@@ -34,7 +34,7 @@ function UsageDialog({ usage, meta, onClose, onDone }) {
     shift_id: String(usage.shift_id),
     weight: toInput(usage.weight),
     purpose: usage.purpose,
-    notes: usage.notes ?? '',
+    regu: usage.regu ?? '',
     reason: '',
   });
   const { errors, formError, saving, submit, clear } = useSubmit(onDone, KNOWN);
@@ -52,7 +52,7 @@ function UsageDialog({ usage, meta, onClose, onDone }) {
       { key: 'shift_id', label: 'Shift', show: shiftName },
       { key: 'weight', label: 'Berat solvent', show: kg },
       { key: 'purpose', label: 'Keperluan' },
-      { key: 'notes', label: 'Catatan' },
+      { key: 'regu', label: 'Regu' },
     ],
     { ...usage, shift_id: String(usage.shift_id) },
     { ...form, weight },
@@ -77,7 +77,7 @@ function UsageDialog({ usage, meta, onClose, onDone }) {
           shift_id: Number(form.shift_id),
           weight,
           purpose: form.purpose.trim(),
-          notes: form.notes.trim() || null,
+          regu: form.regu,
           reason: form.reason.trim(),
         },
       },
@@ -117,9 +117,12 @@ function UsageDialog({ usage, meta, onClose, onDone }) {
         <Field id="koreksi-keperluan" label="Keperluan" required error={errors.purpose}>
           {(props) => <input {...props} type="text" maxLength={150} value={form.purpose} onChange={set('purpose')} className="field" />}
         </Field>
-        <Field id="koreksi-catatan" label="Catatan" hint="Opsional." error={errors.notes}>
-          {(props) => <textarea {...props} rows={2} maxLength={500} value={form.notes} onChange={set('notes')} className="field h-auto py-2" />}
-        </Field>
+        <Field id="regu" label="Regu" required error={errors.regu}>
+            {(props) => (<select {...props} value={form.regu} onChange={set('regu')} className="field">
+                  <option value="">Pilih regu</option>
+                  {['A', 'B', 'C'].map((regu) => <option key={regu}>{regu}</option>)}
+                </select>)}
+          </Field>
         <ChangePreview
           items={changes}
           note={delta ? `Saldo solvent disesuaikan ${signedKg(delta)} lewat baris penyesuaian. Saldo yang tercatat di pemakaian lama tidak diubah.` : null}
@@ -170,7 +173,7 @@ export default function SolventTab({ onMessage }) {
                 <tr key={u.id}>
                   <Td className="whitespace-nowrap">
                     {formatDate(u.date)}
-                    <span className="block text-caption text-gray-600">{u.shift}</span>
+                    <span className="block text-caption text-gray-600">{u.shift}{u.regu && ' ? Regu ' + u.regu}</span>
                   </Td>
                   <Td numeric className="whitespace-nowrap">
                     {kg(u.weight)}

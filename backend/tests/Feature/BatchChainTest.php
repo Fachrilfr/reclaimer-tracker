@@ -45,7 +45,7 @@ class BatchChainTest extends TestCase
     {
         return $this->postJson('/api/batches', $data + [
             'date' => '2026-10-20',
-            'shift_id' => $this->shift1,
+            'regu' => 'A', 'shift_id' => $this->shift1,
             'is_continuation' => false,
             'parent_batch_id' => null,
             'process_status' => 'completed',
@@ -60,11 +60,24 @@ class BatchChainTest extends TestCase
     private function continuation(int $parentId, array $data)
     {
         return $this->batch($data + [
-            'shift_id' => $this->shift2,
+            'regu' => 'A', 'shift_id' => $this->shift2,
             'is_continuation' => true,
             'parent_batch_id' => $parentId,
             'notes' => 'Lanjutan Pkl 15.30',
         ]);
+    }
+
+    public function test_report_shows_the_starting_operator_after_a_shift_change(): void
+    {
+        $root = $this->batch(['ink_weight' => 335, 'recovery_weight' => 100, 'process_status' => 'in_progress'])
+            ->assertCreated()->json('data.id');
+        $this->actingAs(User::factory()->create(['name' => 'Budi']), 'sanctum');
+        $this->continuation($root, ['recovery_weight' => 50])->assertCreated();
+
+        $this->actingAs(User::where('role', 'supervisor')->firstOrFail(), 'sanctum')
+            ->getJson('/api/reports/reclaimer?period=day&date=2026-10-20')
+            ->assertOk()->assertJsonCount(1, 'data.chains')
+            ->assertJsonPath('data.chains.0.operator', 'Operator Aziz')->assertJsonPath('data.chains.0.recovery', 150);
     }
 
     public function test_unfinished_batch_is_not_judged_against_target(): void
@@ -110,8 +123,9 @@ class BatchChainTest extends TestCase
             ->json('data.id');
 
         // Shift 3 menyelesaikan rangkaian; boleh menautkan ke batch lanjutan sebelumnya
-        $this->continuation($middle, ['shift_id' => $this->shift3, 'recovery_weight' => 90, 'notes' => 'Lanjutan 23:15, selesai'])
+        $this->continuation($middle, ['regu' => 'C', 'shift_id' => $this->shift3, 'recovery_weight' => 90, 'notes' => 'Lanjutan 23:15, selesai'])
             ->assertCreated()
+            ->assertJsonPath('data.batch_number', 'BR-20261020-001')
             ->assertJsonPath('data.parent_batch_number', 'BR-20261020-001')
             ->assertJsonPath('data.chain_complete', true)
             // (60 + 90 + 90) / 600 = 40%, sama dengan toleransi, tidak di bawah
@@ -123,6 +137,9 @@ class BatchChainTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'complete', 'entity_id' => $root]);
 
         $day = $this->getJson('/api/dashboard?period=day&date=2026-10-20')->assertOk();
+        $day->assertJsonPath('data.by_regu.0.recovery', 150)
+            ->assertJsonPath('data.by_regu.2.recovery', 90)
+            ->assertJsonPath('data.by_regu.2.residue', 360);
         $day->assertJsonPath('data.totals.chain_count', 1)
             ->assertJsonPath('data.totals.batch_count', 3)
             ->assertJsonPath('data.totals.input', 600)

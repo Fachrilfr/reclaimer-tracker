@@ -9,7 +9,6 @@ use App\Models\SolventLedger;
 use App\Models\SolventUsage;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * Laporan Reclaimer (FR-55) untuk satu periode: harian, mingguan, bulanan, tahunan.
@@ -56,6 +55,7 @@ final class ReclaimerReport
             ],
             'solvent' => $this->solvent(),
             'solvent_usages' => $this->solventUsages(),
+            'by_regu' => ReguComparison::between($this->start, $this->end),
             'by_shift' => Shift::where('is_active', true)->orderBy('id')->get()
                 ->map(fn (Shift $shift) => ['shift' => $shift->name]
                     + BatchChain::summarize($completed->filter(fn (BatchChain $c) => $c->root->shift_id === $shift->id)))
@@ -116,6 +116,7 @@ final class ReclaimerReport
             ->orderBy('date')->orderBy('id')
             ->get()
             ->map(fn (ReclaimerBatch $b) => [
+                'id' => $b->id,
                 'batch_number' => $b->batch_number,
                 'date' => $b->date->toDateString(),
                 'shift' => $b->shift?->name,

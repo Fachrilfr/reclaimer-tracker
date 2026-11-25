@@ -33,14 +33,23 @@ function StatusForm({ maintenance, onDone }) {
   const [formError, setFormError] = useState('');
   const [isSaving, setIsSaving] = useState(false);
 
-  const field = maintenance ? 'note' : 'reason';
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [repair, setRepair] = useState('');
+  const [history, setHistory] = useState(false);
+  const closing = maintenance && !history;
+  const field = closing ? 'note' : 'reason';
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setFormError('');
+    if (history && (!start || !end)) {
+      setErrors({ started_at: start ? undefined : 'Isi waktu mulai.', ended_at: end ? undefined : 'Isi waktu selesai.' });
+      return;
+    }
     if (!reason.trim()) {
       setErrors({
-        [field]: maintenance
+        [field]: closing
           ? 'Tulis catatan perbaikan, misalnya "Seal pompa diganti".'
           : 'Tulis alasan maintenance, misalnya "Pompa vakum bocor".',
       });
@@ -48,11 +57,16 @@ function StatusForm({ maintenance, onDone }) {
     }
     setIsSaving(true);
     try {
-      const response = await request(maintenance ? '/machine/operating' : '/machine/maintenance', {
+      const response = await request(closing ? '/machine/operating' : '/machine/maintenance', {
         method: 'POST',
-        body: maintenance ? { note: reason.trim() } : { reason: reason.trim() },
+        body: closing
+          ? { note: reason.trim(), ended_at: end || undefined }
+          : { reason: reason.trim(), started_at: start || undefined, ended_at: end || undefined, note: repair || undefined },
       });
       setReason('');
+      setStart('');
+      setEnd('');
+      setRepair('');
       setErrors({});
       onDone(response.message);
     } catch (err) {
@@ -66,16 +80,29 @@ function StatusForm({ maintenance, onDone }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-5 space-y-4 border-t border-gray-100 pt-5">
-      <h3 className="text-h3 font-semibold">{maintenance ? 'Mesin sudah beroperasi' : 'Laporkan maintenance'}</h3>
+      {maintenance && <label className="flex items-center gap-2">
+        <input type="checkbox" checked={history} onChange={(e) => { setHistory(e.target.checked); setErrors({}); setFormError(''); }} />
+        Catat perbaikan sebelumnya yang sudah selesai
+      </label>}
+      <h3 className="text-h3 font-semibold">{closing ? 'Mesin sudah beroperasi' : 'Laporkan maintenance'}</h3>
       <p className="-mt-3 text-body text-gray-600">
-        {maintenance
+        {closing
           ? 'HSE, supervisor, manajemen, dan super admin akan diberi tahu bahwa mesin kembali beroperasi. Input bisa dicatat lagi.'
-          : 'HSE, supervisor, manajemen, dan super admin langsung diberi tahu. Input tidak bisa dicatat selama maintenance.'}
+          : 'Isi waktu kejadian untuk mencatat perbaikan yang baru dilaporkan.'}
       </p>
       {formError && <Alert tone="danger">{formError}</Alert>}
+      {!closing && <Field id="started_at" label="Mulai maintenance (WIB)" hint="Kosongkan untuk memakai waktu sekarang." error={errors.started_at}>
+        {(props) => <input {...props} type="datetime-local" className="field" value={start} onChange={(e) => setStart(e.target.value)} />}
+      </Field>}
+      <Field id="ended_at" label="Selesai maintenance (WIB)" hint={closing ? 'Kosongkan untuk memakai waktu sekarang.' : 'Isi bila perbaikan sudah selesai.'} error={errors.ended_at}>
+        {(props) => <input {...props} type="datetime-local" className="field" value={end} onChange={(e) => setEnd(e.target.value)} />}
+      </Field>
+      {!closing && end && <Field id="repair" label="Catatan perbaikan" required error={errors.note}>
+        {(props) => <input {...props} className="field" value={repair} onChange={(e) => setRepair(e.target.value)} maxLength={255} />}
+      </Field>}
       <Field
         id={field}
-        label={maintenance ? 'Catatan perbaikan' : 'Alasan maintenance'}
+        label={closing ? 'Catatan perbaikan' : 'Alasan maintenance'}
         required
         error={errors[field]}
       >
@@ -96,7 +123,7 @@ function StatusForm({ maintenance, onDone }) {
             <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" />
             Menyimpan…
           </>
-        ) : maintenance ? (
+        ) : closing ? (
           'Tandai mesin beroperasi'
         ) : (
           'Laporkan maintenance'

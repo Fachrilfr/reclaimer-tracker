@@ -30,12 +30,12 @@ class ReclaimerReportTest extends TestCase
             Carbon::setTestNow("{$date} 14:00:00");
             $this->app['auth']->forgetGuards();
             $this->actingAs($operator, 'sanctum')->postJson('/api/batches', [
-                'date' => $date, 'shift_id' => $shift, 'is_continuation' => false, 'process_status' => 'completed',
+                'date' => $date, 'regu' => 'A', 'shift_id' => $shift, 'is_continuation' => false, 'process_status' => 'completed',
                 'ink_weight' => $ink, 'recovery_weight' => $recovery,
                 'oil_temp' => $date === '2026-10-15' ? 170 : 140, 'vapour_temp' => 50,
             ])->assertCreated();
             $this->postJson('/api/solvent-usages', [
-                'date' => $date, 'shift_id' => $shift, 'weight' => $solvent, 'purpose' => 'Pencucian mesin cetak',
+                'date' => $date, 'regu' => 'A', 'shift_id' => $shift, 'weight' => $solvent, 'purpose' => 'Pencucian mesin cetak',
             ])->assertCreated();
         }
         Carbon::setTestNow('2026-10-20 10:00:00');
@@ -63,6 +63,8 @@ class ReclaimerReportTest extends TestCase
         foreach (['input', 'recovery', 'residue', 'recovery_rate', 'chain_count'] as $key) {
             $this->assertSame($dashboard['totals'][$key], $report['summary'][$key], $key);
         }
+        $this->assertSame($report['by_regu'], $dashboard['by_regu']);
+        $this->assertSame(300, $report['by_regu'][0]['used']);
         // Bahan masuk = Tinta X saja: (200 + 100) / (500 + 500) = 30%
         $this->assertEquals(30, $report['summary']['recovery_rate']);
         $this->assertSame('week', $report['breakdown']['unit']);
@@ -117,7 +119,7 @@ class ReclaimerReportTest extends TestCase
         file_put_contents($path, $response->getContent());
         $book = IOFactory::load($path);
         unlink($path);
-        $this->assertSame(['Ringkasan', 'Per shift', 'Per Minggu', 'Proses', 'Pemakaian solvent', 'Di bawah toleransi', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
+        $this->assertSame(['Ringkasan', 'Per shift', 'Per regu', 'Per Minggu', 'Proses', 'Pemakaian solvent', 'Di bawah toleransi', 'Suhu tidak normal', 'Maintenance'], $book->getSheetNames());
         $summary = $book->getSheetByName('Ringkasan');
         $this->assertSame('Tinta X masuk (kg)', $summary->getCell('A9')->getValue());
         $this->assertEquals(1000, $summary->getCell('B9')->getValue());

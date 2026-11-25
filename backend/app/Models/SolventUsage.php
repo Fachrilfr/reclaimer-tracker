@@ -43,6 +43,7 @@ class SolventUsage extends Model
             'date' => $this->date->toDateString(),
             'shift_id' => $this->shift_id,
             'shift' => $this->shift?->name,
+            'regu' => $this->regu,
             'weight' => $this->weight,
             'purpose' => $this->purpose,
             'notes' => $this->notes,

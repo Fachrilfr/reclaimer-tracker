@@ -124,6 +124,7 @@ class WasteFlowTest extends TestCase
             ->assertJsonPath('data.0.level', 'kritis')
             ->assertJsonPath('data.0.days_remaining', 6);
 
+        B3Pallet::whereKey($id)->update(['drum_count' => 20]);
         // Setelah diserahkan lewat surat jalan, pengingat berhenti
         $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$id]]))->assertCreated();
         $this->assertSame(0, $reminders->handle(Carbon::parse('2026-10-25 07:00')));
@@ -139,6 +140,7 @@ class WasteFlowTest extends TestCase
             ->assertJsonPath('data.min_pallets', 1)
             ->assertJsonCount(2, 'data.vendors');
 
+        B3Pallet::whereIn('id', [$first, $second])->update(['drum_count' => 10]);
         $data = $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$first, $second]]))
             ->assertCreated()
             ->assertJsonPath('data.number', 'SJ/IDF/2026/10/001')
@@ -194,9 +196,15 @@ class WasteFlowTest extends TestCase
         $this->assertDatabaseCount('surat_jalan', 0);
         $this->assertEmpty(Storage::disk('local')->allFiles('surat-jalan'));
 
+        B3Pallet::whereKey($atTps)->update(['drum_count' => 21]);
+        foreach ([19, 21] as $n) {
+            $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps], 'quantities' => [$atTps => $n]]))
+                ->assertUnprocessable();
+        }
         // Tanpa bukti tetap tersimpan; unduhan bukti menjawab 404
-        $id = $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps], 'file' => null]))->assertCreated()->json('data.id');
+        $id = $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps], 'quantities' => [$atTps => 20], 'file' => null]))->assertCreated()->json('data.id');
         $this->assertDatabaseHas('surat_jalan', ['id' => $id, 'file_path_surat_jalan' => null, 'vendor_officer_name' => 'Petugas PPLI']);
+        $this->assertSame(1, B3Pallet::find($atTps)->remainingDrums());
         $this->getJson("/api/surat-jalan/{$id}/file")->assertNotFound();
         // Nomor surat jalan unik
         $this->postJson('/api/surat-jalan', $this->suratJalan(['pallet_ids' => [$atTps]]))

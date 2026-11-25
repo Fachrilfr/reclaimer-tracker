@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Cylinder, LoaderCircle, PackageCheck, PackagePlus } from 'lucide-react';
+import { Cylinder, LoaderCircle, PackageCheck } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
 import { useNotifications } from '../notifications/NotificationContext.jsx';
 import { fieldErrorsFrom, useResource } from '../lib/useResource.js';
@@ -7,17 +7,12 @@ import { fullText, startedText } from '../lib/pallet.js';
 import PageHeader from '../components/PageHeader.jsx';
 import Field from '../components/Field.jsx';
 import Alert from '../components/Alert.jsx';
-import Modal from '../components/Modal.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import FillDays from '../components/FillDays.jsx';
 import PalletNotes from '../components/PalletNotes.jsx';
 import { SOROT_CLASS, useSorot } from '../lib/useSorot.js';
 import { ErrorCard, LoadingCard } from '../components/LoadState.jsx';
 import { Table, Td, Th } from '../components/Table.jsx';
-
-// Tahap operator: dari area reclaimer ke TPS. Dua tombol mengambil waktu saat ditekan:
-// mulai diisi, lalu penuh. Pallet penuh langsung tercatat terkirim ke TPS dan diserahkan
-// ke HSE; masa simpan TPS ke vendor ada di modul Limbah B3.
 
 function NotesField({ id, value, onChange, error }) {
   return (
@@ -29,156 +24,57 @@ function NotesField({ id, value, onChange, error }) {
   );
 }
 
-// Aturan isi pallet, tampil di kartu mulai isi dan kartu pallet yang sedang diisi
-function DrumRule({ drums }) {
-  return (
-    <p className="mt-3 flex items-start gap-2 rounded-lg border border-warning-border bg-warning-bg p-3 text-body text-warning-fg">
-      <Cylinder className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-      <span>
-        1 pallet harus terisi <strong>tepat {drums} drum residu</strong> dalam sekali input, tidak boleh kurang dan tidak boleh lebih.
-      </span>
-    </p>
-  );
-}
-
-function SubmitButton({ busy, icon: Icon, children, ...props }) {
-  return (
-    <button type="button" disabled={busy} className="btn-primary h-12 w-full px-5 text-body-lg sm:w-auto" {...props}>
-      {busy ? <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" /> : <Icon className="h-5 w-5" aria-hidden="true" />}
-      {busy ? 'Menyimpan…' : children}
-    </button>
-  );
-}
-
-function StartPallet({ drums, onSubmit }) {
+function DispatchPallet({ pallet, drums, today, onSubmit }) {
+  const [start, setStart] = useState(pallet?.start_date ?? '');
+  const [sent, setSent] = useState(today);
   const [notes, setNotes] = useState('');
+  const [checked, setChecked] = useState(false);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const start = async () => {
+  async function save(e) {
+    e.preventDefault();
+    if (busy || !checked) return;
     setBusy(true);
     setError('');
     try {
-      await onSubmit('/pallets', { notes: notes.trim() || null });
+      await onSubmit('/pallets/dispatch', {
+        pallet_id: pallet?.id ?? null, start_date: start, sent_to_tps_at: sent, notes: notes.trim() || null,
+      });
+      setStart('');
+      setSent(today);
+      setNotes('');
+      setChecked(false);
     } catch (err) {
-      setError(fieldErrorsFrom(err).pallet ?? fieldErrorsFrom(err).notes ?? err.message);
+      setError(Object.values(fieldErrorsFrom(err))[0] ?? err.message);
     } finally {
       setBusy(false);
     }
-  };
+  }
 
   return (
-    <section aria-labelledby="start-title" className="card p-4 sm:p-5">
-      <h2 id="start-title" className="text-h2 font-semibold">
-        Mulai isi pallet baru
-      </h2>
-      <DrumRule drums={drums} />
-      <div className="mt-4 max-w-md">
-        <NotesField id="start-notes" value={notes} onChange={setNotes} />
+    <form onSubmit={save} className="card space-y-4 p-4 sm:p-5">
+      <h2 className="text-h2 font-semibold">Catat pengiriman pallet ke TPS</h2>
+      {pallet && <p>Pallet yang sedang diisi: <strong>{pallet.pallet_number}</strong></p>}
+      <div className="grid max-w-2xl gap-4 sm:grid-cols-2">
+        <Field id="start_date" label="Tanggal mulai pengisian" required>
+          {(props) => <input {...props} required type="date" max={sent || today} value={start} onChange={(e) => setStart(e.target.value)} className="field" />}
+        </Field>
+        <Field id="sent_to_tps_at" label="Tanggal pengiriman ke TPS" required>
+          {(props) => <input {...props} required type="date" min={start} max={today} value={sent} onChange={(e) => setSent(e.target.value)} className="field" />}
+        </Field>
       </div>
-      {error && (
-        <Alert tone="danger" className="mt-4">
-          {error}
-        </Alert>
-      )}
-      <div className="mt-4">
-        <SubmitButton busy={busy} icon={PackagePlus} onClick={start}>
-          Mulai isi pallet
-        </SubmitButton>
-      </div>
-    </section>
-  );
-}
-
-function FillingPallet({ pallet, drums, canFill, onSubmit }) {
-  const [notes, setNotes] = useState('');
-  const [confirming, setConfirming] = useState(false);
-  // Centang jumlah drum di dialog Pallet penuh; diulang setiap kali dialog dibuka
-  const [drumsChecked, setDrumsChecked] = useState(false);
-  const [error, setError] = useState('');
-  const [busy, setBusy] = useState(false);
-
-  const markFull = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      await onSubmit(`/pallets/${pallet.id}/full`, { notes: notes.trim() || null });
-    } catch (err) {
-      setError(fieldErrorsFrom(err).pallet ?? fieldErrorsFrom(err).notes ?? err.message);
-      setConfirming(false);
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <section aria-labelledby="filling-title" className="card p-4 sm:p-5">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h2 id="filling-title" className="text-h2 font-semibold">
-            Pallet <span className="font-mono">{pallet.pallet_number}</span> sedang diisi
-          </h2>
-          <p className="mt-1 text-body text-gray-600">
-            Mulai diisi {startedText(pallet)}.
-          </p>
-          {pallet.notes && <p className="mt-1 text-body text-gray-800">Keterangan: {pallet.notes}</p>}
-        </div>
-      </div>
-      <DrumRule drums={drums} />
-
-      {canFill && (
-        <div className="mt-5 border-t border-gray-100 pt-5">
-          <h3 className="text-h3 font-semibold">Pallet sudah penuh?</h3>
-          <div className="mt-4 max-w-md">
-            <NotesField id="full-notes" value={notes} onChange={setNotes} />
-          </div>
-          {error && (
-            <Alert tone="danger" className="mt-4">
-              {error}
-            </Alert>
-          )}
-          <div className="mt-4">
-            <SubmitButton
-              busy={busy}
-              icon={PackageCheck}
-              onClick={() => {
-                setDrumsChecked(false);
-                setConfirming(true);
-              }}
-            >
-              Pallet penuh
-            </SubmitButton>
-          </div>
-        </div>
-      )}
-
-      {confirming && (
-        <Modal title={`Tandai pallet ${pallet.pallet_number} penuh?`} onClose={() => !busy && setConfirming(false)}>
-          <p className="text-body text-gray-800">
-            Waktu sekarang dicatat sebagai waktu penuh, dan pallet langsung tercatat terkirim ke TPS.
-          </p>
-          <label className="mt-4 flex cursor-pointer items-start gap-3 rounded-lg border border-warning-border bg-warning-bg p-3 text-body text-gray-900">
-            <input
-              type="checkbox"
-              checked={drumsChecked}
-              onChange={(e) => setDrumsChecked(e.target.checked)}
-              className="mt-0.5 h-5 w-5 shrink-0 accent-brand-blue-600"
-            />
-            Apakah 1 pallet ini sudah terisi {drums} drum?
-          </label>
-          <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-            <button type="button" onClick={() => setConfirming(false)} disabled={busy} className="btn-secondary h-11 px-4 text-body">
-              Batal
-            </button>
-            {/* Baru bisa ditekan setelah jumlah drum dicentang */}
-            <button type="button" onClick={markFull} disabled={busy || !drumsChecked} className="btn-primary h-11 px-4 text-body">
-              {busy ? <LoaderCircle className="h-5 w-5 motion-safe:animate-spin" aria-hidden="true" /> : null}
-              {busy ? 'Menyimpan…' : 'Ya, pallet penuh'}
-            </button>
-          </div>
-        </Modal>
-      )}
-    </section>
+      <NotesField id="dispatch-notes" value={notes} onChange={setNotes} />
+      <label className="flex items-center gap-2">
+        <input type="checkbox" required checked={checked} onChange={(e) => setChecked(e.target.checked)} />
+        Pallet sudah terisi {drums} drum residu.
+      </label>
+      {error && <Alert tone="danger">{error}</Alert>}
+      <button type="submit" disabled={busy || !checked} className="btn-primary h-12 px-5">
+        {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <PackageCheck className="h-5 w-5" />}
+        {busy ? 'Menyimpan...' : 'Simpan pengiriman'}
+      </button>
+    </form>
   );
 }
 
@@ -219,17 +115,8 @@ export default function DrumPage() {
         <div className="mt-6 space-y-6">
           {message && <Alert tone="success">{message}</Alert>}
 
-          {data.filling ? (
-            <FillingPallet key={data.filling.id} pallet={data.filling} drums={data.drums_per_pallet} canFill={canFill} onSubmit={submit} />
-          ) : canFill ? (
-            <StartPallet drums={data.drums_per_pallet} onSubmit={submit} />
-          ) : (
-            <div className="card">
-              <EmptyState icon={Cylinder} title="Tidak ada pallet yang sedang diisi.">
-                Operator menekan Mulai isi pallet saat pallet baru mulai diisi residu.
-              </EmptyState>
-            </div>
-          )}
+          {canFill && <DispatchPallet key={data.filling?.id ?? 'baru'} pallet={data.filling}
+            today={data.today} drums={data.drums_per_pallet} onSubmit={submit} />}
 
           <section aria-labelledby="pallets-title" className="card">
             <div className="p-4 sm:p-5">
@@ -244,7 +131,7 @@ export default function DrumPage() {
                     <Th>No. pallet</Th>
                     <Th>Mulai diisi</Th>
                     <Th>Penuh dan terkirim ke TPS</Th>
-                    <Th>Total hari kirim ke TPS</Th>
+                    <Th>Total proses pengisian drum</Th>
                     <Th>Keterangan</Th>
                   </tr>
                 </thead>
@@ -271,7 +158,7 @@ export default function DrumPage() {
               </Table>
             ) : (
               <EmptyState icon={Cylinder} title="Belum ada pallet tercatat.">
-                Pallet yang dimulai akan muncul di sini.
+                Pallet muncul setelah pengiriman ke TPS dicatat.
               </EmptyState>
             )}
           </section>

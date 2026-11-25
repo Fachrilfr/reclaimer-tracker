@@ -38,7 +38,7 @@ class SuratJalanCorrectionController extends Controller
             ->paginate(20);
 
         // Pallet yang bisa ditambahkan ke surat jalan: yang sedang di TPS
-        $available = B3Pallet::where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')
+        $available = B3Pallet::with('suratJalan')->where('status', '!=', 'transported')->whereNotNull('sent_to_tps_at')
             ->orderBy('sent_to_tps_at')->orderBy('id')->get();
 
         return response()->json([
@@ -50,7 +50,7 @@ class SuratJalanCorrectionController extends Controller
                 'vendors' => Vendor::withTrashed()->orderBy('name')->get(['id', 'name', 'is_active', 'deleted_at'])
                     ->map(fn (Vendor $v) => ['id' => $v->id, 'name' => $v->name, 'selectable' => $v->is_active && ! $v->deleted_at]),
                 'available_pallets' => $available->map(fn (B3Pallet $p) => PalletController::present($p, $thresholds))->values(),
-                'min_pallets' => max(1, (int) Parameter::number('min_pallet_per_delivery')),
+                'min_pallets' => 1,
             ],
         ]);
     }

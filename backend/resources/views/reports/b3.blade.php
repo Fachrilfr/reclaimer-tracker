@@ -28,8 +28,11 @@
 <table class="kpi"><tr>
     <td><div class="box"><div class="label">Residu masuk TPS</div><div class="value">{{ $kg($s['residue']) }} kg</div></div></td>
     <td><div class="box"><div class="label">Residu diangkut vendor</div><div class="value">{{ $kg($s['weight_kg']) }} kg</div></div></td>
-    <td><div class="box"><div class="label">Pallet diangkut</div><div class="value">{{ $s['pallet_count'] }} pallet</div></div></td>
-    <td><div class="box"><div class="label">Stok di TPS {{ $stockLabel }}</div><div class="value">{{ collect($stock['rows'])->where('location', 'tps')->count() }} pallet</div></div></td>
+    <td><div class="box"><div class="label">Drum diangkut</div><div class="value">{{ $s['drum_count'] }} drum</div></div></td>
+    <td><div class="box"><div class="label">Stok drum di TPS {{ $stockLabel }}</div><div class="value">{{ $s['tps_drum_count'] }} drum</div></div></td>
+</tr><tr>
+    <td colspan="2" style="padding-top: 2mm"><div class="box"><div class="label">Estimasi saldo residu saat ini</div><div class="value">{{ $kg($s['current_residue']) }} kg</div></div></td>
+    <td colspan="2" style="padding-top: 2mm"><div class="box"><div class="label">Pallet masuk TPS dalam periode</div><div class="value">{{ $s['arrived_pallets'] }} pallet</div></div></td>
 </tr></table>
 </div>
 
@@ -103,14 +106,14 @@
 <h2>Surat jalan</h2>
 @if (count($report['surat_jalan']))
     <table>
-        <thead><tr><th>No. surat jalan</th><th>Serah terima</th><th>Vendor</th><th>Pallet</th><th class="num">Berat (kg)</th><th>Petugas vendor</th><th>Dicatat oleh</th></tr></thead>
+        <thead><tr><th>No. surat jalan</th><th>Serah terima</th><th>Vendor</th><th>Pallet</th><th>Drum diangkut</th><th class="num">Berat (kg)</th><th>Petugas vendor</th><th>Dicatat oleh</th></tr></thead>
         @foreach ($report['surat_jalan'] as $sj)
             <tr>
                 <td style="white-space: nowrap">{{ $sj['number'] }}@if ($sj['notes'])<br><span class="muted">{{ $sj['notes'] }}</span>@endif</td>
                 <td>{{ Fmt::date($sj['handover_date']) }}</td>
                 <td>{{ $sj['vendor'] }}</td>
                 <td>{{ implode(', ', array_column($sj['pallets'], 'pallet_number')) }}</td>
-                <td class="num">{{ $kg($sj['weight_kg']) }}</td>
+                <td class="num">{{ $sj['total_drums'] }}</td><td class="num">{{ $kg($sj['weight_kg']) }}</td>
                 <td>{{ $sj['vendor_officer_name'] ?? '–' }}</td>
                 <td>{{ $sj['created_by'] }}</td>
             </tr>

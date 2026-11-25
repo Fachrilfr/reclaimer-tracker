@@ -1,3 +1,4 @@
+import ReguComparison from '../components/ReguComparison.jsx';
 import { Recycle } from 'lucide-react';
 import { useResource } from '../lib/useResource.js';
 import { formatDate, formatDateTime, formatDuration, formatNumber, formatPercent } from '../lib/format.js';
@@ -33,7 +34,7 @@ function SolventUsages({ usages }) {
             <tr key={u.id}>
               <Td className="whitespace-nowrap">
                 {formatDate(u.date)}
-                <span className="block text-caption text-gray-600">{u.shift}</span>
+                <span className="block text-caption text-gray-600">{u.shift}{u.regu && ' ? Regu ' + u.regu}</span>
               </Td>
               <Td>
                 {u.purpose}
@@ -136,7 +137,8 @@ function ReportBody({ report }) {
         </Section>
       </div>
 
-      <Section id="lap-shift" title="Perbandingan per shift">
+      <ReguComparison rows={report.by_regu} />
+          <Section id="lap-shift" title="Perbandingan per shift">
         <Table caption="Perbandingan per shift">
           <thead>
             <tr>
@@ -254,7 +256,7 @@ function ReportBody({ report }) {
             </thead>
             <tbody>
               {report.temp_abnormal.map((b) => (
-                <tr key={b.batch_number}>
+                <tr key={b.id}>
                   <Td className="whitespace-nowrap font-mono text-gray-900">{b.batch_number}</Td>
                   <Td className="whitespace-nowrap">
                     {formatDate(b.date)}

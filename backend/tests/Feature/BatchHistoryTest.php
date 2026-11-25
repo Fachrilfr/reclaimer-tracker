@@ -25,7 +25,7 @@ class BatchHistoryTest extends TestCase
         $this->shifts = Shift::orderBy('id')->pluck('id')->all();
 
         $batch = fn (array $data) => $this->postJson('/api/batches', $data + [
-            'shift_id' => $this->shifts[0], 'is_continuation' => false, 'process_status' => 'completed',
+            'regu' => 'A', 'shift_id' => $this->shifts[0], 'is_continuation' => false, 'process_status' => 'completed',
             'oil_temp' => 140, 'vapour_temp' => 50, 'notes' => null,
         ])->assertCreated()->json('data.id');
 
@@ -36,7 +36,7 @@ class BatchHistoryTest extends TestCase
         // 20 Okt: rangkaian shift 1 dilanjutkan shift 2, masih belum selesai
         $root = $batch(['date' => '2026-10-20', 'ink_weight' => 500, 'recovery_weight' => 50, 'process_status' => 'in_progress']);
         $batch([
-            'date' => '2026-10-20', 'shift_id' => $this->shifts[1], 'is_continuation' => true, 'parent_batch_id' => $root,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => $this->shifts[1], 'is_continuation' => true, 'parent_batch_id' => $root,
             'process_status' => 'in_progress', 'ink_weight' => 0, 'recovery_weight' => 60, 'notes' => 'Lanjutan Pkl 15.10',
         ]);
     }
@@ -59,7 +59,7 @@ class BatchHistoryTest extends TestCase
             ->assertJsonPath('meta.total_batches', 4)
             ->assertJsonPath('meta.page', 1);
 
-        $this->assertSame(['BR-20261020-001', 'BR-20261020-002', 'BR-20261015-001', 'BR-20261010-001'], $this->numbers($response));
+        $this->assertSame(['BR-20261020-001', 'BR-20261020-001', 'BR-20261015-001', 'BR-20261010-001'], $this->numbers($response));
         $response->assertJsonPath('data.1.chain_root_id', $response->json('data.0.id'));
     }
 
@@ -76,7 +76,7 @@ class BatchHistoryTest extends TestCase
         $this->assertSame(['BR-20261015-001'], $this->numbers($this->getJson('/api/batches?status=below_target')));
         $this->assertSame(['BR-20261015-001'], $this->numbers($this->getJson('/api/batches?status=temp_abnormal')));
         // Rangkaian belum selesai tampil utuh: batch awal dan lanjutannya
-        $this->assertSame(['BR-20261020-001', 'BR-20261020-002'], $this->numbers($this->getJson('/api/batches?status=in_progress')));
+        $this->assertSame(['BR-20261020-001', 'BR-20261020-001'], $this->numbers($this->getJson('/api/batches?status=in_progress')));
         $this->getJson('/api/batches?status=reviewed')->assertJsonPath('meta.total_chains', 0);
         $this->getJson('/api/batches?status=salah')->assertUnprocessable();
     }
@@ -84,12 +84,12 @@ class BatchHistoryTest extends TestCase
     public function test_shift_and_search_match_any_batch_in_chain(): void
     {
         // Shift 2 hanya ada di batch lanjutan, tapi seluruh rangkaian ikut tampil
-        $this->assertSame(['BR-20261020-001', 'BR-20261020-002'],
-            $this->numbers($this->getJson('/api/batches?shift_id=' . $this->shifts[1])));
+        $this->assertSame(['BR-20261020-001', 'BR-20261020-001'],
+            $this->numbers($this->getJson('/api/batches?shift_id='.$this->shifts[1])));
 
         $this->assertSame(['BR-20261015-001'], $this->numbers($this->getJson('/api/batches?q=kuras')));
         $this->assertSame(['BR-20261010-001'], $this->numbers($this->getJson('/api/batches?q=20261010')));
-        $this->assertSame(['BR-20261020-001', 'BR-20261020-002'], $this->numbers($this->getJson('/api/batches?q=Pkl 15.10')));
+        $this->assertSame(['BR-20261020-001', 'BR-20261020-001'], $this->numbers($this->getJson('/api/batches?q=Pkl 15.10')));
         $this->getJson('/api/batches?q=Aziz')->assertJsonPath('meta.total_chains', 3);
         // Karakter wildcard SQL dicari sebagai teks biasa
         $this->getJson('/api/batches?q=%25')->assertJsonPath('meta.total_chains', 0);

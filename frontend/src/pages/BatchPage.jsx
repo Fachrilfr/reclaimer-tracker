@@ -186,6 +186,7 @@ function BatchForm({ formData, onSaved }) {
     };
 
     if (!form.date) errs.date = 'Isi tanggal proses.';
+    if (!form.regu) errs.regu = 'Pilih regu.';
     if (!form.shift_id) errs.shift_id = 'Pilih shift.';
     if (form.is_continuation && !form.parent_batch_id) errs.parent_batch_id = 'Pilih input awal yang dilanjutkan.';
     if (!form.is_continuation && mustContinue) {
@@ -356,9 +357,12 @@ function BatchForm({ formData, onSaved }) {
                 </select>
               )}
             </Field>
-            <Field id="regu" label="Regu" hint="Opsional, contoh B2." error={errors.regu}>
+            <Field id="regu" label="Regu" required error={errors.regu}>
               {(props) => (
-                <input {...props} type="text" maxLength={20} value={form.regu} onChange={set('regu')} className="field" />
+                <select {...props} value={form.regu} onChange={set('regu')} className="field">
+                  <option value="">Pilih regu</option>
+                  {['A', 'B', 'C'].map((regu) => <option key={regu}>{regu}</option>)}
+                </select>
               )}
             </Field>
           </div>

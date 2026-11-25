@@ -35,6 +35,10 @@ class CorrectPallet
                 throw ValidationException::withMessages(['start_date' => 'Tanggal mulai diisi tidak boleh setelah hari ini.']);
             }
 
+            if ($pallet->suratJalan()->exists() && ($filling || (int) $data['drum_count'] !== (int) $pallet->drum_count
+                || $data['full_date'] !== $pallet->full_date?->toDateString())) {
+                throw ValidationException::withMessages(['drum_count' => 'Koreksi pengangkutan terkait sebelum mengubah stok atau tanggal kirim pallet ini.']);
+            }
             if ($filling) {
                 $other = B3Pallet::where('status', 'filling')->whereKeyNot($pallet->id)->first();
                 if ($other) {
@@ -75,7 +79,7 @@ class CorrectPallet
         return DB::transaction(function () use ($request, $pallet, $reason) {
             $pallet = B3Pallet::lockForUpdate()->findOrFail($pallet->id);
 
-            if ($pallet->status === 'transported') {
+            if ($pallet->suratJalan()->exists()) {
                 $number = $pallet->suratJalan()->value('surat_jalan_number');
                 throw ValidationException::withMessages([
                     'reason' => "Pallet ini sudah diangkut dengan surat jalan {$number}. Keluarkan pallet dari surat jalan itu dulu lewat koreksi surat jalan.",
@@ -123,7 +127,9 @@ class CorrectPallet
         if ($values['start_date'] !== $pallet->start_date->toDateString()) {
             $pallet->start_date = $values['start_date'];
             // created_at dipakai sebagai waktu tombol mulai diisi ditekan
-            $pallet->created_at = Carbon::parse($values['start_date'])->setTimeFrom($pallet->created_at ?? now());
+            if ($pallet->status === 'filling' || $pallet->full_at) {
+                $pallet->created_at = Carbon::parse($values['start_date'])->setTimeFrom($pallet->created_at ?? now());
+            }
         }
 
         $pallet->fill(['status' => $values['status'], 'drum_count' => $values['drum_count'], 'notes' => $values['notes']]);
@@ -137,7 +143,7 @@ class CorrectPallet
         $full = Carbon::parse($values['full_date'])->startOfDay();
         $pallet->fill([
             'full_date' => $full,
-            'full_at' => $full->copy()->setTimeFrom($pallet->full_at ?? now()),
+            'full_at' => $pallet->full_at ? $full->copy()->setTimeFrom($pallet->full_at) : null,
             'sent_to_tps_at' => $full,
             'expiry_date' => $full->copy()->addDays($pallet->max_storage_days),
         ]);

@@ -127,8 +127,11 @@ function BatchDialog({ batch, meta, onClose, onDone }) {
               </select>
             )}
           </Field>
-          <Field id="koreksi-regu" label="Regu" hint="Opsional." error={errors.regu}>
-            {(props) => <input {...props} type="text" maxLength={20} value={form.regu} onChange={set('regu')} className="field" />}
+          <Field id="koreksi-regu" label="Regu" required error={errors.regu}>
+            {(props) => <select {...props} value={form.regu} onChange={set('regu')} className="field">
+                  <option value="">Pilih regu</option>
+                  {['A', 'B', 'C'].map((regu) => <option key={regu}>{regu}</option>)}
+                </select>}
           </Field>
           <Field
             id="koreksi-status"

@@ -63,6 +63,16 @@
 </tr></table>
 
 <div class="keep">
+<h2>Perbandingan per regu</h2>
+<p>Estimasi residu dicatat pada regu dan tanggal penyelesaian proses.</p>
+<table>
+    <thead><tr><th>Regu</th><th>Hasil solvent (kg)</th><th>Estimasi residu (kg)</th><th>Pemakaian solvent (kg)</th></tr></thead>
+    @foreach ($report['by_regu'] as $row)
+        <tr><td>{{ $row['regu'] }}</td><td>{{ $kg($row['recovery']) }}</td><td>{{ $kg($row['residue']) }}</td><td>{{ $kg($row['used']) }}</td></tr>
+    @endforeach
+</table>
+</div>
+<div class="keep">
 <h2>Perbandingan per shift</h2>
 <table>
     <thead><tr><th>Shift</th><th class="num">Total proses</th><th class="num">Tinta X masuk (kg)</th><th class="num">Hasil solvent (kg)</th><th class="num">Berat residu (kg)</th><th class="num">Persentase solvent</th></tr></thead>
@@ -101,7 +111,7 @@
         <thead><tr><th>Proses</th><th>Tanggal</th><th>Shift awal</th><th class="num">Solvent</th><th class="num">Toleransi</th><th>Tinjauan supervisor</th></tr></thead>
         @foreach ($report['below_target'] as $c)
             <tr>
-                <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
+                <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">{{ $c['batch_count'] - 1 }} input lanjutan</span>@endif</td>
                 <td>{{ Fmt::date($c['date']) }}</td><td>{{ $c['shift'] }}</td>
                 <td class="num bad">{{ $pct($c['recovery_rate']) }}</td><td class="num">{{ $pct($c['target_recovery_rate']) }}</td>
                 <td>{!! $c['review'] ? e($c['review']['by']) . ': ' . e($c['review']['notes']) : '<span class="muted">Belum ditinjau</span>' !!}</td>
@@ -132,7 +142,7 @@
     <table>
         <thead><tr><th>Tanggal</th><th>Shift</th><th class="num">Berat diambil</th><th>Keperluan</th><th>Dicatat oleh</th><th class="num">Saldo sesudah</th></tr></thead>
         @foreach ($report['solvent_usages'] as $u)
-            <tr><td>{{ Fmt::date($u['date']) }}</td><td>{{ $u['shift'] }}</td><td class="num">{{ $kg($u['weight']) }} kg</td><td>{{ $u['purpose'] }}@if ($u['notes'])<br><span class="muted">{{ $u['notes'] }}</span>@endif</td><td>{{ $u['used_by'] }}</td><td class="num">{{ $kg($u['balance_after']) }} kg</td></tr>
+            <tr><td>{{ Fmt::date($u['date']) }}</td><td>{{ $u['shift'] }}@if ($u['regu']) ? Regu {{ $u['regu'] }}@endif</td><td class="num">{{ $kg($u['weight']) }} kg</td><td>{{ $u['purpose'] }}@if ($u['notes'])<br><span class="muted">{{ $u['notes'] }}</span>@endif</td><td>{{ $u['used_by'] }}</td><td class="num">{{ $kg($u['balance_after']) }} kg</td></tr>
         @endforeach
     </table>
 </div>
@@ -145,7 +155,7 @@
         <thead><tr><th>Proses</th><th>Tanggal</th><th>Shift awal</th><th>Operator</th><th class="num">Tinta X</th><th class="num">Solvent</th><th class="num">Berat residu</th><th class="num">Persentase solvent</th></tr></thead>
         @foreach ($report['chains'] as $c)
             <tr>
-                <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">+ {{ implode(', ', array_slice($c['batch_numbers'], 1)) }}</span>@endif</td>
+                <td>{{ $c['batch_number'] }}@if ($c['batch_count'] > 1)<br><span class="muted">{{ $c['batch_count'] - 1 }} input lanjutan</span>@endif</td>
                 <td>{{ Fmt::date($c['date']) }}</td><td>{{ $c['shift'] }}</td><td>{{ $c['operator'] }}</td>
                 <td class="num">{{ $kg($c['input']) }}</td><td class="num">{{ $kg($c['recovery']) }}</td>
                 <td class="num">{{ $c['is_complete'] ? $kg($c['residue']) : '–' }}</td>

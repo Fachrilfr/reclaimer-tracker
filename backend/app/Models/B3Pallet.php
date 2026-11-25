@@ -35,7 +35,14 @@ class B3Pallet extends Model
 
     public function suratJalan(): BelongsToMany
     {
-        return $this->belongsToMany(SuratJalan::class, 'surat_jalan_pallets', 'pallet_id', 'surat_jalan_id');
+        return $this->belongsToMany(SuratJalan::class, 'surat_jalan_pallets', 'pallet_id', 'surat_jalan_id')->withPivot('drum_count');
+    }
+
+    public function remainingDrums(?string $through = null, ?int $exceptShipment = null): int
+    {
+        $sent = $this->suratJalan->filter(fn (SuratJalan $sj) => $sj->id !== $exceptShipment
+            && ($through === null || $sj->handover_date->toDateString() <= $through));
+        return (int) $this->drum_count - $sent->sum(fn ($sj) => $sj->pivot->drum_count ?? $this->drum_count);
     }
 
     /**

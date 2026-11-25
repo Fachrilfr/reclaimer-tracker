@@ -1,3 +1,4 @@
+import ShipmentDetails from '../components/ShipmentDetails.jsx';
 import { useState } from 'react';
 import { Recycle } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.jsx';
@@ -153,10 +154,13 @@ export default function HseDashboardPage() {
                 value={formatNumber(data.totals.vendor_weight)}
                 unit="kg"
               />
+              <StatCard label="Estimasi saldo residu saat ini" value={formatNumber(data.totals.current_residue)} unit="kg" />
+              <StatCard label="Drum diangkut" value={data.totals.handover_drum_count} unit="drum" />
+              <StatCard label="Pallet masuk TPS dalam periode" value={data.totals.arrived_pallets} unit="pallet" />
               <StatCard
-                label="Pallet di TPS"
-                value={formatNumber(data.totals.tps_pallet_count, 0)}
-                unit="pallet"
+                label="Stok drum di TPS hari ini"
+                value={formatNumber(data.totals.tps_drum_count, 0)}
+                unit="drum"
               />
             </div>
           </section>
@@ -180,6 +184,7 @@ export default function HseDashboardPage() {
             <ResiduePerInput inputs={data.inputs} sorot={sorot} />
           </Section>
 
+          <ShipmentDetails shipments={data.surat_jalan} />
           <ActivePallets view={view} sorot={sorot} pallets={data.tps_pallets} />
         </div>
       )}

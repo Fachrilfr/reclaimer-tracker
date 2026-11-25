@@ -34,10 +34,18 @@ class MachineMaintenanceTest extends TestCase
         return $this->actingAs(User::where('nik', $nik)->first(), 'sanctum');
     }
 
+    public function test_late_maintenance_uses_event_times_and_rejects_overlap(): void
+    {
+        $period = ['reason' => 'Pompa', 'note' => 'Selesai', 'started_at' => '2026-10-16T23:30', 'ended_at' => '2026-10-17T01:00'];
+        $this->as('10000001')->postJson('/api/machine/maintenance', $period)->assertOk()->assertJsonPath('data.status', 'operating');
+        $this->getJson('/api/machine')->assertOk()->assertJsonPath('data.history.0.duration_minutes', 90);
+        $this->postJson('/api/machine/maintenance', $period)->assertUnprocessable()->assertJsonValidationErrors('started_at');
+    }
+
     private function batch()
     {
         return $this->postJson('/api/batches', [
-            'date' => '2026-10-20', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => Shift::orderBy('id')->value('id'), 'is_continuation' => false,
             'process_status' => 'completed', 'ink_weight' => 500,
             'recovery_weight' => 180, 'oil_temp' => 140, 'vapour_temp' => 50,
         ]);
@@ -142,7 +150,6 @@ class MachineMaintenanceTest extends TestCase
         $this->as('40000001');
         $this->postJson("/api/notifications/{$id}/read")->assertNotFound();
     }
-
 
     public function test_report_documents_show_maintenance_duration_in_minutes(): void
     {

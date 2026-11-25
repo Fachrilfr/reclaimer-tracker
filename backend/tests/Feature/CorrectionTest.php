@@ -57,7 +57,7 @@ class CorrectionTest extends TestCase
     {
         return $this->as('10000001')->postJson('/api/batches', $data + [
             'date' => '2026-10-20',
-            'shift_id' => $this->shift1,
+            'regu' => 'A', 'shift_id' => $this->shift1,
             'is_continuation' => false,
             'parent_batch_id' => null,
             'process_status' => 'completed',
@@ -149,18 +149,18 @@ class CorrectionTest extends TestCase
     public function test_status_and_delete_follow_the_process_chain(): void
     {
         $root = $this->batch(['recovery_weight' => 100, 'process_status' => 'in_progress']);
-        $next = $this->batch(['shift_id' => $this->shift2, 'is_continuation' => true, 'parent_batch_id' => $root, 'ink_weight' => 0, 'recovery_weight' => 150]);
+        $next = $this->batch(['regu' => 'A', 'shift_id' => $this->shift2, 'is_continuation' => true, 'parent_batch_id' => $root, 'ink_weight' => 0, 'recovery_weight' => 150]);
         $this->assertNotNull(ReclaimerBatch::find($root)->chain_completed_at);
 
         $this->as('50000001')->putJson("/api/koreksi/input/{$root}", $this->batchForm($root, ['process_status' => 'completed']))
             ->assertUnprocessable()->assertJsonValidationErrors(['process_status']);
         $this->deleteJson("/api/koreksi/input/{$root}", ['reason' => 'Dobel'])
-            ->assertUnprocessable()->assertJsonPath('errors.reason.0', 'Input ini masih punya input lanjutan. Hapus dulu input terakhir proses ini (BR-20261020-002).');
+            ->assertUnprocessable()->assertJsonPath('errors.reason.0', 'Input ini masih punya input lanjutan. Hapus dulu input terakhir proses ini (BR-20261020-001).');
         $this->deleteJson("/api/koreksi/input/{$next}", [])->assertUnprocessable()->assertJsonValidationErrors(['reason']);
 
         // Input lanjutan yang menutup proses dihapus: proses terbuka lagi, hasil solventnya keluar dari saldo
         $this->deleteJson("/api/koreksi/input/{$next}", ['reason' => 'Lanjutan tidak pernah ada'])->assertOk()
-            ->assertJsonPath('message', 'Input BR-20261020-002 dihapus. Proses BR-20261020-001 dibuka lagi dan menunggu input lanjutan. Saldo solvent disesuaikan −150,00 kg, menjadi 1.100,00 kg.');
+            ->assertJsonPath('message', 'Input BR-20261020-001 dihapus. Proses BR-20261020-001 dibuka lagi dan menunggu input lanjutan. Saldo solvent disesuaikan −150,00 kg, menjadi 1.100,00 kg.');
         $this->assertSoftDeleted('reclaimer_batches', ['id' => $next]);
         $this->assertNull(ReclaimerBatch::find($root)->chain_completed_at);
         $this->as('10000001')->getJson('/api/batches/create')->assertJsonPath('data.open_chains.0.root_id', $root);
@@ -191,9 +191,9 @@ class CorrectionTest extends TestCase
     {
         // Seharusnya 90 kg, tertulis 900 kg
         $id = $this->as('10000001')->postJson('/api/solvent-usages', [
-            'date' => '2026-10-20', 'shift_id' => $this->shift1, 'weight' => 900, 'purpose' => 'Pencucian mesin cetak',
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => $this->shift1, 'weight' => 900, 'purpose' => 'Pencucian mesin cetak',
         ])->assertCreated()->json('data.id');
-        $form = ['date' => '2026-10-20', 'shift_id' => $this->shift1, 'purpose' => 'Pencucian mesin cetak', 'reason' => 'Salah ketik'];
+        $form = ['date' => '2026-10-20', 'regu' => 'A', 'shift_id' => $this->shift1, 'purpose' => 'Pencucian mesin cetak', 'reason' => 'Salah ketik'];
 
         $this->as('20000001')->putJson("/api/koreksi/solvent/{$id}", $form + ['weight' => 90])->assertOk()
             ->assertJsonPath('message', 'Pemakaian solvent 20 Okt 2026 (900,00 kg) dikoreksi. Saldo solvent disesuaikan +810,00 kg, menjadi 910,00 kg.');
@@ -223,7 +223,7 @@ class CorrectionTest extends TestCase
         // Tombol penuh telat ditekan: sebenarnya penuh 11 Okt, isinya hanya 2 drum
         $form = ['status' => 'full', 'start_date' => '2026-10-10', 'full_date' => '2026-10-11', 'drum_count' => 2, 'notes' => null, 'reason' => 'Tombol penuh telat ditekan'];
         $this->as('20000001')->putJson("/api/koreksi/pallet/{$a}", $form)->assertOk()
-            ->assertJsonPath('message', 'Pallet PLT-202610-001 dikoreksi. Batas simpan sekarang 9 Jan 2027.');
+            ->assertJsonPath('message', 'Pallet PLT-261010-001 dikoreksi. Batas simpan sekarang 9 Jan 2027.');
         $pallet = B3Pallet::find($a);
         $this->assertSame('2026-10-11', $pallet->sent_to_tps_at->toDateString());
         $this->assertSame('2027-01-09', $pallet->expiry_date->toDateString());
@@ -260,6 +260,7 @@ class CorrectionTest extends TestCase
 
     private function suratJalan(string $number, array $pallets): int
     {
+        B3Pallet::whereIn('id', $pallets)->update(['drum_count' => 20]);
         return $this->as('30000001')->postJson('/api/surat-jalan', [
             'surat_jalan_number' => $number, 'vendor_id' => Vendor::orderBy('id')->value('id'), 'handover_date' => '2026-10-20',
             'pallet_ids' => $pallets, 'weight_kg' => 600, 'vendor_officer_name' => 'Petugas vendor',
@@ -273,24 +274,25 @@ class CorrectionTest extends TestCase
         $this->postJson("/api/pallets/{$a}/full")->assertOk();
         $b = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
         $this->postJson("/api/pallets/{$b}/full")->assertOk();
+        B3Pallet::whereKey($b)->update(['drum_count' => 20]);
         $first = $this->suratJalan('SJ-001', [$a]);
         [$vendorA, $vendorB] = Vendor::orderBy('id')->pluck('id')->all();
 
         $form = ['surat_jalan_number' => 'SJ-001A', 'vendor_id' => $vendorB, 'handover_date' => '2026-10-20', 'weight_kg' => 60,
-            'vendor_officer_name' => 'Petugas vendor', 'pallet_ids' => [$a, $b], 'reason' => 'Nomor dan berat salah ketik'];
+            'vendor_officer_name' => 'Petugas vendor', 'pallet_ids' => [$a, $b], 'quantities' => [$a => 10, $b => 10], 'reason' => 'Nomor dan berat salah ketik'];
         $this->as('50000001')->postJson("/api/koreksi/surat-jalan/{$first}", $form)->assertOk()
             ->assertJsonPath('message', 'Surat jalan SJ-001A dikoreksi.');
-        $this->assertSame('transported', B3Pallet::find($b)->status);
+        $this->assertSame(10, B3Pallet::find($b)->remainingDrums());
 
         // Pallet A dikeluarkan: kembali ke TPS
-        $this->postJson("/api/koreksi/surat-jalan/{$first}", ['pallet_ids' => [$b]] + $form)->assertOk()
+        $this->postJson("/api/koreksi/surat-jalan/{$first}", ['pallet_ids' => [$b], 'quantities' => [$b => 20]] + $form)->assertOk()
             ->assertJsonPath('message', 'Surat jalan SJ-001A dikoreksi. 1 pallet kembali ke TPS.');
         $this->assertSame('tps', B3Pallet::find($a)->location());
 
         $audit = AuditLog::where('action', 'correct')->where('entity_type', 'surat_jalan')->orderBy('id')->firstOrFail();
         $this->assertSame('SJ-001', $audit->old_values['surat_jalan_number']);
         $this->assertEquals(600, $audit->old_values['weight_kg']);
-        $this->assertSame('PLT-202610-001, PLT-202610-002', $audit->new_values['pallets']);
+        $this->assertSame('PLT-261020-001, PLT-261020-002', $audit->new_values['pallets']);
 
         // Nomor yang sudah dipakai surat jalan lain ditolak
         $second = $this->suratJalan('SJ-002', [$a]);

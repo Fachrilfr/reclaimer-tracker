@@ -33,7 +33,7 @@ class CorrectSolventUsage
             $balance = SolventLedger::currentBalance(lock: true);
             if ($delta < 0 && $balance + $delta < 0) {
                 throw ValidationException::withMessages([
-                    'weight' => 'Tambahan pemakaian ' . Correction::kg(-$delta) . ' kg melebihi saldo solvent (' . Correction::kg($balance) . ' kg).',
+                    'weight' => 'Tambahan pemakaian '.Correction::kg(-$delta).' kg melebihi saldo solvent ('.Correction::kg($balance).' kg).',
                 ]);
             }
 
@@ -45,7 +45,7 @@ class CorrectSolventUsage
             $message = "Pemakaian solvent {$label} dikoreksi.";
             if ($delta != 0) {
                 $balance = Correction::adjustSolvent($request, $delta,
-                    "Koreksi pemakaian solvent {$label}: " . Correction::kg($usage->weight + $delta) . ' → ' . Correction::kg($usage->weight) . ' kg',
+                    "Koreksi pemakaian solvent {$label}: ".Correction::kg($usage->weight + $delta).' → '.Correction::kg($usage->weight).' kg',
                     ['solvent_usage_id' => $usage->id]);
                 $new['solvent_adjustment'] = $delta;
                 $message .= Correction::solventMessage($delta, $balance);
@@ -67,18 +67,18 @@ class CorrectSolventUsage
 
             $usage->delete();
             $balance = Correction::adjustSolvent($request, $usage->weight,
-                "Hapus pemakaian solvent {$label}: " . Correction::kg($usage->weight) . ' kg kembali ke saldo',
+                "Hapus pemakaian solvent {$label}: ".Correction::kg($usage->weight).' kg kembali ke saldo',
                 ['solvent_usage_id' => $usage->id]);
 
             Correction::audit($request, 'delete', $usage, $label, $reason, $snapshot);
 
-            return "Pemakaian solvent {$label} dihapus." . Correction::solventMessage($usage->weight, $balance);
+            return "Pemakaian solvent {$label} dihapus.".Correction::solventMessage($usage->weight, $balance);
         });
     }
 
     private function label(SolventUsage $usage): string
     {
-        return Correction::date($usage->date) . ' (' . Correction::kg($usage->weight) . ' kg)';
+        return Correction::date($usage->date).' ('.Correction::kg($usage->weight).' kg)';
     }
 
     private function snapshot(SolventUsage $usage, ?array $data = null): array
@@ -88,7 +88,7 @@ class CorrectSolventUsage
             'shift_id' => $usage->shift_id,
             'weight' => $usage->weight,
             'purpose' => $usage->purpose,
-            'notes' => $usage->notes,
+            'regu' => $usage->regu,
         ];
 
         return [
@@ -96,7 +96,7 @@ class CorrectSolventUsage
             'shift' => Shift::whereKey($data['shift_id'])->value('name'),
             'weight' => $data['weight'],
             'purpose' => $data['purpose'],
-            'notes' => $data['notes'],
+            'regu' => $data['regu'],
         ];
     }
 }

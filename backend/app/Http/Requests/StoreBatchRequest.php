@@ -17,7 +17,7 @@ class StoreBatchRequest extends FormRequest
         return [
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'shift_id' => ['required', 'integer', 'exists:shifts,id'],
-            'regu' => ['nullable', 'string', 'max:20'],
+            'regu' => ['required', 'in:A,B,C'],
             'is_continuation' => ['required', 'boolean'],
             'parent_batch_id' => ['nullable', 'required_if:is_continuation,true', 'integer', 'exists:reclaimer_batches,id'],
             'process_status' => ['required', 'in:in_progress,completed'],
@@ -40,7 +40,7 @@ class StoreBatchRequest extends FormRequest
                 $fixed = config('reclaimer.ink_weight_per_input');
                 if ($fixed !== null && (float) $this->input('ink_weight') !== (float) $fixed) {
                     // Berat Tinta X per input tetap (keputusan 17 Nov 2026), tidak diisi operator
-                    $validator->errors()->add('ink_weight', 'Tinta X masuk selalu ' . str_replace('.', ',', (string) (float) $fixed) . ' kg per input baru.');
+                    $validator->errors()->add('ink_weight', 'Tinta X masuk selalu '.str_replace('.', ',', (string) (float) $fixed).' kg per input baru.');
                 } elseif ((float) $this->input('ink_weight') <= 0) {
                     $validator->errors()->add('ink_weight', 'Isi berat Tinta X yang masuk ke mesin. Untuk input tanpa Tinta baru, pilih Input lanjutan.');
                 }

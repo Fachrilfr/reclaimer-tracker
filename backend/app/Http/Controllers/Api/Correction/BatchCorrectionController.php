@@ -77,7 +77,7 @@ class BatchCorrectionController extends Controller
         $data = $request->validate([
             'date' => ['required', 'date_format:Y-m-d', 'before_or_equal:today'],
             'shift_id' => ['required', 'integer', 'exists:shifts,id'],
-            'regu' => ['nullable', 'string', 'max:20'],
+            'regu' => ['required', 'in:A,B,C'],
             'process_status' => ['required', 'in:in_progress,completed'],
             'recovery_weight' => ['required', 'numeric', 'min:0', 'max:99999'],
             'oil_temp' => ['required', 'numeric', 'between:0,400'],

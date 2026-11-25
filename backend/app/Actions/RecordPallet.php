@@ -92,9 +92,43 @@ class RecordPallet
         });
     }
 
-    private function nextPalletNumber(): string
+    /** Catat satu pengiriman berdasarkan tanggal kejadian, termasuk pallet dari alur lama. */
+    public function dispatchToTps(Request $request, array $data): B3Pallet
     {
-        $prefix = 'PLT-' . now()->format('Ym') . '-';
+        return DB::transaction(function () use ($request, $data) {
+            Machine::orderBy('id')->lockForUpdate()->firstOrFail();
+            $pallet = B3Pallet::where('status', 'filling')->lockForUpdate()->first();
+            if (($pallet?->id) !== ($data['pallet_id'] ?? null)) {
+                throw ValidationException::withMessages(['pallet' => 'Status pallet berubah. Muat ulang halaman sebelum mencatat pengiriman.']);
+            }
+
+            $sent = \Illuminate\Support\Carbon::parse($data['sent_to_tps_at'])->startOfDay();
+            $action = $pallet ? 'update' : 'create';
+            $pallet ??= new B3Pallet([
+                'pallet_number' => $this->nextPalletNumber($sent),
+                'max_storage_days' => (int) Parameter::number('b3_max_storage_days'),
+                'created_by' => $request->user()->id,
+            ]);
+            $pallet->fill([
+                'start_date' => $data['start_date'],
+                'full_date' => $sent,
+                'full_at' => null,
+                'sent_to_tps_at' => $sent,
+                'expiry_date' => $sent->copy()->addDays($pallet->max_storage_days),
+                'status' => 'full',
+                'drum_count' => (int) Parameter::number('drums_per_pallet'),
+                'notes' => implode("\n", array_filter([$pallet->notes, $data['notes'] ?? null], fn ($note) => filled($note))) ?: null,
+            ])->save();
+
+            AuditLog::record($request, $action, $pallet, $pallet->only(['pallet_number', 'start_date', 'sent_to_tps_at', 'expiry_date', 'drum_count', 'status']));
+
+            return $pallet;
+        });
+    }
+
+    private function nextPalletNumber(?\Illuminate\Support\Carbon $date = null): string
+    {
+        $prefix = 'PLT-' . ($date ?? now())->format('ymd') . '-';
         $last = B3Pallet::withTrashed()->where('pallet_number', 'like', $prefix . '%')->max('pallet_number');
         $sequence = $last ? (int) substr($last, -3) + 1 : 1;
 

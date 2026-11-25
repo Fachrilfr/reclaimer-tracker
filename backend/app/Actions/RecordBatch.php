@@ -60,7 +60,7 @@ class RecordBatch
             $isCompleted = $data['process_status'] === 'completed';
 
             $batch = ReclaimerBatch::create([
-                'batch_number' => $this->nextBatchNumber($data['date']),
+                'batch_number' => $root?->batch_number ?? $this->nextBatchNumber($data['date']),
                 'date' => $data['date'],
                 'shift_id' => $data['shift_id'],
                 'regu' => $data['regu'] ?? null,
@@ -164,7 +164,7 @@ class RecordBatch
         $last = $chain->last();
         if ($last->date->gt(Carbon::parse($data['date']))) {
             throw ValidationException::withMessages([
-                'date' => 'Tanggal input lanjutan tidak boleh sebelum input sebelumnya (' . $last->date->locale('id')->translatedFormat('j M Y') . ').',
+                'date' => 'Tanggal input lanjutan tidak boleh sebelum input sebelumnya ('.$last->date->locale('id')->translatedFormat('j M Y').').',
             ]);
         }
 
@@ -188,11 +188,13 @@ class RecordBatch
     /** Nomor batch otomatis per tanggal, contoh BR-20261020-001 (FR-01). Aman karena dipanggil di dalam kunci saldo. */
     private function nextBatchNumber(string $date): string
     {
-        $prefix = 'BR-' . Carbon::parse($date)->format('Ymd') . '-';
-        $last = ReclaimerBatch::withTrashed()->where('batch_number', 'like', $prefix . '%')->max('batch_number');
+        $prefix = 'BR-'.Carbon::parse($date)->format('Ymd').'-';
+        $last = ReclaimerBatch::withTrashed()->where('batch_number', 'like', $prefix.'%')->max('batch_number');
+        $legacy = ReclaimerBatch::withTrashed()->where('previous_batch_number', 'like', $prefix.'%')->max('previous_batch_number');
+        $last = max($last, $legacy);
         $sequence = $last ? (int) substr($last, -3) + 1 : 1;
 
-        return $prefix . str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
+        return $prefix.str_pad((string) $sequence, 3, '0', STR_PAD_LEFT);
     }
 
     /** Buku besar mutasi solvent (FR-10): hasil recovery masuk ke saldo. Pemakaian dicatat di RecordSolventUsage. */

@@ -47,13 +47,12 @@ class SolventCorrectionController extends Controller
         $data = $request->validate((new StoreSolventUsageRequest)->rules() + Correction::reasonRules(),
             (new StoreSolventUsageRequest)->messages() + Correction::reasonMessages());
 
-        $notes = trim((string) ($data['notes'] ?? ''));
         $message = $correct->update($request, $usage, [
             'date' => $data['date'],
             'shift_id' => (int) $data['shift_id'],
             'weight' => round((float) $data['weight'], 2),
             'purpose' => trim($data['purpose']),
-            'notes' => $notes === '' ? null : $notes,
+            'regu' => $data['regu'],
         ], trim($data['reason']));
 
         return response()->json(['status' => 'success', 'message' => $message]);

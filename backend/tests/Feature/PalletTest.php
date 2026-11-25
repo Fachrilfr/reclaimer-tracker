@@ -31,13 +31,36 @@ class PalletTest extends TestCase
         parent::tearDown();
     }
 
+    public function test_dispatch_records_both_event_dates_in_one_submission(): void
+    {
+        $this->postJson('/api/pallets/dispatch', ['start_date' => '2026-09-27', 'sent_to_tps_at' => '2026-09-30'])
+            ->assertCreated()->assertJsonPath('data.pallet_number', 'PLT-260930-001')
+            ->assertJsonPath('data.status', 'full')->assertJsonPath('data.drum_count', 3)
+            ->assertJsonPath('data.fill_days', 3)->assertJsonPath('data.started_at', null)
+            ->assertJsonPath('data.expiry_date', '2026-12-29');
+        $this->assertDatabaseCount('b3_pallets', 1);
+    }
+
+    public function test_dispatch_completes_existing_pallet_once_and_checks_dates(): void
+    {
+        $id = $this->postJson('/api/pallets')->assertCreated()->json('data.id');
+        $data = ['pallet_id' => $id, 'start_date' => '2026-10-10', 'sent_to_tps_at' => '2026-10-15'];
+        foreach (['2026-10-09', '2026-10-21'] as $invalid) {
+            $this->postJson('/api/pallets/dispatch', ['sent_to_tps_at' => $invalid] + $data)
+                ->assertUnprocessable()->assertJsonValidationErrors('sent_to_tps_at');
+        }
+        $this->postJson('/api/pallets/dispatch', $data)->assertCreated()->assertJsonPath('data.id', $id);
+        $this->postJson('/api/pallets/dispatch', $data)->assertUnprocessable();
+        $this->assertDatabaseCount('b3_pallets', 1);
+    }
+
     public function test_operator_starts_and_fills_pallet_in_real_time(): void
     {
         // Tombol "mulai diisi" ditekan 1 Okt pukul 08.15: tanggal dan jam diambil saat itu
         Carbon::setTestNow('2026-10-01 08:15:00');
         $pallet = $this->postJson('/api/pallets', ['notes' => 'Pallet kayu baru'])
             ->assertCreated()
-            ->assertJsonPath('data.pallet_number', 'PLT-202610-001')
+            ->assertJsonPath('data.pallet_number', 'PLT-261001-001')
             ->assertJsonPath('data.start_date', '2026-10-01')
             ->assertJsonPath('data.status', 'filling')
             ->assertJsonPath('data.notes', 'Pallet kayu baru')
@@ -52,7 +75,7 @@ class PalletTest extends TestCase
         Carbon::setTestNow('2026-10-05 14:40:00');
         $full = $this->postJson("/api/pallets/{$pallet['id']}/full", ['notes' => 'Tutup drum diganti'])
             ->assertOk()
-            ->assertJsonPath('message', 'Pallet PLT-202610-001 penuh dan terkirim ke TPS.')
+            ->assertJsonPath('message', 'Pallet PLT-261001-001 penuh dan terkirim ke TPS.')
             ->assertJsonPath('data.status', 'full')
             ->assertJsonPath('data.full_date', '2026-10-05')
             ->assertJsonPath('data.drum_count', 3)
@@ -95,7 +118,7 @@ class PalletTest extends TestCase
 
         $this->postJson('/api/pallets')
             ->assertUnprocessable()
-            ->assertJsonPath('errors.pallet.0', 'Pallet PLT-202610-001 masih diisi. Tandai pallet itu penuh sebelum memulai pallet baru.');
+            ->assertJsonPath('errors.pallet.0', 'Pallet PLT-261020-001 masih diisi. Tandai pallet itu penuh sebelum memulai pallet baru.');
     }
 
     public function test_storage_level_follows_reminder_thresholds(): void

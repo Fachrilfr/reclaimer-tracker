@@ -44,10 +44,10 @@ class SolventOpeningBalanceTest extends TestCase
     {
         $shift = Shift::orderBy('id')->value('id');
         $this->as('10000001')->postJson('/api/batches', [
-            'date' => '2026-10-20', 'shift_id' => $shift, 'is_continuation' => false, 'parent_batch_id' => null,
+            'date' => '2026-10-20', 'regu' => 'A', 'shift_id' => $shift, 'is_continuation' => false, 'parent_batch_id' => null,
             'process_status' => 'completed', 'ink_weight' => 500, 'recovery_weight' => 100, 'oil_temp' => 140, 'vapour_temp' => 50,
         ])->assertCreated();
-        $this->postJson('/api/solvent-usages', ['date' => '2026-10-20', 'shift_id' => $shift, 'weight' => $usage, 'purpose' => 'Cuci mesin'])
+        $this->postJson('/api/solvent-usages', ['date' => '2026-10-20', 'regu' => 'A', 'shift_id' => $shift, 'weight' => $usage, 'purpose' => 'Cuci mesin'])
             ->assertCreated();
     }
 
